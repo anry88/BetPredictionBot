@@ -1,0 +1,72 @@
+import dto.MatchInfo
+import kotlinx.coroutines.delay
+import org.slf4j.LoggerFactory
+import service.HttpService
+import kotlin.math.log
+
+object ChatGPTService {
+    private val logger = LoggerFactory.getLogger(ChatGPTService::class.java)
+
+    suspend fun getMatchPredictionsWithRetry(matchesText: String, retries: Int = 3, delayMillis: Long = 1000): List<MatchInfo> {
+        repeat(retries) {
+            val matchInfoList = getMatchPredictionsFromChatGPT(matchesText)
+            if (matchInfoList.isNotEmpty()) {
+                logger.info("Successfully retrieved match predictions on attempt ${it + 1}")
+                return matchInfoList
+            } else {
+                logger.warn("Attempt ${it + 1} failed to retrieve match predictions")
+                delay(delayMillis)
+            }
+        }
+        logger.error("Failed to retrieve match predictions after $retries attempts")
+        return emptyList()
+    }
+
+    private suspend fun getMatchPredictionsFromChatGPT(matchesText: String): List<MatchInfo> {
+        val response = HttpService.api.getMatchPredictions(
+            ChatGPTRequest(
+                model = "gpt-4o",
+                messages = listOf(
+                    Message(
+                        role = "assistant",
+                        content = "Make a prediction for the outcome of these football matches during regular time, taking into account all possible factors, expert opinions, and bookmaker predictions for the match: $matchesText \n" +
+                                "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets:\n" +
+                                "\n" +
+                                "[Match Start UTC]: [yyy-MM-dd HH:mm]\n" +
+                                "[Match type]: []\n" +
+                                "[Teams]: [Team1 vs. Team2]\n" +
+                                "[Match Outcome]: [Match Winner/Draw]\n" +
+                                "[Score]: [int:int]\n" +
+                                "[Odd for Match Outcome]: [double]\n" +
+                                "\n"
+                    )
+                ),
+                max_tokens = 1000,
+                temperature = 1.0
+            )
+        )
+
+        val predictionsText = response.choices.first().message.content
+        logger.warn(predictionsText)
+        return parseMatchInfo(predictionsText)
+    }
+
+    private fun parseMatchInfo(text: String): List<MatchInfo> {
+        val matchInfoList = mutableListOf<MatchInfo>()
+        val regex = """\[Match Start UTC\]: \[(.+?)\]\s*\[Match type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs\. (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
+        val matches = regex.findAll(text)
+
+        for (match in matches) {
+            val datetime = match.groups[1]?.value?.trim() ?: ""
+            val matchType = match.groups[2]?.value?.trim() ?: ""
+            val teams = "${match.groups[3]?.value?.trim()} vs. ${match.groups[4]?.value?.trim()}"
+            val outcome = match.groups[5]?.value?.trim() ?: ""
+            val score = match.groups[6]?.value?.trim() ?: ""
+            val odds = match.groups[7]?.value?.trim() ?: ""
+
+            matchInfoList.add(MatchInfo(datetime, matchType, teams, outcome, score, odds))
+        }
+
+        return matchInfoList
+    }
+}

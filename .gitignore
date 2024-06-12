@@ -1,0 +1,8 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+/.gradle
+/build
+/.idea
+config.properties
+predictions.csv
