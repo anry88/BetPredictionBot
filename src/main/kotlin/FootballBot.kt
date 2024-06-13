@@ -10,6 +10,9 @@ import java.time.temporal.ChronoField
 
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
+
+    private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
+
     private var pendingMatches: List<MatchInfo> = emptyList()
     private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatterBuilder()
         .appendPattern("yyyy-MM-dd HH:mm:ss")
@@ -32,27 +35,27 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             val messageText = update.message.text
             val chatId = update.message.chatId.toString()
 
-            when {
-                messageText.startsWith("/newMatch") -> {
-                    val matchesText = messageText.removePrefix("/newMatch").trim()
-                    handleNewMatchCommand(chatId, matchesText)
+            if (chatId == adminChatId) {
+                when {
+                    messageText.startsWith("/newMatch") -> {
+                        val matchesText = messageText.removePrefix("/newMatch").trim()
+                        handleNewMatchCommand(chatId, matchesText)
+                    }
+                    messageText == "/confirm" -> {
+                        handleConfirmCommand(chatId)
+                    }
+                    messageText == "/reject" -> {
+                        handleRejectCommand(chatId)
+                    }
                 }
-                messageText == "/confirm" -> {
-                    handleConfirmCommand(chatId)
-                }
-                messageText == "/reject" -> {
-                    handleRejectCommand(chatId)
-                }
-                messageText == "/upcomingMatches" -> {
-                    handleUpcomingMatchesCommand(chatId)
-                }
-                messageText == "/topMatch" -> {
-                    handleTopMatchCommand(chatId)
-                }
-                else -> {
-                    val responseText = processMessage(messageText)
-                    sendMessage(chatId, responseText)
-                }
+            } else if (messageText == "/upcomingMatches") {
+                handleUpcomingMatchesCommand(chatId)
+            } else if (messageText == "/topMatch") {
+                handleTopMatchCommand(chatId)
+            } else {
+                val responseText = processMessage(messageText)
+                val message = SendMessage(chatId, responseText)
+                execute(message)
             }
         }
     }

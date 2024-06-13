@@ -35,7 +35,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.abrazhnikov.MainKt")
+    mainClass.set("MainKt")
 }
 
 tasks.withType<KotlinCompile> {

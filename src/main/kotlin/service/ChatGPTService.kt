@@ -2,7 +2,6 @@ import dto.MatchInfo
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
 import service.HttpService
-import kotlin.math.log
 
 object ChatGPTService {
     private val logger = LoggerFactory.getLogger(ChatGPTService::class.java)
@@ -28,14 +27,14 @@ object ChatGPTService {
                 model = "gpt-4o",
                 messages = listOf(
                     Message(
-                        role = "assistant",
-                        content = "Make a prediction for the outcome of these football matches during regular time, taking into account all possible factors, expert opinions, and bookmaker predictions for the match: $matchesText \n" +
+                        role = "user",
+                        content = "Make a prediction for the outcome of these football matches that will take place in the near future, for full time, taking into account all possible factors, expert opinions and bookmakers' forecasts for the match: $matchesText \n" +
                                 "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets:\n" +
                                 "\n" +
                                 "[Match Start UTC]: [yyy-MM-dd HH:mm]\n" +
-                                "[Match type]: []\n" +
+                                "[Match Type]: []\n" +
                                 "[Teams]: [Team1 vs. Team2]\n" +
-                                "[Match Outcome]: [Match Winner/Draw]\n" +
+                                "[Match Outcome]: [Team/Draw]\n" +
                                 "[Score]: [int:int]\n" +
                                 "[Odd for Match Outcome]: [double]\n" +
                                 "\n"
@@ -53,7 +52,7 @@ object ChatGPTService {
 
     private fun parseMatchInfo(text: String): List<MatchInfo> {
         val matchInfoList = mutableListOf<MatchInfo>()
-        val regex = """\[Match Start UTC\]: \[(.+?)\]\s*\[Match type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs\. (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
+        val regex = """\[Match Start UTC\]: \[(.+?)\]\s*\[Match Type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs\. (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
         val matches = regex.findAll(text)
 
         for (match in matches) {
