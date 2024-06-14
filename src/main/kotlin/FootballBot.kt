@@ -38,32 +38,24 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             val messageText = update.message.text
             val chatId = update.message.chatId.toString()
 
-            if (chatId == adminChatId) {
-                when {
-                    messageText.startsWith("/newMatch") -> {
-                        val matchesText = messageText.removePrefix("/newMatch").trim()
-                        handleNewMatchCommand(chatId, matchesText)
-                    }
-                    messageText == "/confirm" -> {
-                        handleConfirmCommand(chatId)
-                    }
-                    messageText == "/reject" -> {
-                        handleRejectCommand(chatId)
-                    }
-                    else -> {
-                        // Обработка остальных сообщений из adminChatId
-                        val responseText = processMessage(messageText)
-                        val message = SendMessage(chatId, responseText)
-                        execute(message)
-                    }
+            when {
+                chatId == adminChatId && messageText.startsWith("/newMatch") -> {
+                    val matchesText = messageText.removePrefix("/newMatch").trim()
+                    handleNewMatchCommand(chatId, matchesText)
                 }
-            } else {
-                // Обработка сообщений из других чатов
-                if (messageText == "/upcomingMatches") {
+                chatId == adminChatId && messageText == "/confirm" -> {
+                    handleConfirmCommand(chatId)
+                }
+                chatId == adminChatId && messageText == "/reject" -> {
+                    handleRejectCommand(chatId)
+                }
+                messageText == "/upcomingMatches" -> {
                     handleUpcomingMatchesCommand(chatId)
-                } else if (messageText == "/topMatch") {
+                }
+                messageText == "/topMatch" -> {
                     handleTopMatchCommand(chatId)
-                } else {
+                }
+                else -> {
                     val responseText = processMessage(messageText)
                     val message = SendMessage(chatId, responseText)
                     execute(message)
