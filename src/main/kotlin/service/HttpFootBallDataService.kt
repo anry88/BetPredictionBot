@@ -6,6 +6,7 @@ import dto.MatchResponse
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import org.slf4j.LoggerFactory
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDate
@@ -15,6 +16,7 @@ import retrofit2.Callback
 import retrofit2.Response as RetrofitResponse
 
 class HttpFootBallDataService : Interceptor {
+    private val logger = LoggerFactory.getLogger(HttpFootBallDataService::class.java)
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val requestBuilder = original.newBuilder()
@@ -52,15 +54,15 @@ class HttpFootBallDataService : Interceptor {
                     val matches = response.body()?.matches
                     // Process the matches data as needed
                     matches?.forEach { match ->
-                        println("Match: ${match.homeTeam.name} vs ${match.awayTeam.name}, Score: ${match.score.fullTime.homeTeam} - ${match.score.fullTime.awayTeam}")
+                        logger.info("Match: ${match.homeTeam.name} vs ${match.awayTeam.name}, Score: ${match.score.fullTime.homeTeam} - ${match.score.fullTime.awayTeam}")
                     }
                 } else {
-                    println("Request failed with code: ${response.code()}")
+                    logger.error("Request failed with code: ${response.code()}")
                 }
             }
 
             override fun onFailure(call: Call<MatchResponse>, t: Throwable) {
-                println("Request failed with error: ${t.message}")
+                logger.error("Request failed with error: ${t.message}")
             }
         })
     }
