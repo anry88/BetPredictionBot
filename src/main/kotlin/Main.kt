@@ -1,7 +1,16 @@
+import org.quartz.*
+import org.quartz.impl.StdSchedulerFactory
+import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
-import org.slf4j.LoggerFactory
 import service.HttpFootBallDataService
+
+class FetchMatchesJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballDataService = HttpFootBallDataService()
+        footballDataService.fetchMatches()
+    }
+}
 
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
@@ -17,6 +26,21 @@ fun main() {
         logger.error("Failed to start football bot", e)
     }
 
-    val footballDataService = HttpFootBallDataService()
-    footballDataService.fetchMatches()
+    // Setup and start Quartz scheduler
+    val scheduler = StdSchedulerFactory().scheduler
+    scheduler.start()
+
+    val job = JobBuilder.newJob(FetchMatchesJob::class.java)
+        .withIdentity("fetchMatchesJob", "group1")
+        .build()
+
+    val trigger = TriggerBuilder.newTrigger()
+        .withIdentity("fetchMatchesTrigger", "group1")
+        .startNow()
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(0, 0)) // Every day at midnight
+        .build()
+
+    scheduler.scheduleJob(job, trigger)
+
+    logger.info("Scheduled FetchMatchesJob to run daily at midnight")
 }

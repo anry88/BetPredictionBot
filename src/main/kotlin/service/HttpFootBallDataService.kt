@@ -41,7 +41,7 @@ class HttpFootBallDataService : Interceptor {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    val footballDataApi: FootBallDataApi = retrofit.create(FootBallDataApi::class.java)
+    private val footballDataApi: FootBallDataApi = retrofit.create(FootBallDataApi::class.java)
 
     fun fetchMatches() {
         val currentDate = LocalDate.now()

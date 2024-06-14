@@ -32,9 +32,13 @@ dependencies {
     implementation("org.slf4j:slf4j-api:1.7.30")
     implementation("org.slf4j:slf4j-simple:1.7.30")
 
+    // Ktor HTTP client
     implementation("io.ktor:ktor-client-core:2.0.0")
     implementation("io.ktor:ktor-client-cio:2.0.0")
     implementation("io.ktor:ktor-client-serialization:2.0.0")
+
+    // Quartz for scheduling tasks
+    implementation("org.quartz-scheduler:quartz:2.3.2")
 }
 
 application {
