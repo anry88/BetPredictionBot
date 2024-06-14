@@ -1,12 +1,11 @@
 import retrofit2.http.Body
 import retrofit2.http.Headers
 import retrofit2.http.POST
-import java.util.PrimitiveIterator
 
 interface ChatGPTApi {
     @Headers("Content-Type: application/json")
     @POST("v1/chat/completions")
-    suspend fun getMatchPredictions(@Body request: ChatGPTRequest): ChatGPTResponse
+    suspend fun getChatGPTRequest(@Body request: ChatGPTRequest): ChatGPTResponse
 }
 
 data class ChatGPTRequest(

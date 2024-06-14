@@ -5,7 +5,6 @@ plugins {
     application
 }
 
-group = "com.abrazhnikov"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -32,6 +31,10 @@ dependencies {
     // SLF4J logging
     implementation("org.slf4j:slf4j-api:1.7.30")
     implementation("org.slf4j:slf4j-simple:1.7.30")
+
+    implementation("io.ktor:ktor-client-core:2.0.0")
+    implementation("io.ktor:ktor-client-cio:2.0.0")
+    implementation("io.ktor:ktor-client-serialization:2.0.0")
 }
 
 application {

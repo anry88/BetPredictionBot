@@ -6,7 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
-object HttpService {
+object HttpChatGPTService {
     private val apiKey: String = Config.getProperty("chatgpt.api.key") ?: throw IllegalStateException("API Key not found")
 
     // Создание экземпляра Retrofit с настройкой клиента

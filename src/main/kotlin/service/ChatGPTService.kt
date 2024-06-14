@@ -1,10 +1,11 @@
 import dto.MatchInfo
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
-import service.HttpService
+import service.HttpChatGPTService
 
 object ChatGPTService {
     private val logger = LoggerFactory.getLogger(ChatGPTService::class.java)
+    private val leagues = Config.getProperty("leagues")?.split(",") ?: listOf()
 
     suspend fun getMatchPredictionsWithRetry(matchesText: String, retries: Int = 3, delayMillis: Long = 1000): List<MatchInfo> {
         repeat(retries) {
@@ -22,7 +23,7 @@ object ChatGPTService {
     }
 
     private suspend fun getMatchPredictionsFromChatGPT(matchesText: String): List<MatchInfo> {
-        val response = HttpService.api.getMatchPredictions(
+        val response = HttpChatGPTService.api.getChatGPTRequest(
             ChatGPTRequest(
                 model = "gpt-4o",
                 messages = listOf(
@@ -46,7 +47,7 @@ object ChatGPTService {
         )
 
         val predictionsText = response.choices.first().message.content
-        logger.warn(predictionsText)
+
         return parseMatchInfo(predictionsText)
     }
 
@@ -68,4 +69,47 @@ object ChatGPTService {
 
         return matchInfoList
     }
+
+//    suspend fun getMatchListFromChatGPTWithRetry(retries: Int = 3, delayMillis: Long = 1000): String {
+//        repeat(retries) {
+//            val matchList = getMatchListFromChatGPT()
+//            if (matchList.isNotEmpty()) {
+//                logger.info("Successfully retrieved future matches on attempt ${it + 1}")
+//                return matchList
+//            } else {
+//                logger.warn("Attempt ${it + 1} failed to retrieve future matches")
+//                delay(delayMillis)
+//            }
+//        }
+//        logger.error("Failed to retrieve future matches after $retries attempts")
+//        return ""
+//    }
+//
+//    private suspend fun getMatchListFromChatGPT(): String {
+//        val tomorrowDate = LocalDate.now().plusDays(1).toString()
+//        val url = "https://www.worldfootball.net/matches_today/2024/jun/${tomorrowDate.substring(8)}"
+//
+//        val leaguesText = leagues.joinToString(separator = "\n")
+//
+//        val response = HttpService.api.getChatGPTRequest(
+//            ChatGPTRequest(
+//                model = "gpt-4o",
+//                messages = listOf(
+//                    Message(
+//                        role = "user",
+//                        content = "You are the data assistant. Imagine that you have access to up-to-date information. Create a fictional list of matches in the following leagues: \n" +
+//                                leaguesText
+//                                + ("\nfrom the following page: $url \n" +
+//                                "Provide the match schedules and team names and be very strict.\n").trimIndent()
+//
+//                    )
+//                ),
+//                max_tokens = 1000,
+//                temperature = 1.0
+//            )
+//        )
+//
+//        val predictionsText = response.choices.first().message.content
+//        return predictionsText
+//    }
 }
