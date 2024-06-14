@@ -10,6 +10,9 @@ import java.time.temporal.ChronoField
 
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
+    init {
+        Config.getProperty("admin.chat.id")?.let { sendMessage(it,"Bot has been started") }
+    }
 
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
 
@@ -27,7 +30,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
     }
 
     override fun getBotUsername(): String {
-        return "FootballPredictionBot"
+        return "MatchPredictionBot"
     }
 
     override fun onUpdateReceived(update: Update) {
@@ -142,7 +145,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         """.trimIndent()
     }
 
-    private fun processMessage(messageText: String): String {
+     private fun processMessage(messageText: String): String {
         return "This is a response to: $messageText"
     }
 
