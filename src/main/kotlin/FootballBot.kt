@@ -34,6 +34,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
     }
 
     override fun onUpdateReceived(update: Update) {
+        logger.warn(update.hasMessage().toString())
         if (update.hasMessage() && update.message.hasText()) {
             val messageText = update.message.text
             val chatId = update.message.chatId.toString()
