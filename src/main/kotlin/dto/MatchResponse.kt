@@ -8,9 +8,16 @@ data class MatchResponse(
 
 data class Match(
     @SerializedName("id") val id: Int,
+    @SerializedName("utcDate") val utcDate: String,
+    @SerializedName("competition") val competition: Competition,
     @SerializedName("homeTeam") val homeTeam: Team,
     @SerializedName("awayTeam") val awayTeam: Team,
     @SerializedName("score") val score: Score
+)
+
+data class Competition(
+    @SerializedName("id") val id: Int,
+    @SerializedName("name") val name: String
 )
 
 data class Team(

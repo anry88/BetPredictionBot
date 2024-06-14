@@ -3,10 +3,10 @@ package service
 import Config
 import FootBallDataApi
 import dto.MatchResponse
+import dto.MatchInfo
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
-import org.slf4j.LoggerFactory
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDate
@@ -14,9 +14,13 @@ import java.time.format.DateTimeFormatter
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response as RetrofitResponse
+import kotlinx.coroutines.runBlocking
+import ChatGPTService
+import org.slf4j.LoggerFactory
 
 class HttpFootBallDataService : Interceptor {
     private val logger = LoggerFactory.getLogger(HttpFootBallDataService::class.java)
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val requestBuilder = original.newBuilder()
@@ -37,7 +41,7 @@ class HttpFootBallDataService : Interceptor {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 
-    private val footballDataApi: FootBallDataApi = retrofit.create(FootBallDataApi::class.java)
+    val footballDataApi: FootBallDataApi = retrofit.create(FootBallDataApi::class.java)
 
     fun fetchMatches() {
         val currentDate = LocalDate.now()
@@ -52,9 +56,27 @@ class HttpFootBallDataService : Interceptor {
             override fun onResponse(call: Call<MatchResponse>, response: RetrofitResponse<MatchResponse>) {
                 if (response.isSuccessful) {
                     val matches = response.body()?.matches
+                    logger.info("Successfully fetched matches: ${matches?.size ?: 0} matches found")
                     // Process the matches data as needed
-                    matches?.forEach { match ->
-                        logger.info("Match: ${match.homeTeam.name} vs ${match.awayTeam.name}, Score: ${match.score.fullTime.homeTeam} - ${match.score.fullTime.awayTeam}")
+                    matches?.let {
+                        val matchesText = it.joinToString(separator = "\n") { match ->
+                            "[Match Start UTC]: [${match.utcDate}]\n[Match Type]: [${match.competition.name}]\n[Teams]: [${match.homeTeam.name} vs ${match.awayTeam.name}]"
+                        }
+                        runBlocking {
+                            val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
+                            val newMatches = mutableListOf<MatchInfo>()
+                            predictions.forEach { prediction ->
+                                logger.info("Prediction: $prediction")
+                                // Check if the match is already in the file
+                                if (!isMatchInFile(prediction)) {
+                                    newMatches.add(prediction)
+                                }
+                            }
+                            if (newMatches.isNotEmpty()) {
+                                CSVService.appendRows(newMatches)
+                                logger.info("New matches appended to file")
+                            }
+                        }
                     }
                 } else {
                     logger.error("Request failed with code: ${response.code()}")
@@ -65,5 +87,10 @@ class HttpFootBallDataService : Interceptor {
                 logger.error("Request failed with error: ${t.message}")
             }
         })
+    }
+
+    private fun isMatchInFile(matchInfo: MatchInfo): Boolean {
+        val upcomingMatches = CSVService.getUpcomingMatches()
+        return upcomingMatches.any { it.teams == matchInfo.teams && it.datetime == matchInfo.datetime }
     }
 }

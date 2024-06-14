@@ -5,7 +5,6 @@ import service.HttpChatGPTService
 
 object ChatGPTService {
     private val logger = LoggerFactory.getLogger(ChatGPTService::class.java)
-    private val leagues = Config.getProperty("leagues")?.split(",") ?: listOf()
 
     suspend fun getMatchPredictionsWithRetry(matchesText: String, retries: Int = 3, delayMillis: Long = 1000): List<MatchInfo> {
         repeat(retries) {
@@ -32,7 +31,7 @@ object ChatGPTService {
                         content = "Make a prediction for the outcome of these football matches that will take place in the near future, for full time, taking into account all possible factors, expert opinions and bookmakers' forecasts for the match: $matchesText \n" +
                                 "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets:\n" +
                                 "\n" +
-                                "[Match Start UTC]: [yyy-MM-dd HH:mm]\n" +
+                                "[Match Start UTC]: [yyyy-MM-dd HH:mm]\n" +
                                 "[Match Type]: []\n" +
                                 "[Teams]: [Team1 vs. Team2]\n" +
                                 "[Match Outcome]: [Team/Draw]\n" +
@@ -69,47 +68,4 @@ object ChatGPTService {
 
         return matchInfoList
     }
-
-//    suspend fun getMatchListFromChatGPTWithRetry(retries: Int = 3, delayMillis: Long = 1000): String {
-//        repeat(retries) {
-//            val matchList = getMatchListFromChatGPT()
-//            if (matchList.isNotEmpty()) {
-//                logger.info("Successfully retrieved future matches on attempt ${it + 1}")
-//                return matchList
-//            } else {
-//                logger.warn("Attempt ${it + 1} failed to retrieve future matches")
-//                delay(delayMillis)
-//            }
-//        }
-//        logger.error("Failed to retrieve future matches after $retries attempts")
-//        return ""
-//    }
-//
-//    private suspend fun getMatchListFromChatGPT(): String {
-//        val tomorrowDate = LocalDate.now().plusDays(1).toString()
-//        val url = "https://www.worldfootball.net/matches_today/2024/jun/${tomorrowDate.substring(8)}"
-//
-//        val leaguesText = leagues.joinToString(separator = "\n")
-//
-//        val response = HttpService.api.getChatGPTRequest(
-//            ChatGPTRequest(
-//                model = "gpt-4o",
-//                messages = listOf(
-//                    Message(
-//                        role = "user",
-//                        content = "You are the data assistant. Imagine that you have access to up-to-date information. Create a fictional list of matches in the following leagues: \n" +
-//                                leaguesText
-//                                + ("\nfrom the following page: $url \n" +
-//                                "Provide the match schedules and team names and be very strict.\n").trimIndent()
-//
-//                    )
-//                ),
-//                max_tokens = 1000,
-//                temperature = 1.0
-//            )
-//        )
-//
-//        val predictionsText = response.choices.first().message.content
-//        return predictionsText
-//    }
 }
