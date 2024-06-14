@@ -121,7 +121,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             [Top Match]
             Match Time: ${topMatch.datetime}
             Match Type: ${topMatch.matchType}
-            Teams: ${topMatch.teams}}
+            Teams: ${topMatch.teams}
             Predicted Outcome: ${topMatch.outcome}
             Score: ${topMatch.score}
             Odds: ${topMatch.odds}
