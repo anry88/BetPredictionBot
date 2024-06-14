@@ -34,7 +34,6 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
     }
 
     override fun onUpdateReceived(update: Update) {
-        logger.warn(update.hasMessage().toString())
         if (update.hasMessage() && update.message.hasText()) {
             val messageText = update.message.text
             val chatId = update.message.chatId.toString()
@@ -51,15 +50,24 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
                     messageText == "/reject" -> {
                         handleRejectCommand(chatId)
                     }
+                    else -> {
+                        // Обработка остальных сообщений из adminChatId
+                        val responseText = processMessage(messageText)
+                        val message = SendMessage(chatId, responseText)
+                        execute(message)
+                    }
                 }
-            } else if (messageText == "/upcomingMatches") {
-                handleUpcomingMatchesCommand(chatId)
-            } else if (messageText == "/topMatch") {
-                handleTopMatchCommand(chatId)
             } else {
-                val responseText = processMessage(messageText)
-                val message = SendMessage(chatId, responseText)
-                execute(message)
+                // Обработка сообщений из других чатов
+                if (messageText == "/upcomingMatches") {
+                    handleUpcomingMatchesCommand(chatId)
+                } else if (messageText == "/topMatch") {
+                    handleTopMatchCommand(chatId)
+                } else {
+                    val responseText = processMessage(messageText)
+                    val message = SendMessage(chatId, responseText)
+                    execute(message)
+                }
             }
         }
     }
