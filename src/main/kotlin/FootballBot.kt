@@ -66,12 +66,15 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
 
     private fun handleStartCommand(chatId: String) {
         val description = """
-            Welcome to the Football Prediction Bot!
-            
-            No one can truly predict the future, but our Football Prediction Bot uses advanced analysis to estimate the outcomes of football matches. By leveraging in-depth analysis of team conditions, expert opinions, and bookmaker data, this bot provides insightful predictions.
-            
-            Please note that the predictions provided by this bot are for informational purposes only and are not recommendations for betting. Use the information at your own discretion and be aware of the regulations in your country regarding sports betting.
-        """.trimIndent()
+                Welcome to the Football Prediction Bot!
+    
+                No one can truly predict the future, but our Football Prediction Bot uses advanced analysis to estimate the outcomes of football matches. By leveraging in-depth analysis of team conditions, expert opinions, and bookmaker data, this bot provides insightful predictions.
+    
+                Please note that the predictions provided by this bot are for informational purposes only and are not recommendations for betting. Use the information at your own discretion and be aware of the regulations in your country regarding sports betting.
+    
+                To get a list of available commands, use /help.
+            """.trimIndent()
+
         sendMessage(chatId, description)
     }
 
