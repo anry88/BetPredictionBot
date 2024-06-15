@@ -15,8 +15,8 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response as RetrofitResponse
 import kotlinx.coroutines.runBlocking
-import ChatGPTService
 import org.slf4j.LoggerFactory
+import java.util.concurrent.TimeUnit
 
 class HttpFootBallDataService : Interceptor {
     private val logger = LoggerFactory.getLogger(HttpFootBallDataService::class.java)
@@ -33,6 +33,9 @@ class HttpFootBallDataService : Interceptor {
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(this)
+        .connectTimeout(3, TimeUnit.MINUTES) // Установка таймаута подключения
+        .readTimeout(3, TimeUnit.MINUTES) // Установка таймаута чтения
+        .writeTimeout(3, TimeUnit.MINUTES) // Установка таймаута записи
         .build()
 
     private val retrofit = Retrofit.Builder()
@@ -55,12 +58,12 @@ class HttpFootBallDataService : Interceptor {
         call.enqueue(object : Callback<MatchResponse> {
             override fun onResponse(call: Call<MatchResponse>, response: RetrofitResponse<MatchResponse>) {
                 if (response.isSuccessful) {
-                    val matches = response.body()?.matches
-                    logger.info("Successfully fetched matches: ${matches?.size ?: 0} matches found")
-                    // Process the matches data as needed
-                    matches?.let {
-                        val matchesText = it.joinToString(separator = "\n") { match ->
-                            "[Match Start UTC]: [${match.utcDate}]\n[Match Type]: [${match.competition.name}]\n[Teams]: [${match.homeTeam.name} vs ${match.awayTeam.name}]"
+                    response.body()?.let { matchResponse ->
+                        val matches = matchResponse.matches
+                        logger.info("Successfully fetched matches: ${matches.size} matches found")
+                        // Process the matches data as needed
+                        val matchesText = matches.joinToString(separator = "\n") { match ->
+                            "[Match Start UTC]: [${match.utcDate}] [Match Type]: [${match.competition.name}] [Teams]: [${match.homeTeam.name} vs ${match.awayTeam.name}]"
                         }
                         runBlocking {
                             val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
@@ -75,8 +78,12 @@ class HttpFootBallDataService : Interceptor {
                             if (newMatches.isNotEmpty()) {
                                 CSVService.appendRows(newMatches)
                                 logger.info("New matches appended to file")
+                            } else {
+                                logger.info("All matches are duplicates, no new matches to append.")
                             }
                         }
+                    } ?: run {
+                        logger.error("Response body is null")
                     }
                 } else {
                     logger.error("Request failed with code: ${response.code()}")

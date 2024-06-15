@@ -4,6 +4,9 @@ import dto.MatchInfo
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.text.Normalizer
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
@@ -20,6 +23,9 @@ object CSVService {
         .toFormatter()
     private val logger = LoggerFactory.getLogger(CSVService::class.java)
 
+    // Set to store hashes of existing matches
+    private val existingMatchesHashes = mutableSetOf<String>()
+
     init {
         // Создаем файл и добавляем заголовок, если файл не существует
         val file = File(FILE_NAME)
@@ -29,6 +35,21 @@ object CSVService {
             writer.use {
                 it.writeNext(arrayOf("DateTime", "MatchType", "Teams", "Outcome", "Score", "Odds"))
             }
+        } else {
+            loadExistingMatchesHashes()
+        }
+    }
+
+    private fun loadExistingMatchesHashes() {
+        val reader = CSVReader(FileReader(FILE_NAME))
+        reader.use { csvReader ->
+            val lines = csvReader.readAll()
+            lines.drop(1).forEach { line -> // Пропускаем первую строку (заголовок)
+                if (line.size == 6) {
+                    val matchInfo = MatchInfo(line[0], line[1], line[2], line[3], line[4], line[5])
+                    existingMatchesHashes.add(generateMatchHash(matchInfo))
+                }
+            }
         }
     }
 
@@ -36,9 +57,31 @@ object CSVService {
         val writer = CSVWriter(FileWriter(FILE_NAME, true))
         writer.use {
             rows.forEach { row ->
-                it.writeNext(arrayOf(row.datetime, row.matchType, row.teams, row.outcome, row.score, row.odds))
+                val matchHash = generateMatchHash(row)
+                if (!existingMatchesHashes.contains(matchHash)) {
+                    it.writeNext(arrayOf(normalize(row.datetime), normalize(row.matchType), normalize(row.teams), normalize(row.outcome), normalize(row.score), normalize(row.odds)))
+                    existingMatchesHashes.add(matchHash)
+                } else {
+                    logger.info("Duplicate match found, skipping: ${row.datetime} ${row.teams}")
+                }
             }
         }
+    }
+
+    private fun generateMatchHash(match: MatchInfo): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val normalizedInput = "${normalize(match.datetime)}-${normalize(match.matchType)}-${normalize(match.teams)}"
+        val hash = digest.digest(normalizedInput.toByteArray(StandardCharsets.UTF_8))
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun normalize(input: String): String {
+        return Normalizer.normalize(input, Normalizer.Form.NFD).replace("\\p{M}".toRegex(), "").replace("?", "e")
+    }
+
+    fun matchExists(match: MatchInfo): Boolean {
+        val matchHash = generateMatchHash(match)
+        return existingMatchesHashes.contains(matchHash)
     }
 
     fun getUpcomingMatches(): List<MatchInfo> {

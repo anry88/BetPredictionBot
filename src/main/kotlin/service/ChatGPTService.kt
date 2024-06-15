@@ -7,13 +7,19 @@ object ChatGPTService {
     private val logger = LoggerFactory.getLogger(ChatGPTService::class.java)
 
     suspend fun getMatchPredictionsWithRetry(matchesText: String, retries: Int = 3, delayMillis: Long = 1000): List<MatchInfo> {
-        repeat(retries) {
+        repeat(retries) { attempt ->
             val matchInfoList = getMatchPredictionsFromChatGPT(matchesText)
             if (matchInfoList.isNotEmpty()) {
-                logger.info("Successfully retrieved match predictions on attempt ${it + 1}")
-                return matchInfoList
+                val newMatches = matchInfoList.filterNot { CSVService.matchExists(it) }
+                if (newMatches.isNotEmpty()) {
+                    logger.info("Successfully retrieved match predictions on attempt ${attempt + 1}")
+                    return newMatches
+                } else {
+                    logger.info("All matches are duplicates on attempt ${attempt + 1}, no retry needed")
+                    return emptyList()
+                }
             } else {
-                logger.warn("Attempt ${it + 1} failed to retrieve match predictions")
+                logger.warn("Attempt ${attempt + 1} failed to retrieve match predictions")
                 delay(delayMillis)
             }
         }
@@ -28,10 +34,10 @@ object ChatGPTService {
                 messages = listOf(
                     Message(
                         role = "user",
-                        content = "Make a prediction for the outcome of these football matches that will take place in the near future, for full time, taking into account all possible factors, expert opinions and bookmakers' forecasts for the match: $matchesText \n" +
-                                "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets:\n" +
+                        content = "Make a prediction for the outcome of these football matches that will take place in the near future, for full time, taking into account all possible factors, expert opinions and bookmakers' forecasts for the matches\n: $matchesText \n" +
+                                "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets and don't change match start time:\n" +
                                 "\n" +
-                                "[Match Start UTC]: [yyyy-MM-dd HH:mm]\n" +
+                                "[Match Start]: [yyyy-MM-dd HH:mm]\n" +
                                 "[Match Type]: []\n" +
                                 "[Teams]: [Team1 vs. Team2]\n" +
                                 "[Match Outcome]: [Team/Draw]\n" +
@@ -52,7 +58,7 @@ object ChatGPTService {
 
     private fun parseMatchInfo(text: String): List<MatchInfo> {
         val matchInfoList = mutableListOf<MatchInfo>()
-        val regex = """\[Match Start UTC\]: \[(.+?)\]\s*\[Match Type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
+        val regex = """\[Match Start\]: \[(.+?)\]\s*\[Match Type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
         val matches = regex.findAll(text)
 
         for (match in matches) {
@@ -63,7 +69,8 @@ object ChatGPTService {
             val score = match.groups[6]?.value?.trim() ?: ""
             val odds = match.groups[7]?.value?.trim() ?: ""
 
-            matchInfoList.add(MatchInfo(datetime, matchType, teams, outcome, score, odds))
+            val matchInfo = MatchInfo(datetime, matchType, teams, outcome, score, odds)
+            matchInfoList.add(matchInfo)
         }
 
         return matchInfoList

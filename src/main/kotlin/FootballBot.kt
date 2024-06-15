@@ -2,28 +2,22 @@ import dto.MatchInfo
 import kotlinx.coroutines.runBlocking
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.slf4j.LoggerFactory
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
 
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
+
     init {
-        Config.getProperty("admin.chat.id")?.let { sendMessage(it,"Bot has been started") }
+        Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
+        setCommands()
     }
 
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
 
     private var pendingMatches: List<MatchInfo> = emptyList()
-    private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatterBuilder()
-        .appendPattern("yyyy-MM-dd HH:mm:ss")
-        .optionalStart()
-        .appendFraction(ChronoField.SECOND_OF_MINUTE, 0, 2, true)
-        .optionalEnd()
-        .appendPattern("X")
-        .toFormatter()
 
     override fun getBotToken(): String {
         return token
@@ -39,8 +33,8 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             val chatId = update.message.chatId.toString()
 
             when {
-                chatId == adminChatId && messageText.startsWith("/newMatch") -> {
-                    val matchesText = messageText.removePrefix("/newMatch").trim()
+                chatId == adminChatId && messageText.startsWith("/newmatch") -> {
+                    val matchesText = messageText.removePrefix("/newmatch").trim()
                     handleNewMatchCommand(chatId, matchesText)
                 }
                 chatId == adminChatId && messageText == "/confirm" -> {
@@ -49,11 +43,17 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
                 chatId == adminChatId && messageText == "/reject" -> {
                     handleRejectCommand(chatId)
                 }
-                messageText == "/upcomingMatches" -> {
+                messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
                 }
-                messageText == "/topMatch" -> {
+                messageText == "/topmatch" -> {
                     handleTopMatchCommand(chatId)
+                }
+                messageText == "/start" -> {
+                    handleStartCommand(chatId)
+                }
+                messageText == "/help" -> {
+                    handleHelpCommand(chatId, chatId == adminChatId)
                 }
                 else -> {
                     val responseText = processMessage(messageText)
@@ -62,6 +62,39 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
                 }
             }
         }
+    }
+
+    private fun handleStartCommand(chatId: String) {
+        val description = """
+            Welcome to the Football Prediction Bot!
+            
+            No one can truly predict the future, but our Football Prediction Bot uses advanced analysis to estimate the outcomes of football matches. By leveraging in-depth analysis of team conditions, expert opinions, and bookmaker data, this bot provides insightful predictions.
+            
+            Please note that the predictions provided by this bot are for informational purposes only and are not recommendations for betting. Use the information at your own discretion and be aware of the regulations in your country regarding sports betting.
+        """.trimIndent()
+        sendMessage(chatId, description)
+    }
+
+    private fun handleHelpCommand(chatId: String, isAdmin: Boolean) {
+        val commonCommands = """
+            /start - Start the bot and get information about it
+            /upcomingmatches - Get upcoming matches within the next 24 hours
+            /topmatch - Get the top match based on odds
+        """.trimIndent()
+
+        val adminCommands = """
+            /newmatch - Add new match predictions
+            /confirm - Confirm and save the pending match predictions
+            /reject - Reject the pending match predictions
+        """.trimIndent()
+
+        val responseText = if (isAdmin) {
+            "$commonCommands\n$adminCommands"
+        } else {
+            commonCommands
+        }
+
+        sendMessage(chatId, responseText)
     }
 
     private fun handleNewMatchCommand(chatId: String, matchesText: String) {
@@ -134,7 +167,6 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         execute(message)
     }
 
-
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         return """
             Match Time: ${matchInfo.datetime}
@@ -146,7 +178,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         """.trimIndent()
     }
 
-     private fun processMessage(messageText: String): String {
+    private fun processMessage(messageText: String): String {
         return "This is a response to: $messageText"
     }
 
@@ -160,6 +192,23 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             logger.info("Sent message to chat $chatId")
         } catch (e: Exception) {
             logger.error("Failed to send message to chat $chatId", e)
+        }
+    }
+
+    private fun setCommands() {
+        val commands = mutableListOf<BotCommand>()
+        commands.add(BotCommand("/start", "Start the bot and get information about it"))
+        commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours"))
+        commands.add(BotCommand("/topmatch", "Get the top match based on odds"))
+        commands.add(BotCommand("/help", "Get the list of available commands"))
+
+        val setMyCommands = SetMyCommands()
+        setMyCommands.commands = commands
+
+        try {
+            execute(setMyCommands)
+        } catch (e: Exception) {
+            logger.error("Failed to set bot commands", e)
         }
     }
 }
