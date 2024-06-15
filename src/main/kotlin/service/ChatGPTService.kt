@@ -46,7 +46,7 @@ object ChatGPTService {
         )
 
         val predictionsText = response.choices.first().message.content
-        logger.warn(predictionsText)
+
         return parseMatchInfo(predictionsText)
     }
 
