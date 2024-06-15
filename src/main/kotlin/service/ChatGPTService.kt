@@ -46,13 +46,13 @@ object ChatGPTService {
         )
 
         val predictionsText = response.choices.first().message.content
-
+        logger.warn(predictionsText)
         return parseMatchInfo(predictionsText)
     }
 
     private fun parseMatchInfo(text: String): List<MatchInfo> {
         val matchInfoList = mutableListOf<MatchInfo>()
-        val regex = """\[Match Start UTC\]: \[(.+?)\]\s*\[Match Type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs\. (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
+        val regex = """\[Match Start UTC\]: \[(.+?)\]\s*\[Match Type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
         val matches = regex.findAll(text)
 
         for (match in matches) {

@@ -34,15 +34,21 @@ fun main() {
         .withIdentity("fetchMatchesJob", "group1")
         .build()
 
-    // Define a trigger that starts immediately and runs three times a day
-    val trigger = TriggerBuilder.newTrigger()
-        .withIdentity("fetchMatchesTrigger", "group1")
-        .startNow()
+    // Trigger for scheduled execution three times a day
+    val dailyTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("fetchMatchesDailyTrigger", "group1")
         .withSchedule(CronScheduleBuilder.cronSchedule("0 0 0,8,16 * * ?")) // At 00:00, 08:00, and 16:00 every day
         .build()
 
-    // Schedule the job with the trigger
-    scheduler.scheduleJob(job, trigger)
+    // Trigger for immediate execution at startup
+    val immediateTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("fetchMatchesImmediateTrigger", "group1")
+        .startNow()
+        .build()
+
+    // Schedule the job with both triggers
+    scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
+    logger.info("Executed FetchMatchesJob immediately upon startup")
 }
