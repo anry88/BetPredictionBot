@@ -5,7 +5,10 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
+import java.io.File
 
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
@@ -42,6 +45,9 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
                 }
                 chatId == adminChatId && messageText == "/reject" -> {
                     handleRejectCommand(chatId)
+                }
+                chatId == adminChatId && messageText == "/getpredictions" -> {
+                    handleGetPredictionsCommand(chatId)
                 }
                 messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
@@ -82,13 +88,14 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         val commonCommands = """
             /start - Start the bot and get information about it
             /upcomingmatches - Get upcoming matches within the next 24 hours
-            /topmatch - Get the top match based on odds
+            /topmatch - Get the top match
         """.trimIndent()
 
         val adminCommands = """
             /newmatch - Add new match predictions
             /confirm - Confirm and save the pending match predictions
             /reject - Reject the pending match predictions
+            /getpredictions - Get the predictions CSV file
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -130,6 +137,25 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             pendingMatches = emptyList()
         } else {
             sendMessage(chatId, "No predictions to reject.")
+        }
+    }
+
+    private fun handleGetPredictionsCommand(chatId: String) {
+        val file = File("predictions.csv")
+        if (file.exists()) {
+            val document = SendDocument()
+            document.chatId = chatId
+            document.document = InputFile(file)
+            document.caption = "Here are the predictions."
+
+            try {
+                execute(document)
+                logger.info("Sent predictions.csv to chat $chatId")
+            } catch (e: Exception) {
+                logger.error("Failed to send predictions.csv to chat $chatId", e)
+            }
+        } else {
+            sendMessage(chatId, "No predictions file found.")
         }
     }
 
