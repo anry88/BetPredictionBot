@@ -6,3 +6,4 @@
 /.idea
 config.properties
 predictions.csv
+predictions.db
