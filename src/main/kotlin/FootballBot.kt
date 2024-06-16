@@ -1,25 +1,25 @@
 import dto.MatchInfo
-import kotlinx.coroutines.runBlocking
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument
+import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
 import service.HttpFootBallDataService
+import java.io.File
+
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
     private val httpFootBallDataService = HttpFootBallDataService()
+    private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
 
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
-        initDatabase("predictions.db") // Используем путь к вашему файлу базы данных
+        initDatabase("predictions.db") // Используем правильный путь к вашему файлу базы данных
         setCommands()
     }
-
-    private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
-
-    private var pendingMatches: List<MatchInfo> = emptyList()
 
     override fun getBotToken(): String {
         return token
@@ -35,18 +35,8 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             val chatId = update.message.chatId.toString()
 
             when {
-                chatId == adminChatId && messageText.startsWith("/newmatch") -> {
-                    val matchesText = messageText.removePrefix("/newmatch").trim()
-                    handleNewMatchCommand(chatId, matchesText)
-                }
-                chatId == adminChatId && messageText == "/confirm" -> {
-                    handleConfirmCommand(chatId)
-                }
-                chatId == adminChatId && messageText == "/reject" -> {
-                    handleRejectCommand(chatId)
-                }
-                chatId == adminChatId && messageText == "/getpredictions" -> {
-                    handleGetPredictionsCommand(chatId)
+                chatId == adminChatId && messageText == "/getdatabase" -> {
+                    handleGetDatabaseCommand(chatId)
                 }
                 messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
@@ -91,10 +81,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         """.trimIndent()
 
         val adminCommands = """
-            /newmatch - Add new match predictions
-            /confirm - Confirm and save the pending match predictions
-            /reject - Reject the pending match predictions
-            /getpredictions - Get the predictions
+            /getdatabase - Get the database file
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -106,43 +93,17 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         sendMessage(chatId, responseText)
     }
 
-    private fun handleNewMatchCommand(chatId: String, matchesText: String) {
-        runBlocking {
-            pendingMatches = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
-            if (pendingMatches.isNotEmpty()) {
-                pendingMatches.forEach {
-                    sendMessage(chatId, formatMatchInfo(it))
-                }
-                sendMessage(chatId, "Please confirm the predictions by typing /confirm or reject by typing /reject")
-            } else {
-                sendMessage(chatId, "Failed to get match predictions after 3 attempts.")
-            }
-        }
-    }
-
-    private fun handleConfirmCommand(chatId: String) {
-        if (pendingMatches.isNotEmpty()) {
-            DatabaseService.appendRows(pendingMatches)
-            sendMessage(chatId, "Predictions confirmed and saved.")
-            pendingMatches = emptyList()
+    private fun handleGetDatabaseCommand(chatId: String) {
+        val databaseFile = File("predictions.db")
+        if (databaseFile.exists()) {
+            val document = SendDocument()
+            document.chatId = chatId
+            document.document = InputFile(databaseFile)
+            document.caption = "Here is the database file."
+            execute(document)
         } else {
-            sendMessage(chatId, "No predictions to confirm.")
+            sendMessage(chatId, "Database file not found.")
         }
-    }
-
-    private fun handleRejectCommand(chatId: String) {
-        if (pendingMatches.isNotEmpty()) {
-            sendMessage(chatId, "Predictions have been rejected.")
-            pendingMatches = emptyList()
-        } else {
-            sendMessage(chatId, "No predictions to reject.")
-        }
-    }
-
-    private fun handleGetPredictionsCommand(chatId: String) {
-        val predictions = DatabaseService.getUpcomingMatches()
-        val messageText = predictions.joinToString(separator = "\n\n") { formatMatchInfo(it) }
-        sendMessage(chatId, messageText)
     }
 
     private fun handleUpcomingMatchesCommand(chatId: String) {
@@ -214,6 +175,10 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours"))
         commands.add(BotCommand("/topmatch", "Get the top match based on odds"))
         commands.add(BotCommand("/help", "Get the list of available commands"))
+
+        if (adminChatId.isNotEmpty()) {
+            commands.add(BotCommand("/getdatabase", "Get the database file"))
+        }
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
