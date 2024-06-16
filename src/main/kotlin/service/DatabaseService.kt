@@ -76,12 +76,12 @@ object DatabaseService {
     }
 
     fun getUpcomingMatches(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+2"))
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val tomorrow = now.plusDays(1)
         return transaction {
             MatchInfos.selectAll().mapNotNull {
                 val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
-                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+2")).toLocalDateTime()
+                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                 if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                     MatchInfo(
                         it[MatchInfos.datetime],
@@ -106,7 +106,7 @@ object DatabaseService {
     }
 
     fun addUserActivity(userId: String, firstName: String?, lastName: String?, username: String?) {
-        val now = LocalDateTime.now(ZoneId.of("UTC+2")).format(dateTimeFormatter)
+        val now = LocalDateTime.now(ZoneId.of("UTC+3")).format(dateTimeFormatter)
         transaction {
             val existingUser = UserStats.select { UserStats.userId eq userId }.singleOrNull()
             if (existingUser == null) {
