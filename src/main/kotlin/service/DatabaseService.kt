@@ -19,6 +19,16 @@ object MatchInfos : Table() {
 
     override val primaryKey = PrimaryKey(id)
 }
+object UserStats : Table() {
+    val id = integer("id").autoIncrement()
+    val userId = varchar("userId", 50)
+    val firstName = varchar("firstName", 50).nullable()
+    val lastName = varchar("lastName", 50).nullable()
+    val username = varchar("username", 50).nullable()
+    val lastActivity = varchar("lastActivity", 50)
+
+    override val primaryKey = PrimaryKey(id)
+}
 
 fun initDatabase(dbPath: String) {
     val logger = LoggerFactory.getLogger("DatabaseService")
@@ -40,8 +50,8 @@ fun initDatabase(dbPath: String) {
 
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(MatchInfos)
-        logger.info("Database initialized and table 'MatchInfos' ensured.")
+        SchemaUtils.createMissingTablesAndColumns(MatchInfos, UserStats)
+        logger.info("Database initialized and tables 'MatchInfos' and 'UserStats' ensured.")
     }
 }
 
@@ -70,7 +80,8 @@ object DatabaseService {
         val tomorrow = now.plusDays(1)
         return transaction {
             MatchInfos.selectAll().mapNotNull {
-                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter).atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+2")).toLocalDateTime()
+                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
+                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+2")).toLocalDateTime()
                 if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                     MatchInfo(
                         it[MatchInfos.datetime],
@@ -91,6 +102,37 @@ object DatabaseService {
         return transaction {
             MatchInfos.select { (MatchInfos.datetime eq matchInfo.datetime) and (MatchInfos.teams eq matchInfo.teams) }
                 .count() > 0
+        }
+    }
+
+    fun addUserActivity(userId: String, firstName: String?, lastName: String?, username: String?) {
+        val now = LocalDateTime.now(ZoneId.of("UTC+2")).format(dateTimeFormatter)
+        transaction {
+            val existingUser = UserStats.select { UserStats.userId eq userId }.singleOrNull()
+            if (existingUser == null) {
+                UserStats.insert {
+                    it[UserStats.userId] = userId
+                    it[UserStats.firstName] = firstName
+                    it[UserStats.lastName] = lastName
+                    it[UserStats.username] = username
+                    it[lastActivity] = now
+                }
+                logger.info("Added new user: $userId")
+            } else {
+                UserStats.update({ UserStats.userId eq userId }) {
+                    it[UserStats.firstName] = firstName
+                    it[UserStats.lastName] = lastName
+                    it[UserStats.username] = username
+                    it[lastActivity] = now
+                }
+                logger.info("Updated user activity: $userId")
+            }
+        }
+    }
+
+    fun getUserCount(): Long {
+        return transaction {
+            UserStats.selectAll().count()
         }
     }
 }

@@ -33,10 +33,20 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         if (update.hasMessage() && update.message.hasText()) {
             val messageText = update.message.text
             val chatId = update.message.chatId.toString()
+            val userId = update.message.from.id.toString()
+            val firstName = update.message.from.firstName
+            val lastName = update.message.from.lastName
+            val username = update.message.from.userName
+
+            // Записываем активность пользователя
+            DatabaseService.addUserActivity(userId, firstName, lastName, username)
 
             when {
                 chatId == adminChatId && messageText == "/getdatabase" -> {
                     handleGetDatabaseCommand(chatId)
+                }
+                chatId == adminChatId && messageText == "/usercount" -> {
+                    handleUserCountCommand(chatId)
                 }
                 messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
@@ -82,6 +92,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
 
         val adminCommands = """
             /getdatabase - Get the database file
+            /usercount - Get the count of unique users
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -104,6 +115,11 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         } else {
             sendMessage(chatId, "Database file not found.")
         }
+    }
+
+    private fun handleUserCountCommand(chatId: String) {
+        val userCount = DatabaseService.getUserCount()
+        sendMessage(chatId, "Number of unique users: $userCount")
     }
 
     private fun handleUpcomingMatchesCommand(chatId: String) {
@@ -178,6 +194,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
 
         if (adminChatId.isNotEmpty()) {
             commands.add(BotCommand("/getdatabase", "Get the database file"))
+            commands.add(BotCommand("/usercount", "Get the count of unique users"))
         }
 
         val setMyCommands = SetMyCommands()
