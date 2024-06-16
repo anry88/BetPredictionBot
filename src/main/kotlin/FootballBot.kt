@@ -5,16 +5,15 @@ import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
-import org.telegram.telegrambots.meta.api.methods.send.SendDocument
-import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
-import java.io.File
-
+import service.HttpFootBallDataService
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
+    private val httpFootBallDataService = HttpFootBallDataService()
 
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
+        initDatabase("predictions.db") // Используем путь к вашему файлу базы данных
         setCommands()
     }
 
@@ -95,7 +94,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             /newmatch - Add new match predictions
             /confirm - Confirm and save the pending match predictions
             /reject - Reject the pending match predictions
-            /getpredictions - Get the predictions CSV file
+            /getpredictions - Get the predictions
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -123,7 +122,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
 
     private fun handleConfirmCommand(chatId: String) {
         if (pendingMatches.isNotEmpty()) {
-            CSVService.appendRows(pendingMatches)
+            DatabaseService.appendRows(pendingMatches)
             sendMessage(chatId, "Predictions confirmed and saved.")
             pendingMatches = emptyList()
         } else {
@@ -141,39 +140,24 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
     }
 
     private fun handleGetPredictionsCommand(chatId: String) {
-        val file = File("predictions.csv")
-        if (file.exists()) {
-            val document = SendDocument()
-            document.chatId = chatId
-            document.document = InputFile(file)
-            document.caption = "Here are the predictions."
-
-            try {
-                execute(document)
-                logger.info("Sent predictions.csv to chat $chatId")
-            } catch (e: Exception) {
-                logger.error("Failed to send predictions.csv to chat $chatId", e)
-            }
-        } else {
-            sendMessage(chatId, "No predictions file found.")
-        }
+        val predictions = DatabaseService.getUpcomingMatches()
+        val messageText = predictions.joinToString(separator = "\n\n") { formatMatchInfo(it) }
+        sendMessage(chatId, messageText)
     }
 
     private fun handleUpcomingMatchesCommand(chatId: String) {
-        runBlocking {
-            val upcomingMatches = CSVService.getUpcomingMatches()
-            if (upcomingMatches.isNotEmpty()) {
-                upcomingMatches.forEach {
-                    sendMessage(chatId, formatMatchInfo(it))
-                }
-            } else {
-                sendMessage(chatId, "No upcoming matches within the next 24 hours.")
+        val upcomingMatches = DatabaseService.getUpcomingMatches()
+        if (upcomingMatches.isNotEmpty()) {
+            upcomingMatches.forEach {
+                sendMessage(chatId, formatMatchInfo(it))
             }
+        } else {
+            sendMessage(chatId, "No upcoming matches within the next 24 hours.")
         }
     }
 
     private fun handleTopMatchCommand(chatId: String) {
-        val upcomingMatches = CSVService.getUpcomingMatches()
+        val upcomingMatches = DatabaseService.getUpcomingMatches()
         val topMatch = upcomingMatches
             .filter { it.odds.toDouble() in 1.5..2.5 }
             .maxByOrNull { it.odds }

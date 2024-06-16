@@ -33,9 +33,9 @@ class HttpFootBallDataService : Interceptor {
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(this)
-        .connectTimeout(3, TimeUnit.MINUTES) // Установка таймаута подключения
-        .readTimeout(3, TimeUnit.MINUTES) // Установка таймаута чтения
-        .writeTimeout(3, TimeUnit.MINUTES) // Установка таймаута записи
+        .connectTimeout(3, TimeUnit.MINUTES)
+        .readTimeout(3, TimeUnit.MINUTES)
+        .writeTimeout(3, TimeUnit.MINUTES)
         .build()
 
     private val retrofit = Retrofit.Builder()
@@ -61,23 +61,25 @@ class HttpFootBallDataService : Interceptor {
                     response.body()?.let { matchResponse ->
                         val matches = matchResponse.matches
                         logger.info("Successfully fetched matches: ${matches.size} matches found")
-                        // Process the matches data as needed
+
                         val matchesText = matches.joinToString(separator = "\n") { match ->
                             "[Match Start UTC]: [${match.utcDate}] [Match Type]: [${match.competition.name}] [Teams]: [${match.homeTeam.name} vs ${match.awayTeam.name}]"
                         }
+
                         runBlocking {
                             val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
                             val newMatches = mutableListOf<MatchInfo>()
                             predictions.forEach { prediction ->
                                 logger.info("Prediction: $prediction")
-                                // Check if the match is already in the file
-                                if (!isMatchInFile(prediction)) {
+                                if (!isMatchInDatabase(prediction)) {
                                     newMatches.add(prediction)
+                                } else {
+                                    logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
                                 }
                             }
                             if (newMatches.isNotEmpty()) {
-                                CSVService.appendRows(newMatches)
-                                logger.info("New matches appended to file")
+                                DatabaseService.appendRows(newMatches)
+                                logger.info("New matches appended to database")
                             } else {
                                 logger.info("All matches are duplicates, no new matches to append.")
                             }
@@ -96,8 +98,10 @@ class HttpFootBallDataService : Interceptor {
         })
     }
 
-    private fun isMatchInFile(matchInfo: MatchInfo): Boolean {
-        val upcomingMatches = CSVService.getUpcomingMatches()
-        return upcomingMatches.any { it.teams == matchInfo.teams && it.datetime == matchInfo.datetime }
+    private fun isMatchInDatabase(matchInfo: MatchInfo): Boolean {
+        val upcomingMatches = DatabaseService.getUpcomingMatches()
+        val isDuplicate = upcomingMatches.any { it.teams == matchInfo.teams && it.datetime == matchInfo.datetime }
+        logger.info("Checking match: ${matchInfo.teams} at ${matchInfo.datetime}, isDuplicate: $isDuplicate")
+        return isDuplicate
     }
 }

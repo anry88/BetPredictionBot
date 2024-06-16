@@ -10,7 +10,7 @@ object ChatGPTService {
         repeat(retries) { attempt ->
             val matchInfoList = getMatchPredictionsFromChatGPT(matchesText)
             if (matchInfoList.isNotEmpty()) {
-                val newMatches = matchInfoList.filterNot { CSVService.matchExists(it) }
+                val newMatches = matchInfoList.filterNot { DatabaseService.matchExists(it) }
                 if (newMatches.isNotEmpty()) {
                     logger.info("Successfully retrieved match predictions on attempt ${attempt + 1}")
                     return newMatches
