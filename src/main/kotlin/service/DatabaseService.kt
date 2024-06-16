@@ -1,5 +1,3 @@
-package service
-
 import dto.MatchInfo
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.sql.*
@@ -7,6 +5,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 object MatchInfos : Table() {
@@ -22,7 +21,7 @@ object MatchInfos : Table() {
 }
 
 fun initDatabase(dbPath: String) {
-    val logger = LoggerFactory.getLogger("service.DatabaseService")
+    val logger = LoggerFactory.getLogger("DatabaseService")
     val dbFile = File(dbPath)
 
     logger.info("Database file path: $dbPath")
@@ -42,7 +41,7 @@ fun initDatabase(dbPath: String) {
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     transaction {
         SchemaUtils.createMissingTablesAndColumns(MatchInfos)
-        logger.info("Database initialized and table 'service.MatchInfos' ensured.")
+        logger.info("Database initialized and table 'MatchInfos' ensured.")
     }
 }
 
@@ -67,11 +66,11 @@ object DatabaseService {
     }
 
     fun getUpcomingMatches(): List<MatchInfo> {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneId.of("UTC+2"))
         val tomorrow = now.plusDays(1)
         return transaction {
             MatchInfos.selectAll().mapNotNull {
-                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
+                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter).atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+2")).toLocalDateTime()
                 if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                     MatchInfo(
                         it[MatchInfos.datetime],
