@@ -1,9 +1,13 @@
+package service
+
 import dto.MatchInfo
+import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.io.IOException
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 object MatchInfos : Table() {
     val id = integer("id").autoIncrement()
@@ -18,7 +22,7 @@ object MatchInfos : Table() {
 }
 
 fun initDatabase(dbPath: String) {
-    val logger = LoggerFactory.getLogger("DatabaseService")
+    val logger = LoggerFactory.getLogger("service.DatabaseService")
     val dbFile = File(dbPath)
 
     logger.info("Database file path: $dbPath")
@@ -38,12 +42,13 @@ fun initDatabase(dbPath: String) {
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     transaction {
         SchemaUtils.createMissingTablesAndColumns(MatchInfos)
-        logger.info("Database initialized and table 'MatchInfos' ensured.")
+        logger.info("Database initialized and table 'service.MatchInfos' ensured.")
     }
 }
 
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
     fun appendRows(matches: List<MatchInfo>) {
         transaction {
@@ -62,26 +67,31 @@ object DatabaseService {
     }
 
     fun getUpcomingMatches(): List<MatchInfo> {
+        val now = LocalDateTime.now()
+        val tomorrow = now.plusDays(1)
         return transaction {
-            MatchInfos.selectAll().map {
-                MatchInfo(
-                    it[MatchInfos.datetime],
-                    it[MatchInfos.matchType],
-                    it[MatchInfos.teams],
-                    it[MatchInfos.outcome],
-                    it[MatchInfos.score],
-                    it[MatchInfos.odds]
-                )
+            MatchInfos.selectAll().mapNotNull {
+                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
+                if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
+                    MatchInfo(
+                        it[MatchInfos.datetime],
+                        it[MatchInfos.matchType],
+                        it[MatchInfos.teams],
+                        it[MatchInfos.outcome],
+                        it[MatchInfos.score],
+                        it[MatchInfos.odds]
+                    )
+                } else {
+                    null
+                }
             }
         }
     }
 
     fun matchExists(matchInfo: MatchInfo): Boolean {
         return transaction {
-            MatchInfos.select {
-                (MatchInfos.datetime eq matchInfo.datetime) and
-                        (MatchInfos.teams eq matchInfo.teams)
-            }.count() > 0
+            MatchInfos.select { (MatchInfos.datetime eq matchInfo.datetime) and (MatchInfos.teams eq matchInfo.teams) }
+                .count() > 0
         }
     }
 }

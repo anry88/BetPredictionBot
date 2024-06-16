@@ -1,6 +1,7 @@
 import dto.MatchInfo
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
+import service.DatabaseService
 import service.HttpChatGPTService
 
 object ChatGPTService {
