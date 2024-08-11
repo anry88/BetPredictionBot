@@ -1,15 +1,33 @@
+import kotlinx.coroutines.runBlocking
 import org.quartz.*
 import org.quartz.impl.StdSchedulerFactory
 import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
+import service.HttpAPIFootballService
 import service.HttpFootBallDataService
 
 class FetchMatchesJob : Job {
-    override fun execute(context: JobExecutionContext?) {
-        val footballDataService = HttpFootBallDataService()
-        footballDataService.fetchMatches()
+//    override fun execute(context: JobExecutionContext?) {
+//        val footballDataService = HttpFootBallDataService()
+//        footballDataService.fetchMatches()
+//    }
+override fun execute(context: JobExecutionContext?) {
+    val footballService = HttpAPIFootballService()
+    runBlocking {
+        val leagueId = 2 // League Champions
+        val season = 2024 // Текущий сезон
+        val nextMatches = 10 // Количество ближайших матчей
+
+        val matches = footballService.getUpcomingMatches(leagueId, season, nextMatches)
+
+        // Логика обработки матчей
+        matches.forEach { match ->
+            println("Match: ${match.homeTeam} vs ${match.awayTeam} on ${match.date}")
+            // Здесь можно добавить дополнительную логику, например, отправку уведомлений в Telegram или сохранение в базу данных
+        }
     }
+}
 }
 
 fun main() {
