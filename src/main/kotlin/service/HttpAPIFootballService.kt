@@ -1,5 +1,7 @@
 package service
 
+import dto.MatchInfo
+import kotlinx.coroutines.runBlocking
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -11,6 +13,8 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class HttpAPIFootballService {
 
@@ -26,7 +30,64 @@ class HttpAPIFootballService {
         }
     }
 
-    suspend fun getUpcomingMatches(leagueId: Int, season: Int, nextMatches: Int): List<Match> {
+    suspend fun fetchMatches() {
+        val currentDate = LocalDate.now()
+        val nextDay = currentDate.plusDays(2)
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+        val formattedCurrentDate = currentDate.format(formatter)
+        val formattedNextDay = nextDay.format(formatter)
+
+        val popularLeagues = listOf(
+            39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
+            88, 99, 94, 129,        // Эредивизи (Нидерланды), Премьер-лига Украины, Примейра-лига (Португалия), Бундеслига Австрии
+            2, 3, 5, 6, 7, 8        // Лига наций, Квалификации Евро и ЧМ, Лига чемпионов, Лига Европы, Лига конференций
+        )
+
+        val allMatches = mutableListOf<Match>()
+
+        popularLeagues.forEach { leagueId ->
+            val matches = getUpcomingMatches(leagueId, 2024, formattedCurrentDate, formattedNextDay)
+            val remainingRequests = matches.firstOrNull()?.remainingRequests ?: "Unknown"
+
+            logger.info("Found ${matches.size} matches for league ID $leagueId between $formattedCurrentDate and $formattedNextDay")
+            logger.info("Remaining API calls: $remainingRequests")
+            matches.forEach { match ->
+                logger.info("Match found: ${match.teams.home.name} vs ${match.teams.away.name} on ${match.fixture.date}, League: ${match.league.name}")
+            }
+            allMatches.addAll(matches)
+        }
+
+        if (allMatches.isNotEmpty()) {
+            logger.info("Successfully fetched a total of ${allMatches.size} matches across all leagues.")
+            val matchesText = allMatches.joinToString(separator = "\n") { match ->
+                "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
+            }
+
+            val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
+            val newMatches = mutableListOf<MatchInfo>()
+
+            predictions.forEach { prediction ->
+                logger.info("Prediction: $prediction")
+                if (!isMatchInDatabase(prediction)) {
+                    newMatches.add(prediction)
+                } else {
+                    logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
+                }
+            }
+
+            if (newMatches.isNotEmpty()) {
+                DatabaseService.appendRows(newMatches)
+                logger.info("New matches appended to database: ${newMatches.size} matches added.")
+            } else {
+                logger.info("All matches are duplicates, no new matches to append.")
+            }
+        } else {
+            logger.error("No matches found for the specified dates.")
+        }
+    }
+
+    private suspend fun getUpcomingMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
         val response: HttpResponse = client.get("https://api-football-v1.p.rapidapi.com/v3/fixtures") {
             headers {
                 append("X-RapidAPI-Key", apiKey)
@@ -34,75 +95,108 @@ class HttpAPIFootballService {
             }
             parameter("league", leagueId)
             parameter("season", season)
-            parameter("next", nextMatches)
+            parameter("from", fromDate)
+            parameter("to", toDate)
         }
 
-        // Получаем количество оставшихся бесплатных запросов
-        val remainingRequests = response.headers["X-RateLimit-requests-Remaining"]
-        logger.info("Remaining free requests: $remainingRequests")
+        val remainingRequests = response.headers["X-RateLimit-requests-Remaining"] ?: "Unknown"
+        logger.info("Remaining API calls after request: $remainingRequests")
 
         return if (response.status == HttpStatusCode.OK) {
             val result = response.body<ApiFootballResponse>()
-            result.response.map { it.toMatch() }
+            result.response
         } else {
             emptyList()
         }
     }
 
-    suspend fun getLeagueInfo(leagueId: Int): League {
-        val response: HttpResponse = client.get("https://api-football-v1.p.rapidapi.com/v3/leagues") {
-            headers {
-                append("X-RapidAPI-Key", apiKey)
-                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
-            }
-            parameter("id", leagueId)
-        }
-
-        // Получаем количество оставшихся бесплатных запросов
-        val remainingRequests = response.headers["X-RateLimit-requests-Remaining"]
-        logger.info("Remaining free requests: $remainingRequests")
-
-        return if (response.status == HttpStatusCode.OK) {
-            val result = response.body<ApiFootballResponse>()
-            result.response.first().league
-        } else {
-            throw Exception("Failed to fetch league info")
-        }
+    private fun isMatchInDatabase(matchInfo: MatchInfo): Boolean {
+        val upcomingMatches = DatabaseService.getUpcomingMatches()
+        val isDuplicate = upcomingMatches.any { it.teams == matchInfo.teams && it.datetime == matchInfo.datetime }
+        logger.info("Checking match: ${matchInfo.teams} at ${matchInfo.datetime}, isDuplicate: $isDuplicate")
+        return isDuplicate
     }
 
     @Serializable
-    data class ApiFootballResponse(val response: List<FixtureResponse>)
+    data class ApiFootballResponse(val response: List<Match>)
 
     @Serializable
-    data class FixtureResponse(val fixture: Fixture, val league: League, val teams: Teams, val goals: Goals)
+    data class Match(
+        val fixture: Fixture,
+        val league: League,
+        val teams: Teams,
+        val goals: Goals?,
+        val score: Score?,
+        val remainingRequests: String? = null
+    )
 
     @Serializable
-    data class Fixture(val id: Int, val date: String)
+    data class Fixture(
+        val id: Int,
+        val referee: String?,
+        val timezone: String,
+        val date: String,
+        val timestamp: Long,
+        val venue: Venue,
+        val status: Status
+    )
 
     @Serializable
-    data class League(val id: Int, val name: String)
+    data class Venue(
+        val id: Int?,
+        val name: String,
+        val city: String
+    )
 
     @Serializable
-    data class Teams(val home: Team, val away: Team)
+    data class Status(
+        val long: String,
+        val short: String,
+        val elapsed: Int?
+    )
 
     @Serializable
-    data class Team(val id: Int, val name: String)
+    data class League(
+        val id: Int,
+        val name: String,
+        val country: String,
+        val logo: String?,
+        val flag: String?,
+        val season: Int,
+        val round: String
+    )
 
     @Serializable
-    data class Goals(val home: Int?, val away: Int?)
+    data class Teams(
+        val home: Team,
+        val away: Team
+    )
 
-    data class Match(val id: Int, val date: String, val homeTeam: String, val awayTeam: String, val homeGoals: Int?, val awayGoals: Int?)
+    @Serializable
+    data class Team(
+        val id: Int,
+        val name: String,
+        val logo: String?,
+        val winner: Boolean?
+    )
 
-    data class LeagueInfo(val id: Int, val name: String)
+    @Serializable
+    data class Goals(
+        val home: Int?,
+        val away: Int?
+    )
 
-    private fun FixtureResponse.toMatch(): Match {
-        return Match(
-            id = this.fixture.id,
-            date = this.fixture.date,
-            homeTeam = this.teams.home.name,
-            awayTeam = this.teams.away.name,
-            homeGoals = this.goals.home,
-            awayGoals = this.goals.away
-        )
-    }
+    @Serializable
+    data class Score(
+        val halftime: ScoreDetail?,
+        val fulltime: ScoreDetail?,
+        val extratime: ScoreDetail?,
+        val penalty: ScoreDetail?
+    )
+
+    @Serializable
+    data class ScoreDetail(
+        val home: Int?,
+        val away: Int?
+    )
 }
