@@ -40,11 +40,9 @@ class HttpAPIFootballService {
 
         val popularLeagues = listOf(
             39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
-            88, 99, 94, 129, 235,       // Эредивизи (Нидерланды), Премьер-лига Украины, Примейра-лига (Португалия), Бундеслига Австрии, Российская Премьер Лига
+            88, 99, 94, 129, 235,   // Эредивизи (Нидерланды), Премьер-лига Украины, Примейра-лига (Португалия), Бундеслига Австрии, Российская Премьер Лига
             2, 3, 5, 6, 7, 8        // Лига наций, Квалификации Евро и ЧМ, Лига чемпионов, Лига Европы, Лига конференций
         )
-
-        val allMatches = mutableListOf<Match>()
 
         popularLeagues.forEach { leagueId ->
             val matches = getUpcomingMatches(leagueId, 2024, formattedCurrentDate, formattedNextDay)
@@ -55,35 +53,33 @@ class HttpAPIFootballService {
             matches.forEach { match ->
                 logger.info("Match found: ${match.teams.home.name} vs ${match.teams.away.name} on ${match.fixture.date}, League: ${match.league.name}")
             }
-            allMatches.addAll(matches)
-        }
 
-        if (allMatches.isNotEmpty()) {
-            logger.info("Successfully fetched a total of ${allMatches.size} matches across all leagues.")
-            val matchesText = allMatches.joinToString(separator = "\n") { match ->
-                "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
-            }
-
-            val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
-            val newMatches = mutableListOf<MatchInfo>()
-
-            predictions.forEach { prediction ->
-                logger.info("Prediction: $prediction")
-                if (!isMatchInDatabase(prediction)) {
-                    newMatches.add(prediction)
-                } else {
-                    logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
+            if (matches.isNotEmpty()) {
+                val matchesText = matches.joinToString(separator = "\n") { match ->
+                    "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
                 }
-            }
 
-            if (newMatches.isNotEmpty()) {
-                DatabaseService.appendRows(newMatches)
-                logger.info("New matches appended to database: ${newMatches.size} matches added.")
+                val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
+                val newMatches = mutableListOf<MatchInfo>()
+
+                predictions.forEach { prediction ->
+                    logger.info("Prediction: $prediction")
+                    if (!isMatchInDatabase(prediction)) {
+                        newMatches.add(prediction)
+                    } else {
+                        logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
+                    }
+                }
+
+                if (newMatches.isNotEmpty()) {
+                    DatabaseService.appendRows(newMatches)
+                    logger.info("New matches appended to database: ${newMatches.size} matches added.")
+                } else {
+                    logger.info("All matches are duplicates, no new matches to append.")
+                }
             } else {
-                logger.info("All matches are duplicates, no new matches to append.")
+                logger.error("No matches found for the specified dates for league ID $leagueId.")
             }
-        } else {
-            logger.error("No matches found for the specified dates.")
         }
     }
 
