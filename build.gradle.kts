@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.9.22"
+    kotlin("plugin.serialization") version "1.5.0"
     application
 }
 
@@ -33,9 +34,10 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:1.7.30")
 
     // Ktor HTTP client
-    implementation("io.ktor:ktor-client-core:2.0.0")
-    implementation("io.ktor:ktor-client-cio:2.0.0")
-    implementation("io.ktor:ktor-client-serialization:2.0.0")
+    implementation("io.ktor:ktor-client-core:2.0.3") // Версия Ktor может отличаться
+    implementation("io.ktor:ktor-client-cio:2.0.3")
+    implementation("io.ktor:ktor-client-content-negotiation:2.0.3")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.0.3")
 
     // Quartz for scheduling tasks
     implementation("org.quartz-scheduler:quartz:2.3.2")
@@ -45,6 +47,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:0.34.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.34.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.34.1")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 }
 
 application {
