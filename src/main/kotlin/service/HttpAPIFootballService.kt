@@ -55,27 +55,30 @@ class HttpAPIFootballService {
             }
 
             if (matches.isNotEmpty()) {
-                val matchesText = matches.joinToString(separator = "\n") { match ->
-                    "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
-                }
-
-                val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
-                val newMatches = mutableListOf<MatchInfo>()
-
-                predictions.forEach { prediction ->
-                    logger.info("Prediction: $prediction")
-                    if (!isMatchInDatabase(prediction)) {
-                        newMatches.add(prediction)
-                    } else {
-                        logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
+                // Разбиваем матчи на пачки по 10 штук и отправляем их последовательно
+                matches.chunked(10).forEach { matchChunk ->
+                    val matchesText = matchChunk.joinToString(separator = "\n") { match ->
+                        "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
                     }
-                }
 
-                if (newMatches.isNotEmpty()) {
-                    DatabaseService.appendRows(newMatches)
-                    logger.info("New matches appended to database: ${newMatches.size} matches added.")
-                } else {
-                    logger.info("All matches are duplicates, no new matches to append.")
+                    val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
+                    val newMatches = mutableListOf<MatchInfo>()
+
+                    predictions.forEach { prediction ->
+                        logger.info("Prediction: $prediction")
+                        if (!isMatchInDatabase(prediction)) {
+                            newMatches.add(prediction)
+                        } else {
+                            logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
+                        }
+                    }
+
+                    if (newMatches.isNotEmpty()) {
+                        DatabaseService.appendRows(newMatches)
+                        logger.info("New matches appended to database: ${newMatches.size} matches added.")
+                    } else {
+                        logger.info("All matches are duplicates, no new matches to append.")
+                    }
                 }
             } else {
                 logger.error("No matches found for the specified dates for league ID $leagueId.")
