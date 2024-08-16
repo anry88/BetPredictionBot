@@ -7,12 +7,10 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
-import service.HttpFootBallDataService
 import java.io.File
 
 class FootballBot(val token: String) : TelegramLongPollingBot() {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
-    private val httpFootBallDataService = HttpFootBallDataService()
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
 
     init {
@@ -47,6 +45,9 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
                 }
                 chatId == adminChatId && messageText == "/usercount" -> {
                     handleUserCountCommand(chatId)
+                }
+                chatId == adminChatId && messageText == "/activeusercount" -> {
+                    handleActiveUserCountCommand(chatId)
                 }
                 messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
@@ -93,6 +94,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         val adminCommands = """
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
+            /activeusercount - Get the count of unique users active last day
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -121,6 +123,11 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         val userCount = DatabaseService.getUserCount()
         sendMessage(chatId, "Number of unique users: $userCount")
     }
+    private fun handleActiveUserCountCommand(chatId: String) {
+        val userCount = DatabaseService.getActiveUserCountLast24Hours()
+        sendMessage(chatId, "Number of unique users for last day: $userCount")
+    }
+
 
     private fun handleUpcomingMatchesCommand(chatId: String) {
         val upcomingMatches = DatabaseService.getUpcomingMatches()
@@ -146,8 +153,6 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             Match Type: ${topMatch.matchType}
             Teams: ${topMatch.teams}
             Predicted Outcome: ${topMatch.outcome}
-            Score: ${topMatch.score}
-            Odds: ${topMatch.odds}
             """.trimIndent()
         } else {
             "No top match found."
@@ -163,8 +168,6 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             Match Type: ${matchInfo.matchType}
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.outcome}
-            Score: ${matchInfo.score}
-            Odds: ${matchInfo.odds}
         """.trimIndent()
     }
 
@@ -195,6 +198,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         if (adminChatId.isNotEmpty()) {
             commands.add(BotCommand("/getdatabase", "Get the database file"))
             commands.add(BotCommand("/usercount", "Get the count of unique users"))
+            commands.add(BotCommand("/activeusercount", "Get the count of unique users active last day"))
         }
 
         val setMyCommands = SetMyCommands()

@@ -135,4 +135,14 @@ object DatabaseService {
             UserStats.selectAll().count()
         }
     }
+
+    fun getActiveUserCountLast24Hours(): Long {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val last24Hours = now.minusDays(1)
+
+        return transaction {
+            UserStats.select { UserStats.lastActivity greaterEq last24Hours.format(dateTimeFormatter) }
+                .count()
+        }
+    }
 }
