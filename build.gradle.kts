@@ -29,12 +29,12 @@ dependencies {
     // CSV file support
     implementation("com.opencsv:opencsv:5.5.2")
 
-    // SLF4J logging
-    implementation("org.slf4j:slf4j-api:1.7.30")
-    implementation("org.slf4j:slf4j-simple:1.7.30")
+    // SLF4J logging with Logback
+    implementation("org.slf4j:slf4j-api:1.7.36")
+    implementation("ch.qos.logback:logback-classic:1.2.11")
 
     // Ktor HTTP client
-    implementation("io.ktor:ktor-client-core:2.0.3") // Версия Ktor может отличаться
+    implementation("io.ktor:ktor-client-core:2.0.3")
     implementation("io.ktor:ktor-client-cio:2.0.3")
     implementation("io.ktor:ktor-client-content-negotiation:2.0.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.0.3")
