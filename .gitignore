@@ -7,3 +7,4 @@
 config.properties
 predictions.csv
 predictions.db
+/logs/
