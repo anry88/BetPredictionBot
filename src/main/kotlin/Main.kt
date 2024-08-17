@@ -17,6 +17,7 @@ class FetchMatchesJob : Job {
         runBlocking {
             // Вызов нового метода fetchMatches
             footballService.fetchMatches()
+            footballService.fetchPastMatches()
         }
     }
 }

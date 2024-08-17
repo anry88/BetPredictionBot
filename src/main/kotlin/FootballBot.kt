@@ -143,17 +143,20 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
     private fun handleTopMatchCommand(chatId: String) {
         val upcomingMatches = DatabaseService.getUpcomingMatches()
         val topMatch = upcomingMatches
-            .filter { it.odds.toDouble() in 1.5..2.5 }
-            .maxByOrNull { it.odds }
+            .filter {
+                val odds = it.odds?.toDoubleOrNull()
+                odds != null && odds in 1.5..2.5
+            }
+            .maxByOrNull { it.odds?.toDoubleOrNull() ?: Double.MIN_VALUE }
 
         val responseText = if (topMatch != null) {
             """
-            [Top Match]
-            Match Time: ${topMatch.datetime}
-            Match Type: ${topMatch.matchType}
-            Teams: ${topMatch.teams}
-            Predicted Outcome: ${topMatch.outcome}
-            """.trimIndent()
+        [Top Match]
+        Match Time: ${topMatch.datetime}
+        Match Type: ${topMatch.matchType}
+        Teams: ${topMatch.teams}
+        Predicted Outcome: ${topMatch.predictedOutcome}
+        """.trimIndent()
         } else {
             "No top match found."
         }
@@ -162,12 +165,13 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
         execute(message)
     }
 
+
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         return """
             Match Time: ${matchInfo.datetime}
             Match Type: ${matchInfo.matchType}
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.outcome}
+            Predicted Outcome: ${matchInfo.predictedOutcome}
         """.trimIndent()
     }
 
