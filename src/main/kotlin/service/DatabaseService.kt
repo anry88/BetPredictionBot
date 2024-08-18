@@ -7,7 +7,6 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 object MatchInfos : Table() {
@@ -109,18 +108,18 @@ object DatabaseService {
                 it[actualOutcome] = matchInfo.actualOutcome
                 it[actualScore] = matchInfo.actualScore
             }
-            logger.info("${MatchInfos.datetime} $dt ${MatchInfos.teams} ${matchInfo.teams}")
             logger.info("Match result updated for match: ${matchInfo.teams} at ${matchInfo.datetime}")
         }
     }
 
     fun getUpcomingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val tomorrow = now.plusDays(1)
         return transaction {
             MatchInfos.selectAll().mapNotNull {
                 val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
                     .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                if (matchDateTime.isAfter(now)) {
+                if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                     MatchInfo(
                         it[MatchInfos.datetime],
                         it[MatchInfos.matchType],
@@ -138,29 +137,7 @@ object DatabaseService {
         }
     }
 
-    fun getPastMatches(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        return transaction {
-            MatchInfos.selectAll().mapNotNull {
-                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
-                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                if (matchDateTime.isBefore(now)) {
-                    MatchInfo(
-                        it[MatchInfos.datetime],
-                        it[MatchInfos.matchType],
-                        it[MatchInfos.teams],
-                        it[MatchInfos.predictedOutcome],
-                        it[MatchInfos.actualOutcome],
-                        it[MatchInfos.predictedScore],
-                        it[MatchInfos.actualScore],
-                        it[MatchInfos.odds]
-                    )
-                } else {
-                    null
-                }
-            }
-        }
-    }
+
     fun matchExists(matchInfo: MatchInfo): Boolean {
         return transaction {
             MatchInfos.select { (MatchInfos.datetime eq matchInfo.datetime) and (MatchInfos.teams eq matchInfo.teams) }
