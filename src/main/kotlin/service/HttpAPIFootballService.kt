@@ -105,7 +105,7 @@ class HttpAPIFootballService {
                     else -> "Draw"
                 }
 
-                val actualScore = "${match.goals?.home ?: 0}-${match.goals?.away ?: 0}"
+                val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
 
                 // Получаем существующую запись матча из базы данных
                 val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs ${match.teams.away.name}")
