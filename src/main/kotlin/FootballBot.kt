@@ -1,4 +1,5 @@
 import dto.MatchInfo
+import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
@@ -7,12 +8,12 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import java.io.File
 
-class FootballBot(val token: String) : TelegramLongPollingBot() {
+class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
-
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
         initDatabase("predictions.db") // Используем правильный путь к вашему файлу базы данных
@@ -25,6 +26,33 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
 
     override fun getBotUsername(): String {
         return "MatchPredictionBot"
+    }
+
+    override fun sendMessageAndGetId(chatId: String, text: String): Int? {
+        val message = SendMessage()
+        message.chatId = chatId
+        message.text = text
+
+        return try {
+            val sentMessage = execute(message)
+            sentMessage.messageId
+        } catch (e: Exception) {
+            logger.error("Failed to send message", e)
+            null
+        }
+    }
+
+    override fun updateMessage(chatId: String, messageId: String, text: String) {
+        val editMessage = EditMessageText()
+        editMessage.chatId = chatId
+        editMessage.messageId = messageId.toInt()
+        editMessage.text = text
+
+        try {
+            execute(editMessage)
+        } catch (e: Exception) {
+            logger.error("Failed to update message", e)
+        }
     }
 
     override fun onUpdateReceived(update: Update) {
@@ -166,7 +194,7 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
     }
 
 
-    private fun formatMatchInfo(matchInfo: MatchInfo): String {
+    fun formatMatchInfo(matchInfo: MatchInfo): String {
         return """
             Match Time: ${matchInfo.datetime}
             Match Type: ${matchInfo.matchType}
@@ -174,12 +202,21 @@ class FootballBot(val token: String) : TelegramLongPollingBot() {
             Predicted Outcome: ${matchInfo.predictedOutcome}
         """.trimIndent()
     }
+    fun formatMatchInfoWithResult(matchInfo: MatchInfo): String{
+        return """
+            Match Time: ${matchInfo.datetime}
+            Match Type: ${matchInfo.matchType}
+            Teams: ${matchInfo.teams}
+            Predicted Outcome: ${matchInfo.predictedOutcome}
+            Actual Outcome: ${matchInfo.actualOutcome}
+        """.trimIndent()
+    }
 
     private fun processMessage(messageText: String): String {
         return "This is a response to: $messageText"
     }
 
-    private fun sendMessage(chatId: String, text: String) {
+    fun sendMessage(chatId: String, text: String) {
         val message = SendMessage()
         message.chatId = chatId
         message.text = text

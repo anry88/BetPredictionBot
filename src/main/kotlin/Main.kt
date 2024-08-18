@@ -8,14 +8,15 @@ import service.HttpAPIFootballService
 
 class FetchMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
-        val footballService = HttpAPIFootballService()
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-            // Вызов нового метода fetchMatches
             footballService.fetchMatches()
             footballService.fetchPastMatches()
         }
     }
 }
+
 
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
@@ -24,34 +25,34 @@ fun main() {
     val telegramBotToken: String =
         Config.getProperty("telegram.bot.token") ?: throw IllegalStateException("Telegram Token not found")
 
-    try {
-        botsApi.registerBot(FootballBot(telegramBotToken))
-        logger.info("Football bot started successfully")
-    } catch (e: Exception) {
-        logger.error("Failed to start football bot", e)
-    }
+    val footballBot = FootballBot(telegramBotToken)
+    botsApi.registerBot(footballBot)
+    logger.info("Football bot started successfully")
 
     // Setup and start Quartz scheduler
     val scheduler = StdSchedulerFactory().scheduler
     scheduler.start()
 
+    val jobDataMap = JobDataMap()
+    jobDataMap["footballBot"] = footballBot
+
     val job = JobBuilder.newJob(FetchMatchesJob::class.java)
         .withIdentity("fetchMatchesJob", "group1")
+        .usingJobData(jobDataMap)
         .build()
 
-    // Trigger for scheduled execution three times a day
+    // Triggers
     val dailyTrigger = TriggerBuilder.newTrigger()
         .withIdentity("fetchMatchesDailyTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.cronSchedule("0 0 0,8,16 * * ?")) // At 00:00, 08:00, and 16:00 every day
+        .withSchedule(CronScheduleBuilder.cronSchedule("0 0 0,8,16 * * ?"))
         .build()
 
-    // Trigger for immediate execution at startup
     val immediateTrigger = TriggerBuilder.newTrigger()
         .withIdentity("fetchMatchesImmediateTrigger", "group1")
         .startNow()
         .build()
 
-    // Schedule the job with both triggers
+    // Schedule the job
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")

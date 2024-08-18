@@ -1,6 +1,7 @@
 package service
 
 import DatabaseService.matchExists
+import FootballBot
 import dto.MatchInfo
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -16,16 +17,18 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class HttpAPIFootballService {
-
+class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
+    private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
     private val popularLeagues = listOf(
 //        39
         39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
         88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
         2, 3, 5, 32, 34, 848    // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
     )
+    private val url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
+//    private val url = "http://localhost:1080/v3/fixtures"
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
@@ -65,7 +68,6 @@ class HttpAPIFootballService {
                     val newMatches = mutableListOf<MatchInfo>()
 
                     predictions.forEach { prediction ->
-                        logger.info("Prediction: $prediction")
                         if (!matchExists(prediction)) {
                             newMatches.add(prediction)
                         } else {
@@ -75,6 +77,17 @@ class HttpAPIFootballService {
 
                     if (newMatches.isNotEmpty()) {
                         DatabaseService.appendRows(newMatches)
+
+                        newMatches.forEach{match ->
+                            val messageText = footballBot.formatMatchInfo(match)
+                            val messageId = footballBot.sendMessageAndGetId(channelId, messageText)
+                            if (messageId != null) {
+                                // Сохраняем messageId в базе данных
+                                val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
+
+                                DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                            }
+                        }
                         logger.info("New matches appended to database: ${newMatches.size} matches added.")
                     } else {
                         logger.info("All matches are duplicates, no new matches to append.")
@@ -108,7 +121,7 @@ class HttpAPIFootballService {
                 val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
 
                 // Получаем существующую запись матча из базы данных
-                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs ${match.teams.away.name}")
+                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs. ${match.teams.away.name}")
 
                 // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
                 val matchInfo = existingMatchInfo?.copy(
@@ -122,8 +135,13 @@ class HttpAPIFootballService {
                     actualOutcome = actualOutcome,
                     predictedScore = existingMatchInfo?.predictedScore,      // Сохранение существующего значения
                     actualScore = actualScore,
-                    odds = existingMatchInfo?.odds                           // Сохранение существующего значения
+                    odds = existingMatchInfo?.odds,                          // Сохранение существующего значения
+                    telegramMessageId = existingMatchInfo?.telegramMessageId
                 )
+                if (matchInfo.telegramMessageId != null) {
+                    val updatedMessageText = footballBot.formatMatchInfoWithResult(matchInfo)
+                    footballBot.updateMessage(channelId, matchInfo.telegramMessageId, updatedMessageText)
+                }
 
                 // Обновляем запись в базе данных
                 DatabaseService.updateMatchResult(matchInfo)
@@ -133,7 +151,7 @@ class HttpAPIFootballService {
 
 
     private suspend fun getUpcomingMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
-        val response: HttpResponse = client.get("https://api-football-v1.p.rapidapi.com/v3/fixtures") {
+        val response: HttpResponse = client.get(url) {
             headers {
                 append("X-RapidAPI-Key", apiKey)
                 append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
@@ -156,7 +174,7 @@ class HttpAPIFootballService {
     }
 
     private suspend fun getPastMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
-        val response: HttpResponse = client.get("https://api-football-v1.p.rapidapi.com/v3/fixtures") {
+        val response: HttpResponse = client.get(url) {
             headers {
                 append("X-RapidAPI-Key", apiKey)
                 append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
@@ -254,4 +272,5 @@ class HttpAPIFootballService {
         val draw: Double?,
         val awayWin: Double?
     )
+
 }

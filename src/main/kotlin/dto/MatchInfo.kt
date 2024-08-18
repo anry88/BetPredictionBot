@@ -8,5 +8,6 @@ data class MatchInfo(
     val actualOutcome: String?,     // Фактический результат
     val predictedScore: String?,    // Прогнозируемый счет
     val actualScore: String?,       // Фактический счет
-    val odds: String?               // Коэффициенты
+    val odds: String?,               // Коэффициенты
+    val telegramMessageId: String?
 )

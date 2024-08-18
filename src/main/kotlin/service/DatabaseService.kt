@@ -19,6 +19,7 @@ object MatchInfos : Table() {
     val predictedScore = varchar("predictedScore", 50).nullable()
     val actualScore = varchar("actualScore", 50).nullable()
     val odds = varchar("odds", 50)
+    val telegramMessageId = varchar("telegramMessageId", 50).nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -64,8 +65,10 @@ object DatabaseService {
     private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     fun getMatchInfo(datetime: String, teams: String): MatchInfo? {
+        val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
+            .format(dateTimeFormatter).toString()
         return transaction {
-            MatchInfos.select { (MatchInfos.datetime eq datetime) and (MatchInfos.teams eq teams) }
+            MatchInfos.select { (MatchInfos.datetime eq dt) and (MatchInfos.teams eq teams) }
                 .mapNotNull {
                     MatchInfo(
                         it[MatchInfos.datetime],
@@ -75,7 +78,8 @@ object DatabaseService {
                         it[MatchInfos.actualOutcome],
                         it[MatchInfos.predictedScore],
                         it[MatchInfos.actualScore],
-                        it[MatchInfos.odds]
+                        it[MatchInfos.odds],
+                        it[MatchInfos.telegramMessageId]
                     )
                 }
                 .singleOrNull()
@@ -95,6 +99,7 @@ object DatabaseService {
                     it[predictedScore] = match.predictedScore
                     it[actualScore] = match.actualScore
                     it[odds] = match.odds ?: ""
+
                 }
                 logger.info("Match info inserted for match: ${match.teams} at ${match.datetime}")
             }
@@ -102,11 +107,19 @@ object DatabaseService {
     }
     fun updateMatchResult(matchInfo: MatchInfo) {
         transaction {
-            val dt = OffsetDateTime.parse(matchInfo.datetime, dateTimeFormatterForISOOffset)
-                .format(dateTimeFormatter).toString()
-            MatchInfos.update({ (MatchInfos.datetime eq dt) and (MatchInfos.teams eq matchInfo.teams) }) {
+//            val dt = OffsetDateTime.parse(matchInfo.datetime, dateTimeFormatterForISOOffset)
+//                .format(dateTimeFormatter).toString()
+            MatchInfos.update({ (MatchInfos.datetime eq matchInfo.datetime) and (MatchInfos.teams eq matchInfo.teams) }) {
                 it[actualOutcome] = matchInfo.actualOutcome
                 it[actualScore] = matchInfo.actualScore
+            }
+            logger.info("Match result updated for match: ${matchInfo.teams} at ${matchInfo.datetime}")
+        }
+    }
+    fun updateMatchMessageId(matchInfo: MatchInfo) {
+        transaction {
+            MatchInfos.update({ (MatchInfos.datetime eq matchInfo.datetime) and (MatchInfos.teams eq matchInfo.teams) }) {
+                it[telegramMessageId] = matchInfo.telegramMessageId
             }
             logger.info("Match result updated for match: ${matchInfo.teams} at ${matchInfo.datetime}")
         }
@@ -128,7 +141,8 @@ object DatabaseService {
                         it[MatchInfos.actualOutcome],
                         it[MatchInfos.predictedScore],
                         it[MatchInfos.actualScore],
-                        it[MatchInfos.odds]
+                        it[MatchInfos.odds],
+                        it[MatchInfos.telegramMessageId]
                     )
                 } else {
                     null
