@@ -2,7 +2,6 @@ package service
 
 import DatabaseService.matchExists
 import dto.MatchInfo
-import kotlinx.coroutines.runBlocking
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -22,10 +21,10 @@ class HttpAPIFootballService {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
     private val popularLeagues = listOf(
-        39
-//        39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
-//        88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
-//        2, 3, 5, 32, 34, 848    // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
+//        39
+        39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
+        88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
+        2, 3, 5, 32, 34, 848    // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
     )
 
     private val client = HttpClient(CIO) {
