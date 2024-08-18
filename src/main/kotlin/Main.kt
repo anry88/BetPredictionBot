@@ -5,18 +5,14 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 import service.HttpAPIFootballService
-import service.HttpFootBallDataService
 
 class FetchMatchesJob : Job {
-//    override fun execute(context: JobExecutionContext?) {
-//        val footballDataService = HttpFootBallDataService()
-//        footballDataService.fetchMatches()
-//    }
     override fun execute(context: JobExecutionContext?) {
         val footballService = HttpAPIFootballService()
         runBlocking {
             // Вызов нового метода fetchMatches
             footballService.fetchMatches()
+            footballService.fetchPastMatches()
         }
     }
 }

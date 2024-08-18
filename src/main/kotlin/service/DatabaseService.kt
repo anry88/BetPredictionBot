@@ -5,6 +5,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -13,8 +14,10 @@ object MatchInfos : Table() {
     val datetime = varchar("datetime", 50)
     val matchType = varchar("matchType", 50)
     val teams = varchar("teams", 100)
-    val outcome = varchar("outcome", 50)
-    val score = varchar("score", 50)
+    val predictedOutcome = varchar("predictedOutcome", 50).nullable()
+    val actualOutcome = varchar("actualOutcome", 50).nullable()
+    val predictedScore = varchar("predictedScore", 50).nullable()
+    val actualScore = varchar("actualScore", 50).nullable()
     val odds = varchar("odds", 50)
 
     override val primaryKey = PrimaryKey(id)
@@ -58,20 +61,54 @@ fun initDatabase(dbPath: String) {
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
+    fun getMatchInfo(datetime: String, teams: String): MatchInfo? {
+        return transaction {
+            MatchInfos.select { (MatchInfos.datetime eq datetime) and (MatchInfos.teams eq teams) }
+                .mapNotNull {
+                    MatchInfo(
+                        it[MatchInfos.datetime],
+                        it[MatchInfos.matchType],
+                        it[MatchInfos.teams],
+                        it[MatchInfos.predictedOutcome],
+                        it[MatchInfos.actualOutcome],
+                        it[MatchInfos.predictedScore],
+                        it[MatchInfos.actualScore],
+                        it[MatchInfos.odds]
+                    )
+                }
+                .singleOrNull()
+        }
+    }
+
+    // Метод для вставки списка матчей
     fun appendRows(matches: List<MatchInfo>) {
         transaction {
             matches.forEach { match ->
-                logger.info("Inserting match: ${match.teams} at ${match.datetime}")
                 MatchInfos.insert {
                     it[datetime] = match.datetime
                     it[matchType] = match.matchType
                     it[teams] = match.teams
-                    it[outcome] = match.outcome
-                    it[score] = match.score
-                    it[odds] = match.odds
+                    it[predictedOutcome] = match.predictedOutcome
+                    it[actualOutcome] = match.actualOutcome
+                    it[predictedScore] = match.predictedScore
+                    it[actualScore] = match.actualScore
+                    it[odds] = match.odds ?: ""
                 }
+                logger.info("Match info inserted for match: ${match.teams} at ${match.datetime}")
             }
+        }
+    }
+    fun updateMatchResult(matchInfo: MatchInfo) {
+        transaction {
+            val dt = OffsetDateTime.parse(matchInfo.datetime, dateTimeFormatterForISOOffset)
+                .format(dateTimeFormatter).toString()
+            MatchInfos.update({ (MatchInfos.datetime eq dt) and (MatchInfos.teams eq matchInfo.teams) }) {
+                it[actualOutcome] = matchInfo.actualOutcome
+                it[actualScore] = matchInfo.actualScore
+            }
+            logger.info("Match result updated for match: ${matchInfo.teams} at ${matchInfo.datetime}")
         }
     }
 
@@ -87,8 +124,10 @@ object DatabaseService {
                         it[MatchInfos.datetime],
                         it[MatchInfos.matchType],
                         it[MatchInfos.teams],
-                        it[MatchInfos.outcome],
-                        it[MatchInfos.score],
+                        it[MatchInfos.predictedOutcome],
+                        it[MatchInfos.actualOutcome],
+                        it[MatchInfos.predictedScore],
+                        it[MatchInfos.actualScore],
                         it[MatchInfos.odds]
                     )
                 } else {
@@ -97,6 +136,7 @@ object DatabaseService {
             }
         }
     }
+
 
     fun matchExists(matchInfo: MatchInfo): Boolean {
         return transaction {

@@ -69,7 +69,7 @@ object ChatGPTService {
             val score = match.groups[6]?.value?.trim() ?: ""
             val odds = match.groups[7]?.value?.trim() ?: ""
 
-            val matchInfo = MatchInfo(datetime, matchType, teams, outcome, score, odds)
+            val matchInfo = MatchInfo(datetime, matchType, teams, outcome, null, score, null, odds)
             matchInfoList.add(matchInfo)
         }
 

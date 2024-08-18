@@ -4,7 +4,9 @@ data class MatchInfo(
     val datetime: String,
     val matchType: String,
     val teams: String,
-    val outcome: String,
-    val score: String,
-    val odds: String
+    val predictedOutcome: String?,  // Прогнозируемый результат
+    val actualOutcome: String?,     // Фактический результат
+    val predictedScore: String?,    // Прогнозируемый счет
+    val actualScore: String?,       // Фактический счет
+    val odds: String?               // Коэффициенты
 )

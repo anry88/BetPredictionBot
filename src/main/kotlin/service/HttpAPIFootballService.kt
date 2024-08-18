@@ -1,7 +1,7 @@
 package service
 
+import DatabaseService.matchExists
 import dto.MatchInfo
-import kotlinx.coroutines.runBlocking
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -20,6 +20,12 @@ class HttpAPIFootballService {
 
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
+    private val popularLeagues = listOf(
+//        39
+        39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
+        88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
+        2, 3, 5, 32, 34, 848    // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
+    )
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
@@ -37,12 +43,6 @@ class HttpAPIFootballService {
 
         val formattedCurrentDate = currentDate.format(formatter)
         val formattedNextDay = nextDay.format(formatter)
-
-        val popularLeagues = listOf(
-            39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
-            88, 333, 94, 235, 10,   // Эредивизи (Нидерланды), Премьер-лига Украины, Примейра-лига (Португалия), Российская Премьер Лига, Дружеские
-            2, 3, 5, 32, 34, 848    // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
-        )
 
         popularLeagues.forEach { leagueId ->
             val matches = getUpcomingMatches(leagueId, 2024, formattedCurrentDate, formattedNextDay)
@@ -66,7 +66,7 @@ class HttpAPIFootballService {
 
                     predictions.forEach { prediction ->
                         logger.info("Prediction: $prediction")
-                        if (!isMatchInDatabase(prediction)) {
+                        if (!matchExists(prediction)) {
                             newMatches.add(prediction)
                         } else {
                             logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
@@ -85,6 +85,52 @@ class HttpAPIFootballService {
             }
         }
     }
+
+    suspend fun fetchPastMatches() {
+        val currentDate = LocalDate.now()
+        val previousDay = currentDate.minusDays(2)
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+        val formattedPreviousDay = previousDay.format(formatter)
+        val formattedCurrentDate = currentDate.format(formatter)
+
+        popularLeagues.forEach { leagueId ->
+            val matches = getPastMatches(leagueId, 2024, formattedPreviousDay, formattedCurrentDate)
+
+            matches.forEach { match ->
+                // Записываем победителя или ничью непосредственно в actualOutcome
+                val actualOutcome = when {
+                    match.teams.home.winner == true -> match.teams.home.name
+                    match.teams.away.winner == true -> match.teams.away.name
+                    else -> "Draw"
+                }
+
+                val actualScore = "${match.goals?.home ?: 0}-${match.goals?.away ?: 0}"
+
+                // Получаем существующую запись матча из базы данных
+                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs ${match.teams.away.name}")
+
+                // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
+                val matchInfo = existingMatchInfo?.copy(
+                    actualOutcome = actualOutcome,
+                    actualScore = actualScore
+                ) ?: MatchInfo(
+                    datetime = match.fixture.date,
+                    matchType = match.league.name,
+                    teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
+                    predictedOutcome = existingMatchInfo?.predictedOutcome,  // Сохранение существующего значения
+                    actualOutcome = actualOutcome,
+                    predictedScore = existingMatchInfo?.predictedScore,      // Сохранение существующего значения
+                    actualScore = actualScore,
+                    odds = existingMatchInfo?.odds                           // Сохранение существующего значения
+                )
+
+                // Обновляем запись в базе данных
+                DatabaseService.updateMatchResult(matchInfo)
+            }
+        }
+    }
+
 
     private suspend fun getUpcomingMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
         val response: HttpResponse = client.get("https://api-football-v1.p.rapidapi.com/v3/fixtures") {
@@ -109,11 +155,28 @@ class HttpAPIFootballService {
         }
     }
 
-    private fun isMatchInDatabase(matchInfo: MatchInfo): Boolean {
-        val upcomingMatches = DatabaseService.getUpcomingMatches()
-        val isDuplicate = upcomingMatches.any { it.teams == matchInfo.teams && it.datetime == matchInfo.datetime }
-        logger.info("Checking match: ${matchInfo.teams} at ${matchInfo.datetime}, isDuplicate: $isDuplicate")
-        return isDuplicate
+    private suspend fun getPastMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
+        val response: HttpResponse = client.get("https://api-football-v1.p.rapidapi.com/v3/fixtures") {
+            headers {
+                append("X-RapidAPI-Key", apiKey)
+                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
+            }
+            parameter("league", leagueId)
+            parameter("season", season)
+            parameter("from", fromDate)
+            parameter("to", toDate)
+            parameter("status", "FT") // "FT" означает завершённый матч
+        }
+
+        val remainingRequests = response.headers["X-RateLimit-requests-Remaining"] ?: "Unknown"
+        logger.info("Remaining API calls after request: $remainingRequests")
+
+        return if (response.status == HttpStatusCode.OK) {
+            val result = response.body<ApiFootballResponse>()
+            result.response
+        } else {
+            emptyList()
+        }
     }
 
     @Serializable
@@ -125,7 +188,7 @@ class HttpAPIFootballService {
         val league: League,
         val teams: Teams,
         val goals: Goals?,
-        val score: Score?,
+        val odds: Odds? = null,
         val remainingRequests: String? = null
     )
 
@@ -186,16 +249,9 @@ class HttpAPIFootballService {
     )
 
     @Serializable
-    data class Score(
-        val halftime: ScoreDetail?,
-        val fulltime: ScoreDetail?,
-        val extratime: ScoreDetail?,
-        val penalty: ScoreDetail?
-    )
-
-    @Serializable
-    data class ScoreDetail(
-        val home: Int?,
-        val away: Int?
+    data class Odds(
+        val homeWin: Double?,
+        val draw: Double?,
+        val awayWin: Double?
     )
 }
