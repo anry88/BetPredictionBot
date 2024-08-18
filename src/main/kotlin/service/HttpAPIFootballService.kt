@@ -99,7 +99,13 @@ class HttpAPIFootballService {
             val matches = getPastMatches(leagueId, 2024, formattedPreviousDay, formattedCurrentDate)
 
             matches.forEach { match ->
-                val actualOutcome = if (match.teams.home.winner == true) "home" else if (match.teams.away.winner == true) "away" else "draw"
+                // Записываем победителя или ничью непосредственно в actualOutcome
+                val actualOutcome = when {
+                    match.teams.home.winner == true -> match.teams.home.name
+                    match.teams.away.winner == true -> match.teams.away.name
+                    else -> "Draw"
+                }
+
                 val actualScore = "${match.goals?.home ?: 0}-${match.goals?.away ?: 0}"
 
                 // Получаем существующую запись матча из базы данных
@@ -112,7 +118,7 @@ class HttpAPIFootballService {
                 ) ?: MatchInfo(
                     datetime = match.fixture.date,
                     matchType = match.league.name,
-                    teams = "${match.teams.home.name} vs ${match.teams.away.name}",
+                    teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
                     predictedOutcome = existingMatchInfo?.predictedOutcome,  // Сохранение существующего значения
                     actualOutcome = actualOutcome,
                     predictedScore = existingMatchInfo?.predictedScore,      // Сохранение существующего значения

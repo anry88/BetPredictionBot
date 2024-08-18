@@ -5,7 +5,9 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 object MatchInfos : Table() {
@@ -60,6 +62,7 @@ fun initDatabase(dbPath: String) {
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
     private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     fun getMatchInfo(datetime: String, teams: String): MatchInfo? {
         return transaction {
@@ -100,10 +103,13 @@ object DatabaseService {
     }
     fun updateMatchResult(matchInfo: MatchInfo) {
         transaction {
-            MatchInfos.update({ (MatchInfos.datetime eq matchInfo.datetime) and (MatchInfos.teams eq matchInfo.teams) }) {
+            val dt = OffsetDateTime.parse(matchInfo.datetime, dateTimeFormatterForISOOffset)
+                .format(dateTimeFormatter).toString()
+            MatchInfos.update({ (MatchInfos.datetime eq dt) and (MatchInfos.teams eq matchInfo.teams) }) {
                 it[actualOutcome] = matchInfo.actualOutcome
                 it[actualScore] = matchInfo.actualScore
             }
+            logger.info("${MatchInfos.datetime} $dt ${MatchInfos.teams} ${matchInfo.teams}")
             logger.info("Match result updated for match: ${matchInfo.teams} at ${matchInfo.datetime}")
         }
     }
