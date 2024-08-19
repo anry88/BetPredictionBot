@@ -1,3 +1,4 @@
+import DatabaseService.getCorrectPredictionsLast24Hours
 import dto.MatchInfo
 import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -14,6 +15,8 @@ import java.io.File
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
+    private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
+
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
         initDatabase("predictions.db") // Используем правильный путь к вашему файлу базы данных
@@ -219,7 +222,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return "This is a response to: $messageText"
     }
 
-    fun sendMessage(chatId: String, text: String) {
+    private fun sendMessage(chatId: String, text: String) {
         val message = SendMessage()
         message.chatId = chatId
         message.text = text
@@ -252,6 +255,25 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             execute(setMyCommands)
         } catch (e: Exception) {
             logger.error("Failed to set bot commands", e)
+        }
+    }
+    fun sendPredictionAccuracyMessage() {
+        val result = getCorrectPredictionsLast24Hours()
+        val accuracy = result.first
+        val correct = result.second.first
+        val totalMatches = result.second.second
+        val messageText = "The accuracy of predictions in the last 24 hours is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val message = SendMessage()
+        message.chatId = channelId
+        message.text = messageText
+        message.disableNotification = true
+
+        try {
+            execute(message)
+            logger.info("Prediction accuracy message sent successfully")
+        } catch (e: Exception) {
+            logger.error("Failed to send prediction accuracy message", e)
         }
     }
 }

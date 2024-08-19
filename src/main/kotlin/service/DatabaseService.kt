@@ -199,4 +199,42 @@ object DatabaseService {
                 .count()
         }
     }
+
+    fun getCorrectPredictionsLast24Hours(): Pair<Double, Pair<Int, Int>> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val last24Hours = now.minusDays(1)
+
+        return transaction {
+            val matches = MatchInfos.selectAll().mapNotNull {
+                val matchDateTime = LocalDateTime.parse(it[MatchInfos.datetime], dateTimeFormatter)
+                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
+                if (matchDateTime.isAfter(last24Hours) && matchDateTime.isBefore(now)) {
+                    MatchInfo(
+                        it[MatchInfos.datetime],
+                        it[MatchInfos.matchType],
+                        it[MatchInfos.teams],
+                        it[MatchInfos.predictedOutcome],
+                        it[MatchInfos.actualOutcome],
+                        it[MatchInfos.predictedScore],
+                        it[MatchInfos.actualScore],
+                        it[MatchInfos.odds],
+                        it[MatchInfos.telegramMessageId]
+                    )
+                } else {
+                    null
+                }
+            }
+
+            val totalMatches = matches.size
+            val correctPredictions = matches.count { it.predictedOutcome == it.actualOutcome }
+
+            val accuracy = if (totalMatches > 0) {
+                (correctPredictions.toDouble() / totalMatches) * 100
+            } else {
+                0.0
+            }
+
+            Pair(accuracy, Pair(correctPredictions, totalMatches))
+        }
+    }
 }
