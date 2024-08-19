@@ -66,7 +66,7 @@ fun main() {
 
     val accuracyTrigger = TriggerBuilder.newTrigger()
         .withIdentity("sendAccuracyTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(7, 30))  // Каждый день в 07:30
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 30))  // Каждый день в 08:30
         .build()
 
     // Schedule the jobs
