@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendDocument
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import java.io.File
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
@@ -47,15 +48,22 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     override fun updateMessage(chatId: String, messageId: String, text: String) {
-        val editMessage = EditMessageText()
-        editMessage.chatId = chatId
-        editMessage.messageId = messageId.toInt()
-        editMessage.text = text
-
         try {
+            val editMessage = EditMessageText()
+            editMessage.chatId = chatId
+            editMessage.messageId = messageId.toInt()
+            editMessage.text = text
+
             execute(editMessage)
+            logger.info("Message with ID $messageId updated successfully")
+        } catch (e: TelegramApiRequestException) {
+            if (e.apiResponse == "Bad Request: message is not modified: specified new message content and reply markup are exactly the same as a current content and reply markup of the message") {
+                logger.info("No update needed for message with ID $messageId as the content is already up to date")
+            } else {
+                logger.error("Failed to update message with ID $messageId", e)
+            }
         } catch (e: Exception) {
-            logger.error("Failed to update message", e)
+            logger.error("Failed to update message with ID $messageId", e)
         }
     }
 
