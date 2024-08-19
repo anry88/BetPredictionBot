@@ -41,7 +41,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
     suspend fun fetchMatches() {
         val currentDate = LocalDate.now()
-        val nextDay = currentDate.plusDays(2)
+        val nextDay = currentDate.plusDays(1)
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         val formattedCurrentDate = currentDate.format(formatter)
@@ -101,7 +101,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
     suspend fun fetchPastMatches() {
         val currentDate = LocalDate.now()
-        val previousDay = currentDate.minusDays(2)
+        val previousDay = currentDate.minusDays(1)
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         val formattedPreviousDay = previousDay.format(formatter)
