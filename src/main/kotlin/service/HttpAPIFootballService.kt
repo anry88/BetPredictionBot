@@ -61,7 +61,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 // Разбиваем матчи на пачки по 10 штук и отправляем их последовательно
                 matches.chunked(10).forEach { matchChunk ->
                     val matchesText = matchChunk.joinToString(separator = "\n") { match ->
-                        "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
+                        "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.country} ${match.league.name}] [Teams]: [${match.teams.home.name} vs ${match.teams.away.name}]"
                     }
 
                     val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
