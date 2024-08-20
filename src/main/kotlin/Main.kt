@@ -74,6 +74,6 @@ fun main() {
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
-    logger.info("Scheduled SendAccuracyJob to run daily at 07:30")
+    logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Executed FetchMatchesJob immediately upon startup")
 }

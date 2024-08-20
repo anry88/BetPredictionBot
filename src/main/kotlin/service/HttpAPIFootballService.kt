@@ -121,7 +121,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
 
                 // Получаем существующую запись матча из базы данных
-                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs. ${match.teams.away.name}")
+                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs. ${match.teams.away.name}", "${match.league.country} ${match.league.name}")
 
                 // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
                 val matchInfo = existingMatchInfo?.copy(
@@ -129,7 +129,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     actualScore = actualScore
                 ) ?: MatchInfo(
                     datetime = match.fixture.date,
-                    matchType = match.league.name,
+                    matchType = "${match.league.country} ${match.league.name}",
                     teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
                     predictedOutcome = existingMatchInfo?.predictedOutcome,  // Сохранение существующего значения
                     actualOutcome = actualOutcome,
