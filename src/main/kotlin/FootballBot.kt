@@ -218,7 +218,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         """.trimIndent()
     }
     fun formatMatchInfoWithResult(matchInfo: MatchInfo): String{
-        val isPredictionCorrect = matchInfo.predictedOutcome == matchInfo.actualOutcome
+        val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         return """
             Match Time: ${matchInfo.datetime}
