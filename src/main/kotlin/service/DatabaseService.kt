@@ -79,7 +79,7 @@ fun initDatabase(dbPath: String) {
 
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
-    val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     private val listOfLeagues = mutableSetOf<String>()
@@ -104,7 +104,7 @@ object DatabaseService {
             try {
                 leagueTable.select {
                     (leagueTable.datetime eq dt) and
-                            (leagueTable.teams eq teams)
+                            (leagueTable.teams.lowerCase() eq teams.lowercase())
                 }.mapNotNull {
                     MatchInfo(
                         it[leagueTable.datetime],
@@ -168,7 +168,7 @@ object DatabaseService {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
 
             try {
-                leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams eq matchInfo.teams) }) {
+                leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase()) }) {
                     it[leagueTable.actualOutcome] = matchInfo.actualOutcome
                     it[leagueTable.actualScore] = matchInfo.actualScore
                 }
@@ -178,7 +178,7 @@ object DatabaseService {
                     // Таблица не существует, создаем её и повторяем попытку обновления
                     SchemaUtils.createMissingTablesAndColumns(leagueTable)
                     logger.warn("Table for league ${matchInfo.matchType} did not exist. Created new table.")
-                    leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams eq matchInfo.teams) }) {
+                    leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase()) }) {
                         it[leagueTable.actualOutcome] = matchInfo.actualOutcome
                         it[leagueTable.actualScore] = matchInfo.actualScore
                     }
@@ -194,7 +194,7 @@ object DatabaseService {
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
 
-            leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams eq matchInfo.teams) }) {
+            leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase()) }) {
                 it[leagueTable.telegramMessageId] = matchInfo.telegramMessageId
             }
             logger.info("Telegram message ID updated for league: ${matchInfo.matchType}, match: ${matchInfo.teams} at ${matchInfo.datetime}")
@@ -242,7 +242,7 @@ object DatabaseService {
             try {
                 leagueTable.select {
                     (leagueTable.datetime eq matchInfo.datetime) and
-                            (leagueTable.teams eq matchInfo.teams)
+                            (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase())
                 }.count() > 0
             } catch (e: ExposedSQLException) {
                 if (e.message?.contains("no such table") == true) {
