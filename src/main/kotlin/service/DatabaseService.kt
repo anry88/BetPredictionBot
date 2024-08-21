@@ -364,7 +364,7 @@ object DatabaseService {
         }
 
         val totalMatches = allMatches.size
-        val correctPredictions = allMatches.count { it.predictedOutcome == it.actualOutcome }
+        val correctPredictions = allMatches.count { it.predictedOutcome?.lowercase() == it.actualOutcome?.lowercase() }
 
         val accuracy = if (totalMatches > 0) {
             (correctPredictions.toDouble() / totalMatches) * 100
