@@ -79,16 +79,6 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     if (newMatches.isNotEmpty()) {
                         DatabaseService.appendRows(newMatches)
 
-                        newMatches.forEach{match ->
-                            val messageText = footballBot.formatMatchInfo(match)
-                            val messageId = footballBot.sendMessageAndGetId(channelId, messageText)
-                            if (messageId != null) {
-                                // Сохраняем messageId в базе данных
-                                val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
-
-                                DatabaseService.updateMatchMessageId(updatedMatchInfo)
-                            }
-                        }
                         logger.info("New matches appended to database: ${newMatches.size} matches added.")
                     } else {
                         logger.info("All matches are duplicates, no new matches to append.")

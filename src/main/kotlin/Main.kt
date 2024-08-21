@@ -13,6 +13,7 @@ class FetchMatchesJob : Job {
         runBlocking {
             footballService.fetchMatches()
             footballService.fetchPastMatches()
+            footballBot.sendUpcomingMatchesToTelegram()
         }
     }
 }

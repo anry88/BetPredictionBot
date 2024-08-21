@@ -343,4 +343,36 @@ object DatabaseService {
 
         return Pair(accuracy, Pair(correctPredictions, totalMatches))
     }
+    fun getMatchesWithoutMessageIdForNext12Hours(): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val twelveHoursLater = now.plusHours(12)
+        val matchesToSend = mutableListOf<MatchInfo>()
+
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+
+                leagueTable.select {
+                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.telegramMessageId.isNull())
+                }.mapNotNullTo(matchesToSend) {
+                    MatchInfo(
+                        it[leagueTable.datetime],
+                        it[leagueTable.matchType],
+                        it[leagueTable.teams],
+                        it[leagueTable.predictedOutcome],
+                        it[leagueTable.actualOutcome],
+                        it[leagueTable.predictedScore],
+                        it[leagueTable.actualScore],
+                        it[leagueTable.odds],
+                        it[leagueTable.telegramMessageId]
+                    )
+                }
+            }
+        }
+
+        return matchesToSend
+    }
+
 }

@@ -1,4 +1,5 @@
 import DatabaseService.getCorrectPredictionsLast24Hours
+import DatabaseService.getMatchesWithoutMessageIdForNext12Hours
 import dto.MatchInfo
 import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -284,4 +285,20 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             logger.error("Failed to send prediction accuracy message", e)
         }
     }
+    fun sendUpcomingMatchesToTelegram() {
+        val matches = getMatchesWithoutMessageIdForNext12Hours()
+
+        if (matches.isNotEmpty()) {
+            matches.forEach { match ->
+                val messageText = formatMatchInfo(match)
+                val messageId = sendMessageAndGetId(channelId, messageText)
+
+                if (messageId != null) {
+                    val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
+                    DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                }
+            }
+        }
+    }
+
 }
