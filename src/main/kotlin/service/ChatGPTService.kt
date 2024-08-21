@@ -35,7 +35,7 @@ object ChatGPTService {
                     Message(
                         role = "user",
                         content = "Make a prediction for the outcome of these football matches that will take place in the near future, for full time, taking into account all possible factors, expert opinions and bookmakers' forecasts for the matches\n: $matchesText \n" +
-                                "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets and don't change match start time and match type:\n" +
+                                "You are a data assistant. Always strictly provide responses in the following format without any text formatting other than square brackets and don't change match start time, match type and teams:\n" +
                                 "\n" +
                                 "[Match Start]: [yyyy-MM-dd HH:mm]\n" +
                                 "[Match Type]: []\n" +
