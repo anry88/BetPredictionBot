@@ -54,6 +54,7 @@ object LeagueTableFactory {
     private val tables = mutableMapOf<String, LeagueTable>()
 
     fun getTableForLeague(leagueName: String): LeagueTable {
+
         return tables.getOrPut(leagueName) {
             LeagueTable(leagueName.replace(" ", "_").toLowerCase())
         }
@@ -89,18 +90,20 @@ fun initDatabase(dbPath: String) {
 
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
-    private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     private val listOfLeagues = mutableSetOf<String>()
 
     fun getMatchInfo(datetime: String, teams: String, leagueName: String): MatchInfo? {
+        val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
+            .format(dateTimeFormatter).toString()
         return transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
 
             try {
                 leagueTable.select {
-                    (leagueTable.datetime eq datetime) and
+                    (leagueTable.datetime eq dt) and
                             (leagueTable.teams eq teams)
                 }.mapNotNull {
                     MatchInfo(
