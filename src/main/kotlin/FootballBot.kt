@@ -1,3 +1,4 @@
+import DatabaseService.getCorrectPredictionsForPeriod
 import DatabaseService.getCorrectPredictionsLast24Hours
 import DatabaseService.getMatchesWithoutMessageIdForNext12Hours
 import dto.MatchInfo
@@ -13,6 +14,8 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import java.io.File
+import java.time.LocalDate
+import java.time.YearMonth
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
@@ -298,6 +301,50 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     DatabaseService.updateMatchMessageId(updatedMatchInfo)
                 }
             }
+        }
+    }
+    private fun getDaysInLastMonth(): Int {
+        val currentDate = LocalDate.now()
+        val lastMonth = currentDate.minusMonths(1)
+        val lastMonthYearMonth = YearMonth.of(lastMonth.year, lastMonth.month)
+        return lastMonthYearMonth.lengthOfMonth()
+    }
+    fun sendWeeklyPredictionAccuracyMessage() {
+        val result = getCorrectPredictionsForPeriod(days = 7)
+        val accuracy = result.first
+        val correct = result.second.first
+        val totalMatches = result.second.second
+        val messageText = "The accuracy of predictions in the last week is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val message = SendMessage()
+        message.chatId = channelId
+        message.text = messageText
+        message.disableNotification = true
+
+        try {
+            execute(message)
+            logger.info("Weekly prediction accuracy message sent successfully")
+        } catch (e: Exception) {
+            logger.error("Failed to send weekly prediction accuracy message", e)
+        }
+    }
+    fun sendMonthlyPredictionAccuracyMessage() {
+        val result = getCorrectPredictionsForPeriod(getDaysInLastMonth())
+        val accuracy = result.first
+        val correct = result.second.first
+        val totalMatches = result.second.second
+        val messageText = "The accuracy of predictions in the last month is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val message = SendMessage()
+        message.chatId = channelId
+        message.text = messageText
+        message.disableNotification = true
+
+        try {
+            execute(message)
+            logger.info("Monthly prediction accuracy message sent successfully")
+        } catch (e: Exception) {
+            logger.error("Failed to send monthly prediction accuracy message", e)
         }
     }
 

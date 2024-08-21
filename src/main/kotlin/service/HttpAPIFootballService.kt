@@ -1,6 +1,5 @@
 package service
 
-import DatabaseService.dateTimeFormatter
 import DatabaseService.matchExists
 import FootballBot
 import dto.MatchInfo

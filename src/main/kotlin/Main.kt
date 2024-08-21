@@ -25,6 +25,22 @@ class SendAccuracyJob : Job {
         }
     }
 }
+class SendWeeklyAccuracyJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.sendWeeklyPredictionAccuracyMessage()
+        }
+    }
+}
+class SendMonthlyAccuracyJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.sendMonthlyPredictionAccuracyMessage()
+        }
+    }
+}
 
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
@@ -70,11 +86,37 @@ fun main() {
         .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 30))  // Каждый день в 08:30
         .build()
 
+    // SendWeeklyAccuracyJob setup
+    val weeklyAccuracyJob = JobBuilder.newJob(SendWeeklyAccuracyJob::class.java)
+        .withIdentity("sendWeeklyAccuracyJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val weeklyAccuracyTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("sendWeeklyAccuracyTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(2, 8, 31))
+        .build()
+
+    // SendMonthlyAccuracyJob setup
+    val monthlyAccuracyJob = JobBuilder.newJob(SendMonthlyAccuracyJob::class.java)
+        .withIdentity("sendMonthlyAccuracyJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val monthlyAccuracyTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("sendMonthlyAccuracyTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 8, 32))  // Первого числа каждого месяца в 08:00
+        .build()
+
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
+    scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
+    scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
+    logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
+    logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
     logger.info("Executed FetchMatchesJob immediately upon startup")
 }

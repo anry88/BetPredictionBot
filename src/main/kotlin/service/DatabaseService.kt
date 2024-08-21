@@ -374,5 +374,47 @@ object DatabaseService {
 
         return matchesToSend
     }
+    fun getCorrectPredictionsForPeriod(days: Int): Pair<Double, Pair<Int, Int>> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val startDate = now.minusDays(days.toLong())
+        val allMatches = mutableListOf<MatchInfo>()
+
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+
+                leagueTable.selectAll().mapNotNullTo(allMatches) {
+                    val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+                        .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
+                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now)) {
+                        MatchInfo(
+                            it[leagueTable.datetime],
+                            it[leagueTable.matchType],
+                            it[leagueTable.teams],
+                            it[leagueTable.predictedOutcome],
+                            it[leagueTable.actualOutcome],
+                            it[leagueTable.predictedScore],
+                            it[leagueTable.actualScore],
+                            it[leagueTable.odds],
+                            it[leagueTable.telegramMessageId]
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
+
+        val totalMatches = allMatches.size
+        val correctPredictions = allMatches.count { it.predictedOutcome == it.actualOutcome }
+
+        val accuracy = if (totalMatches > 0) {
+            (correctPredictions.toDouble() / totalMatches) * 100
+        } else {
+            0.0
+        }
+
+        return Pair(accuracy, Pair(correctPredictions, totalMatches))
+    }
 
 }
