@@ -1,5 +1,6 @@
 package service
 
+import DatabaseService.dateTimeFormatter
 import DatabaseService.matchExists
 import FootballBot
 import dto.MatchInfo
@@ -122,7 +123,6 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                 // Получаем существующую запись матча из базы данных
                 val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs. ${match.teams.away.name}", "${match.league.country} ${match.league.name}")
-
                 // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
                 val matchInfo = existingMatchInfo?.copy(
                     actualOutcome = actualOutcome,
@@ -140,6 +140,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 )
                 if (matchInfo.telegramMessageId != null) {
                     val updatedMessageText = footballBot.formatMatchInfoWithResult(matchInfo)
+
                     footballBot.updateMessage(channelId, matchInfo.telegramMessageId, updatedMessageText)
                 }
 
