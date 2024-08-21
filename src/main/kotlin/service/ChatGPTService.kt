@@ -39,7 +39,7 @@ object ChatGPTService {
                                 "\n" +
                                 "[Match Start]: [yyyy-MM-dd HH:mm]\n" +
                                 "[Match Type]: []\n" +
-                                "[Teams]: [Team1 vs. Team2]\n" +
+                                "[Teams]: [Team1 vs Team2]\n" +
                                 "[Match Outcome]: [Team/Draw]\n" +
                                 "[Score]: [int:int]\n" +
                                 "[Odd for Match Outcome]: [double]\n" +
