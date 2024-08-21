@@ -1,5 +1,4 @@
 import DatabaseService.getCorrectPredictionsForPeriod
-import DatabaseService.getCorrectPredictionsLast24Hours
 import DatabaseService.getMatchesWithoutMessageIdForNext12Hours
 import dto.MatchInfo
 import `interface`.TelegramService
@@ -93,10 +92,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText == "/activeusercount" -> {
                     handleActiveUserCountCommand(chatId)
                 }
-                messageText == "/upcomingmatches" -> {
+                chatId == adminChatId && messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
                 }
-                messageText == "/topmatch" -> {
+                chatId == adminChatId && messageText == "/topmatch" -> {
                     handleTopMatchCommand(chatId)
                 }
                 messageText == "/start" -> {
@@ -131,14 +130,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun handleHelpCommand(chatId: String, isAdmin: Boolean) {
         val commonCommands = """
             /start - Start the bot and get information about it
-            /upcomingmatches - Get upcoming matches within the next 24 hours
-            /topmatch - Get the top match
         """.trimIndent()
 
         val adminCommands = """
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
+            /upcomingmatches - Get upcoming matches within the next 24 hours
+            /topmatch - Get the top match
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -210,7 +209,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
 
-    fun formatMatchInfo(matchInfo: MatchInfo): String {
+    private fun formatMatchInfo(matchInfo: MatchInfo): String {
         return """
             Match Time: ${matchInfo.datetime}
             Match Type: ${matchInfo.matchType}
@@ -250,15 +249,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun setCommands() {
         val commands = mutableListOf<BotCommand>()
         commands.add(BotCommand("/start", "Start the bot and get information about it"))
-        commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours"))
-        commands.add(BotCommand("/topmatch", "Get the top match based on odds"))
         commands.add(BotCommand("/help", "Get the list of available commands"))
-
-        if (adminChatId.isNotEmpty()) {
-            commands.add(BotCommand("/getdatabase", "Get the database file"))
-            commands.add(BotCommand("/usercount", "Get the count of unique users"))
-            commands.add(BotCommand("/activeusercount", "Get the count of unique users active last day"))
-        }
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
@@ -270,7 +261,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
     fun sendPredictionAccuracyMessage() {
-        val result = getCorrectPredictionsLast24Hours()
+        val result = getCorrectPredictionsForPeriod(days = 1)
         val accuracy = result.first
         val correct = result.second.first
         val totalMatches = result.second.second
