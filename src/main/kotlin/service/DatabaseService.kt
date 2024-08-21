@@ -1,4 +1,3 @@
-import MatchInfos.nullable
 import dto.MatchInfo
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -11,20 +10,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-object MatchInfos : Table() {
-    val id = integer("id").autoIncrement()
-    val datetime = varchar("datetime", 50)
-    val matchType = varchar("matchType", 50)
-    val teams = varchar("teams", 100)
-    val predictedOutcome = varchar("predictedOutcome", 50).nullable()
-    val actualOutcome = varchar("actualOutcome", 50).nullable()
-    val predictedScore = varchar("predictedScore", 50).nullable()
-    val actualScore = varchar("actualScore", 50).nullable()
-    val odds = varchar("odds", 50)
-    val telegramMessageId = varchar("telegramMessageId", 50).nullable()
-
-    override val primaryKey = PrimaryKey(id)
-}
 object UserStats : Table() {
     val id = integer("id").autoIncrement()
     val userId = varchar("userId", 50)
@@ -34,6 +19,10 @@ object UserStats : Table() {
     val lastActivity = varchar("lastActivity", 50)
 
     override val primaryKey = PrimaryKey(id)
+}
+object Leagues : Table() {
+    val name = varchar("name", 100).uniqueIndex()
+    override val primaryKey = PrimaryKey(name)
 }
 
 open class LeagueTable(tableName: String) : Table(tableName) {
@@ -56,7 +45,7 @@ object LeagueTableFactory {
     fun getTableForLeague(leagueName: String): LeagueTable {
 
         return tables.getOrPut(leagueName) {
-            LeagueTable(leagueName.replace(" ", "_").toLowerCase())
+            LeagueTable(leagueName.replace(" ", "_").lowercase())
         }
     }
 }
@@ -64,7 +53,6 @@ object LeagueTableFactory {
 fun initDatabase(dbPath: String) {
     val logger = LoggerFactory.getLogger("DatabaseService")
     val dbFile = File(dbPath)
-    var listOfLeagues: ArrayList<String>
 
     logger.info("Database file path: $dbPath")
 
@@ -82,18 +70,30 @@ fun initDatabase(dbPath: String) {
 
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(UserStats)
+        SchemaUtils.createMissingTablesAndColumns(UserStats, Leagues)
         logger.info("Database initialized and tables 'UserStats' ensured.")
     }
+
 }
 
 
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
-    val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     private val listOfLeagues = mutableSetOf<String>()
+    private fun loadLeagues() {
+        transaction {
+            Leagues.selectAll().forEach {
+                listOfLeagues.add(it[Leagues.name])
+            }
+        }
+    }
+
+    init {
+        loadLeagues()
+    }
 
     fun getMatchInfo(datetime: String, teams: String, leagueName: String): MatchInfo? {
         val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
@@ -138,8 +138,11 @@ object DatabaseService {
             matches.forEach { match ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(match.matchType)
 
-                // Добавляем лигу в список, если её там еще нет
+                // Добавляем лигу в базу данных, если её там еще нет
                 if (!listOfLeagues.contains(match.matchType)) {
+                    Leagues.insertIgnore {
+                        it[name] = match.matchType
+                    }
                     listOfLeagues.add(match.matchType)
                 }
 
