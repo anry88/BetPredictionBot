@@ -301,9 +301,40 @@ object DatabaseService {
         }
     }
 
-    fun getCorrectPredictionsLast24Hours(): Pair<Double, Pair<Int, Int>> {
+    fun getMatchesWithoutMessageIdForNext12Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val last24Hours = now.minusDays(1)
+        val twelveHoursLater = now.plusHours(12)
+        val matchesToSend = mutableListOf<MatchInfo>()
+
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+
+                leagueTable.select {
+                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.telegramMessageId.isNull())
+                }.mapNotNullTo(matchesToSend) {
+                    MatchInfo(
+                        it[leagueTable.datetime],
+                        it[leagueTable.matchType],
+                        it[leagueTable.teams],
+                        it[leagueTable.predictedOutcome],
+                        it[leagueTable.actualOutcome],
+                        it[leagueTable.predictedScore],
+                        it[leagueTable.actualScore],
+                        it[leagueTable.odds],
+                        it[leagueTable.telegramMessageId]
+                    )
+                }
+            }
+        }
+
+        return matchesToSend
+    }
+    fun getCorrectPredictionsForPeriod(days: Int): Pair<Double, Pair<Int, Int>> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val startDate = now.minusDays(days.toLong())
         val allMatches = mutableListOf<MatchInfo>()
 
         transaction {
@@ -313,7 +344,7 @@ object DatabaseService {
                 leagueTable.selectAll().mapNotNullTo(allMatches) {
                     val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                    if (matchDateTime.isAfter(last24Hours) && matchDateTime.isBefore(now)) {
+                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now)) {
                         MatchInfo(
                             it[leagueTable.datetime],
                             it[leagueTable.matchType],
@@ -343,4 +374,5 @@ object DatabaseService {
 
         return Pair(accuracy, Pair(correctPredictions, totalMatches))
     }
+
 }

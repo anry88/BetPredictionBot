@@ -1,4 +1,5 @@
-import DatabaseService.getCorrectPredictionsLast24Hours
+import DatabaseService.getCorrectPredictionsForPeriod
+import DatabaseService.getMatchesWithoutMessageIdForNext12Hours
 import dto.MatchInfo
 import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -12,6 +13,8 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import java.io.File
+import java.time.LocalDate
+import java.time.YearMonth
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
@@ -89,10 +92,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText == "/activeusercount" -> {
                     handleActiveUserCountCommand(chatId)
                 }
-                messageText == "/upcomingmatches" -> {
+                chatId == adminChatId && messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
                 }
-                messageText == "/topmatch" -> {
+                chatId == adminChatId && messageText == "/topmatch" -> {
                     handleTopMatchCommand(chatId)
                 }
                 messageText == "/start" -> {
@@ -127,14 +130,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun handleHelpCommand(chatId: String, isAdmin: Boolean) {
         val commonCommands = """
             /start - Start the bot and get information about it
-            /upcomingmatches - Get upcoming matches within the next 24 hours
-            /topmatch - Get the top match
         """.trimIndent()
 
         val adminCommands = """
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
+            /upcomingmatches - Get upcoming matches within the next 24 hours
+            /topmatch - Get the top match
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -206,7 +209,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
 
-    fun formatMatchInfo(matchInfo: MatchInfo): String {
+    private fun formatMatchInfo(matchInfo: MatchInfo): String {
         return """
             Match Time: ${matchInfo.datetime}
             Match Type: ${matchInfo.matchType}
@@ -246,15 +249,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun setCommands() {
         val commands = mutableListOf<BotCommand>()
         commands.add(BotCommand("/start", "Start the bot and get information about it"))
-        commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours"))
-        commands.add(BotCommand("/topmatch", "Get the top match based on odds"))
         commands.add(BotCommand("/help", "Get the list of available commands"))
-
-        if (adminChatId.isNotEmpty()) {
-            commands.add(BotCommand("/getdatabase", "Get the database file"))
-            commands.add(BotCommand("/usercount", "Get the count of unique users"))
-            commands.add(BotCommand("/activeusercount", "Get the count of unique users active last day"))
-        }
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
@@ -266,7 +261,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
     fun sendPredictionAccuracyMessage() {
-        val result = getCorrectPredictionsLast24Hours()
+        val result = getCorrectPredictionsForPeriod(days = 1)
         val accuracy = result.first
         val correct = result.second.first
         val totalMatches = result.second.second
@@ -284,4 +279,64 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             logger.error("Failed to send prediction accuracy message", e)
         }
     }
+    fun sendUpcomingMatchesToTelegram() {
+        val matches = getMatchesWithoutMessageIdForNext12Hours()
+
+        if (matches.isNotEmpty()) {
+            matches.forEach { match ->
+                val messageText = formatMatchInfo(match)
+                val messageId = sendMessageAndGetId(channelId, messageText)
+
+                if (messageId != null) {
+                    val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
+                    DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                }
+            }
+        }
+    }
+    private fun getDaysInLastMonth(): Int {
+        val currentDate = LocalDate.now()
+        val lastMonth = currentDate.minusMonths(1)
+        val lastMonthYearMonth = YearMonth.of(lastMonth.year, lastMonth.month)
+        return lastMonthYearMonth.lengthOfMonth()
+    }
+    fun sendWeeklyPredictionAccuracyMessage() {
+        val result = getCorrectPredictionsForPeriod(days = 7)
+        val accuracy = result.first
+        val correct = result.second.first
+        val totalMatches = result.second.second
+        val messageText = "The accuracy of predictions in the last week is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val message = SendMessage()
+        message.chatId = channelId
+        message.text = messageText
+        message.disableNotification = true
+
+        try {
+            execute(message)
+            logger.info("Weekly prediction accuracy message sent successfully")
+        } catch (e: Exception) {
+            logger.error("Failed to send weekly prediction accuracy message", e)
+        }
+    }
+    fun sendMonthlyPredictionAccuracyMessage() {
+        val result = getCorrectPredictionsForPeriod(getDaysInLastMonth())
+        val accuracy = result.first
+        val correct = result.second.first
+        val totalMatches = result.second.second
+        val messageText = "The accuracy of predictions in the last month is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val message = SendMessage()
+        message.chatId = channelId
+        message.text = messageText
+        message.disableNotification = true
+
+        try {
+            execute(message)
+            logger.info("Monthly prediction accuracy message sent successfully")
+        } catch (e: Exception) {
+            logger.error("Failed to send monthly prediction accuracy message", e)
+        }
+    }
+
 }
