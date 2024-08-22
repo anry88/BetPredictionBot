@@ -292,7 +292,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
                     DatabaseService.updateMatchMessageId(updatedMatchInfo)
                 }
-                Thread.sleep(5000)
+                Thread.sleep(10000)
             }
         }
     }
