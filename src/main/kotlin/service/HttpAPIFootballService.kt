@@ -135,6 +135,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                 // Обновляем запись в базе данных
                 DatabaseService.updateMatchResult(matchInfo)
+                Thread.sleep(10000)
             }
         }
     }
