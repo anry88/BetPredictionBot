@@ -22,7 +22,6 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
     private val popularLeagues = listOf(
-//        39
         39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
         88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
         2, 3, 5, 32, 34, 848    // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций

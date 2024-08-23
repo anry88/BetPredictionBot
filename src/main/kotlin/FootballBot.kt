@@ -98,6 +98,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText == "/topmatch" -> {
                     handleTopMatchCommand(chatId)
                 }
+                chatId == adminChatId && messageText.startsWith("/getAccuracy") -> {
+                    handleGetAccuracyCommand(chatId, messageText)
+                }
                 messageText == "/start" -> {
                     handleStartCommand(chatId)
                 }
@@ -271,7 +274,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = channelId
         message.text = messageText
-        message.disableNotification = true
 
         try {
             execute(message)
@@ -312,7 +314,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = channelId
         message.text = messageText
-        message.disableNotification = true
 
         try {
             execute(message)
@@ -331,7 +332,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = channelId
         message.text = messageText
-        message.disableNotification = true
 
         try {
             execute(message)
@@ -341,4 +341,40 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
+    fun sendYearlyPredictionAccuracyMessage() {
+        val result = getCorrectPredictionsForPeriod(days = 365)
+        val accuracy = result.first
+        val correct = result.second.first
+        val totalMatches = result.second.second
+        val messageText = "The accuracy of predictions in the last year is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val message = SendMessage()
+        message.chatId = channelId
+        message.text = messageText
+
+        try {
+            execute(message)
+            logger.info("Yearly prediction accuracy message sent successfully")
+        } catch (e: Exception) {
+            logger.error("Failed to send yearly prediction accuracy message", e)
+        }
+    }
+    private fun handleGetAccuracyCommand(chatId: String, messageText: String) {
+        val parts = messageText.split(" ")
+        if (parts.size == 2) {
+            val days = parts[1].toIntOrNull()
+            if (days != null && days > 0) {
+                val result = getCorrectPredictionsForPeriod(days)
+                val accuracy = result.first
+                val correct = result.second.first
+                val totalMatches = result.second.second
+                val messageText = "The accuracy of predictions in the last $days days is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+                sendMessage(chatId, messageText)
+            } else {
+                sendMessage(chatId, "Please provide a valid number of days.")
+            }
+        } else {
+            sendMessage(chatId, "Usage: /getAccuracy <number_of_days>")
+        }
+    }
 }

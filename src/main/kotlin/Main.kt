@@ -41,7 +41,14 @@ class SendMonthlyAccuracyJob : Job {
         }
     }
 }
-
+class SendYearlyAccuracyJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.sendYearlyPredictionAccuracyMessage()
+        }
+    }
+}
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
     val botsApi = TelegramBotsApi(DefaultBotSession::class.java)
@@ -108,15 +115,28 @@ fun main() {
         .withSchedule(CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 8, 32))  // Первого числа каждого месяца в 08:00
         .build()
 
+    // SendYearlyAccuracyJob setup
+    val yearlyAccuracyJob = JobBuilder.newJob(SendYearlyAccuracyJob::class.java)
+        .withIdentity("sendYearlyAccuracyJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val yearlyAccuracyTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("sendYearlyAccuracyTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.cronSchedule("33 8 1 1 * ?"))
+        .build()
+
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
+    scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
+    logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
     logger.info("Executed FetchMatchesJob immediately upon startup")
 }

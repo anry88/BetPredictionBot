@@ -344,7 +344,7 @@ object DatabaseService {
                 leagueTable.selectAll().mapNotNullTo(allMatches) {
                     val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now)) {
+                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) && it[leagueTable.actualOutcome] != null) {
                         MatchInfo(
                             it[leagueTable.datetime],
                             it[leagueTable.matchType],
