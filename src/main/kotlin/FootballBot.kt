@@ -213,22 +213,26 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
 
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
+        val flag = getCountryFlag(matchInfo.matchType)
         return """
             Match Time: ${matchInfo.datetime}
-            Match Type: ${matchInfo.matchType}
+            Match Type: ${matchInfo.matchType}$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
+            Predicted Score: ${matchInfo.predictedScore}
         """.trimIndent()
     }
     fun formatMatchInfoWithResult(matchInfo: MatchInfo): String{
         val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
         val emoji = if (isPredictionCorrect) "✅" else "❌"
+        val flag = getCountryFlag(matchInfo.matchType)
         return """
             Match Time: ${matchInfo.datetime}
-            Match Type: ${matchInfo.matchType}
+            Match Type: ${matchInfo.matchType}$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Actual Outcome: ${matchInfo.actualOutcome}$emoji
+            Predicted Score: ${matchInfo.predictedScore}
             Actual Score: ${matchInfo.actualScore}
         """.trimIndent()
     }
@@ -269,7 +273,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val accuracy = result.first
         val correct = result.second.first
         val totalMatches = result.second.second
-        val messageText = "The accuracy of predictions in the last 24 hours is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val messageText = if (totalMatches > 0) {
+            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
+            "The accuracy of outcome predictions (not scores) in the last 24 hours is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+        } else {
+            // Сообщение об отсутствии матчей
+            "No matches were played in the last 24 hours."
+        }
 
         val message = SendMessage()
         message.chatId = channelId
@@ -309,7 +320,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val accuracy = result.first
         val correct = result.second.first
         val totalMatches = result.second.second
-        val messageText = "The accuracy of predictions in the last week is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val messageText = if (totalMatches > 0) {
+            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
+            "The accuracy of outcome predictions (not scores) in the last week is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+        } else {
+            // Сообщение об отсутствии матчей
+            "No matches were played in the last week."
+        }
 
         val message = SendMessage()
         message.chatId = channelId
@@ -327,7 +345,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val accuracy = result.first
         val correct = result.second.first
         val totalMatches = result.second.second
-        val messageText = "The accuracy of predictions in the last month is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val messageText = if (totalMatches > 0) {
+            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
+            "The accuracy of outcome predictions (not scores) in the last month is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+        } else {
+            // Сообщение об отсутствии матчей
+            "No matches were played in the last month."
+        }
 
         val message = SendMessage()
         message.chatId = channelId
@@ -346,7 +371,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val accuracy = result.first
         val correct = result.second.first
         val totalMatches = result.second.second
-        val messageText = "The accuracy of predictions in the last year is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+
+        val messageText = if (totalMatches > 0) {
+            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
+            "The accuracy of outcome predictions (not scores) in the last year is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+        } else {
+            // Сообщение об отсутствии матчей
+            "No matches were played in the last year."
+        }
 
         val message = SendMessage()
         message.chatId = channelId
@@ -376,5 +408,54 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } else {
             sendMessage(chatId, "Usage: /getAccuracy <number_of_days>")
         }
+    }
+
+    fun getCountryFlag(text: String): String {
+        // Словарь сопоставления названий стран с эмодзи-флагами
+        val countryNameToEmoji = mapOf(
+            // Английские названия
+            "Spain" to "🇪🇸",
+            "Germany" to "🇩🇪",
+            "France" to "🇫🇷",
+            "Portugal" to "🇵🇹",
+            "Russia" to "🇷🇺",
+            "England" to "🏴", // Специальный эмодзи-флаг для Англии
+            "Italy" to "🇮🇹",
+            "Netherlands" to "🇳🇱",
+            "Ukraine" to "🇺🇦",
+            "Turkey" to "🇹🇷",
+            "USA" to "🇺🇸",
+            "Saudi-Arabia" to "🇸🇦",
+            "Saudi Arabia" to "🇸🇦", // Вариант без дефиса
+            "United States" to "🇺🇸", // Дополнительный вариант для USA
+            "UEFA" to "🇪🇺",
+            "Europe" to "🌍", // Глобус с Европой и Африкой
+            "Asia" to "🌏",   // Глобус с Азией и Австралией
+            "Africa" to "🌍", // Можно использовать тот же глобус
+            "Americas" to "🌎", // Глобус с Америкой
+            "North America" to "🌎",
+            "South America" to "🌎",
+            "Australia" to "🌏",
+            "Oceania" to "🌏"
+        )
+
+        // Приводим текст к нижнему регистру для нечувствительного поиска
+        val lowerCaseText = text.lowercase()
+
+        // Итерация по ключам словаря и проверка наличия страны в тексте
+        for ((country, emoji) in countryNameToEmoji) {
+            // Приводим название страны к нижнему регистру для сравнения
+            val lowerCaseCountry = country.lowercase()
+
+            // Используем регулярное выражение с границами слова для точного поиска
+            val regex = "\\b${Regex.escape(lowerCaseCountry)}\\b".toRegex()
+
+            if (regex.containsMatchIn(lowerCaseText)) {
+                return emoji
+            }
+        }
+
+        // Если страна не найдена, возвращаем пустую строку или можно вернуть специальный символ, например, белый флаг
+        return "" // Или "🏳️" для белого флага по умолчанию
     }
 }

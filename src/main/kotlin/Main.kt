@@ -123,7 +123,7 @@ fun main() {
 
     val yearlyAccuracyTrigger = TriggerBuilder.newTrigger()
         .withIdentity("sendYearlyAccuracyTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.cronSchedule("33 8 1 1 * ?"))
+        .withSchedule(CronScheduleBuilder.cronSchedule("0 33 8 1 1 ?"))
         .build()
 
     // Schedule the jobs
