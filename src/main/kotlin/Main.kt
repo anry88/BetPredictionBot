@@ -12,6 +12,15 @@ class FetchMatchesJob : Job {
         val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
             footballService.fetchMatches()
+        }
+    }
+}
+
+class UpdateMatchesJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        val footballService = HttpAPIFootballService(footballBot)
+        runBlocking {
             footballService.fetchPastMatches()
             footballBot.sendUpcomingMatchesToTelegram()
         }
@@ -82,6 +91,16 @@ fun main() {
         .startNow()
         .build()
 
+    val updateJob = JobBuilder.newJob(UpdateMatchesJob::class.java)
+        .withIdentity("updateMatchesJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val dailyUpdateTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("updateMatchesDailyTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.cronSchedule("0 5 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 * * ?"))
+        .build()
+
     // Добавляем новый job для отправки сообщений с точностью предсказаний
     val accuracyJob = JobBuilder.newJob(SendAccuracyJob::class.java)
         .withIdentity("sendAccuracyJob", "group1")
@@ -128,12 +147,14 @@ fun main() {
 
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
+    scheduler.scheduleJob(updateJob, dailyUpdateTrigger)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
+    logger.info("Scheduled UpdateMatchesJob to run at every hour")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
