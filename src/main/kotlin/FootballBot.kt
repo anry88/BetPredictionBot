@@ -283,7 +283,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = channelId
+        message.chatId = adminChatId
         message.text = messageText
 
         try {
@@ -330,7 +330,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = channelId
+        message.chatId = adminChatId
         message.text = messageText
 
         try {
@@ -355,7 +355,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = channelId
+        message.chatId = adminChatId
         message.text = messageText
 
         try {
@@ -381,7 +381,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = channelId
+        message.chatId = adminChatId
         message.text = messageText
 
         try {
@@ -410,7 +410,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    fun getCountryFlag(text: String): String {
+    private fun getCountryFlag(text: String): String {
         // Словарь сопоставления названий стран с эмодзи-флагами
         val countryNameToEmoji = mapOf(
             // Английские названия
@@ -456,6 +456,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         // Если страна не найдена, возвращаем пустую строку или можно вернуть специальный символ, например, белый флаг
-        return "" // Или "🏳️" для белого флага по умолчанию
+        return "" // Или " " для белого флага по умолчанию
     }
 }
