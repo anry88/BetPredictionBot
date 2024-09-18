@@ -1,5 +1,5 @@
 import DatabaseService.getCorrectPredictionsForPeriod
-import DatabaseService.getMatchesWithoutMessageIdForNext12Hours
+import DatabaseService.getMatchesWithoutMessageIdForNext8Hours
 import dto.MatchInfo
 import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -215,7 +215,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
         return """
-            Match Time: ${matchInfo.datetime}
+            Match Time UTC: ${matchInfo.datetime}
             Match Type: ${matchInfo.matchType}$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
@@ -227,7 +227,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
         return """
-            Match Time: ${matchInfo.datetime}
+            Match Time UTC: ${matchInfo.datetime}
             Match Type: ${matchInfo.matchType}$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
@@ -294,7 +294,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
     fun sendUpcomingMatchesToTelegram() {
-        val matches = getMatchesWithoutMessageIdForNext12Hours()
+        val matches = getMatchesWithoutMessageIdForNext8Hours()
 
         if (matches.isNotEmpty()) {
             matches.forEach { match ->

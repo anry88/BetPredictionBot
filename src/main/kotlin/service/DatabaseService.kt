@@ -301,9 +301,9 @@ object DatabaseService {
         }
     }
 
-    fun getMatchesWithoutMessageIdForNext12Hours(): List<MatchInfo> {
+    fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val twelveHoursLater = now.plusHours(12)
+        val eightHoursLater = now.plusHours(8)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -312,7 +312,7 @@ object DatabaseService {
 
                 leagueTable.select {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq eightHoursLater.format(dateTimeFormatter)) and
                             (leagueTable.telegramMessageId.isNull())
                 }.mapNotNullTo(matchesToSend) {
                     MatchInfo(
