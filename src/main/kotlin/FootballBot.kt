@@ -399,8 +399,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 val accuracy = result.first
                 val correct = result.second.first
                 val totalMatches = result.second.second
-                val messageText = "The accuracy of predictions in the last $days days is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
-                sendMessage(chatId, messageText)
+                val text = "The accuracy of predictions in the last $days days is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+                sendMessage(chatId, text)
             } else {
                 sendMessage(chatId, "Please provide a valid number of days.")
             }
