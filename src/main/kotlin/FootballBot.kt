@@ -39,7 +39,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = chatId
         message.text = text
-        message.disableNotification = true
 
         return try {
             val sentMessage = execute(message)
