@@ -418,7 +418,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "France" to "🇫🇷",
             "Portugal" to "🇵🇹",
             "Russia" to "🇷🇺",
-            "England" to "🏴", // Специальный эмодзи-флаг для Англии
+            "England" to "\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F", // Специальный эмодзи-флаг для Англии
             "Italy" to "🇮🇹",
             "Netherlands" to "🇳🇱",
             "Ukraine" to "🇺🇦",
@@ -457,4 +457,5 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         // Если страна не найдена, возвращаем пустую строку или можно вернуть специальный символ, например, белый флаг
         return "" // Или " " для белого флага по умолчанию
     }
+
 }
