@@ -27,6 +27,7 @@ object Leagues : Table() {
 
 open class LeagueTable(tableName: String) : Table(tableName) {
     val id = integer("id").autoIncrement()
+    val fixtureId = varchar("fixtureId", 50).uniqueIndex().nullable()
     val datetime = varchar("datetime", 50)
     val matchType = varchar("matchType", 50)
     val teams = varchar("teams", 100)
@@ -93,20 +94,32 @@ object DatabaseService {
 
     init {
         loadLeagues()
+        migrateTables()
     }
 
-    fun getMatchInfo(datetime: String, teams: String, leagueName: String): MatchInfo? {
-        val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
-            .format(dateTimeFormatter).toString()
+    private fun migrateTables() {
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                // Создаем недостающие таблицы и столбцы
+                SchemaUtils.createMissingTablesAndColumns(leagueTable)
+                logger.info("Ensured table and columns for league ${leagueTable.tableName}")
+            }
+        }
+    }
+
+    fun getMatchInfo(fixtureId: String, leagueName: String): MatchInfo? {
+//        val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
+//            .format(dateTimeFormatter).toString()
         return transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
 
             try {
                 leagueTable.select {
-                    (leagueTable.datetime eq dt) and
-                            (leagueTable.teams.lowerCase() eq teams.lowercase())
+                    leagueTable.fixtureId eq fixtureId
                 }.mapNotNull {
                     MatchInfo(
+                        it[leagueTable.fixtureId],
                         it[leagueTable.datetime],
                         it[leagueTable.matchType],
                         it[leagueTable.teams],
@@ -148,6 +161,7 @@ object DatabaseService {
 
                 SchemaUtils.createMissingTablesAndColumns(leagueTable)
                 leagueTable.insert {
+                    it[leagueTable.fixtureId] = match.fixtureId
                     it[leagueTable.datetime] = match.datetime
                     it[leagueTable.matchType] = match.matchType
                     it[leagueTable.teams] = match.teams
@@ -168,7 +182,7 @@ object DatabaseService {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
 
             try {
-                leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase()) }) {
+                leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                     it[leagueTable.actualOutcome] = matchInfo.actualOutcome
                     it[leagueTable.actualScore] = matchInfo.actualScore
                 }
@@ -178,7 +192,7 @@ object DatabaseService {
                     // Таблица не существует, создаем её и повторяем попытку обновления
                     SchemaUtils.createMissingTablesAndColumns(leagueTable)
                     logger.warn("Table for league ${matchInfo.matchType} did not exist. Created new table.")
-                    leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase()) }) {
+                    leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                         it[leagueTable.actualOutcome] = matchInfo.actualOutcome
                         it[leagueTable.actualScore] = matchInfo.actualScore
                     }
@@ -194,7 +208,7 @@ object DatabaseService {
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
 
-            leagueTable.update({ (leagueTable.datetime eq matchInfo.datetime) and (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase()) }) {
+            leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                 it[leagueTable.telegramMessageId] = matchInfo.telegramMessageId
             }
             logger.info("Telegram message ID updated for league: ${matchInfo.matchType}, match: ${matchInfo.teams} at ${matchInfo.datetime}")
@@ -215,6 +229,7 @@ object DatabaseService {
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                     if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                         MatchInfo(
+                            it[leagueTable.fixtureId],
                             it[leagueTable.datetime],
                             it[leagueTable.matchType],
                             it[leagueTable.teams],
@@ -238,26 +253,39 @@ object DatabaseService {
     fun matchExists(matchInfo: MatchInfo): Boolean {
         return transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
-
-            try {
+            if (matchInfo.fixtureId != null) {
+                leagueTable.select {
+                    leagueTable.fixtureId eq matchInfo.fixtureId
+                }.count() > 0
+            } else {
+                // Логика для старых записей без fixtureId
                 leagueTable.select {
                     (leagueTable.datetime eq matchInfo.datetime) and
                             (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase())
                 }.count() > 0
-            } catch (e: ExposedSQLException) {
-                if (e.message?.contains("no such table") == true) {
-                    // Таблица не существует, создаем её и возвращаем false, так как матч не может существовать
-                    SchemaUtils.createMissingTablesAndColumns(leagueTable)
-                    logger.warn("Table for league ${matchInfo.matchType} did not exist. Created new table.")
-                    return@transaction false
-                } else {
-                    throw e
-                }
             }
         }
     }
 
+    fun updateMatchPredictions(matchInfo: MatchInfo) {
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+            leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
+                it[predictedOutcome] = matchInfo.predictedOutcome
+                it[predictedScore] = matchInfo.predictedScore
+                it[odds] = matchInfo.odds
+            }
+            logger.info("Updated predictions for match ${matchInfo.teams} at ${matchInfo.datetime}")
+        }
+    }
 
+    fun deleteMatchByFixtureId(fixtureId: String, leagueName: String) {
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            leagueTable.deleteWhere { leagueTable.fixtureId eq fixtureId }
+            logger.info("Deleted match with fixtureId $fixtureId from league $leagueName")
+        }
+    }
 
 
     fun addUserActivity(userId: String, firstName: String?, lastName: String?, username: String?) {
@@ -316,6 +344,7 @@ object DatabaseService {
                             (leagueTable.telegramMessageId.isNull())
                 }.mapNotNullTo(matchesToSend) {
                     MatchInfo(
+                        it[leagueTable.fixtureId],
                         it[leagueTable.datetime],
                         it[leagueTable.matchType],
                         it[leagueTable.teams],
@@ -346,6 +375,7 @@ object DatabaseService {
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                     if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) && it[leagueTable.actualOutcome] != null) {
                         MatchInfo(
+                            it[leagueTable.fixtureId],
                             it[leagueTable.datetime],
                             it[leagueTable.matchType],
                             it[leagueTable.teams],
