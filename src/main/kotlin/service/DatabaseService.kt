@@ -99,11 +99,28 @@ object DatabaseService {
 
     private fun migrateTables() {
         transaction {
+            var fixtureIdCounter = 1 // Инициализируем счётчик перед циклом по таблицам
+
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                // Создаем недостающие таблицы и столбцы
+                // Убедимся, что таблица и столбцы существуют
                 SchemaUtils.createMissingTablesAndColumns(leagueTable)
                 logger.info("Ensured table and columns for league ${leagueTable.tableName}")
+
+                // Теперь обновим существующие записи, где 'fixtureId' равно null
+                val recordsToUpdate = leagueTable.select { leagueTable.fixtureId.isNull() }
+                    .orderBy(leagueTable.id to SortOrder.ASC)
+                    .toList()
+                if (recordsToUpdate.isNotEmpty()) {
+                    recordsToUpdate.forEach { row ->
+                        val id = row[leagueTable.id]
+                        leagueTable.update({ leagueTable.id eq id }) {
+                            it[fixtureId] = fixtureIdCounter.toString()
+                        }
+                        fixtureIdCounter++
+                    }
+                    logger.info("Assigned fixtureId to existing records in table ${leagueTable.tableName}")
+                }
             }
         }
     }
