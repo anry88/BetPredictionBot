@@ -111,7 +111,7 @@ object ChatGPTService {
         return matchInfoList
     }
 
-    private fun parseSingleMatchInfo(text: String, fixtureId: String?): MatchInfo? {
+    private fun parseSingleMatchInfo(text: String, fixtureId: String): MatchInfo? {
         val regex = """\[Match Start\]: \[(.+?)\]\s*\[Match Type\]: \[(.+?)\]\s*\[Teams\]: \[(.+?) vs\. (.+?)\]\s*\[Match Outcome\]: \[(.+?)\]\s*\[Score\]: \[(.+?)\]\s*\[Odd for Match Outcome\]: \[(.+?)\]""".toRegex()
         val match = regex.find(text)
 

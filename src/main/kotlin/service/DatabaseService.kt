@@ -6,7 +6,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -27,7 +26,7 @@ object Leagues : Table() {
 
 open class LeagueTable(tableName: String) : Table(tableName) {
     val id = integer("id").autoIncrement()
-    val fixtureId = varchar("fixtureId", 50).uniqueIndex().nullable()
+    val fixtureId = varchar("fixtureId", 50).uniqueIndex()
     val datetime = varchar("datetime", 50)
     val matchType = varchar("matchType", 50)
     val teams = varchar("teams", 100)
@@ -120,7 +119,7 @@ object DatabaseService {
                 if (recordsToUpdate.isNotEmpty()) {
                     recordsToUpdate.forEach { row ->
                         val id = row[leagueTable.id]
-                        val oldFixtureId = "old_$fixtureIdCounter"
+                        val oldFixtureId = "$fixtureIdCounter"
                         leagueTable.update({ leagueTable.id eq id }) {
                             it[fixtureId] = oldFixtureId
                         }
@@ -134,8 +133,6 @@ object DatabaseService {
 
 
     fun getMatchInfo(fixtureId: String, leagueName: String): MatchInfo? {
-//        val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
-//            .format(dateTimeFormatter).toString()
         return transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
 
@@ -354,9 +351,9 @@ object DatabaseService {
         }
     }
 
-    fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
+    fun getMatchesWithoutMessageIdForNext5Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val eightHoursLater = now.plusHours(8)
+        val fiveHoursLater = now.plusHours(2)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -365,7 +362,7 @@ object DatabaseService {
 
                 leagueTable.select {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq eightHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq fiveHoursLater.format(dateTimeFormatter)) and
                             (leagueTable.telegramMessageId.isNull())
                 }.mapNotNullTo(matchesToSend) {
                     MatchInfo(

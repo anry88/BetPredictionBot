@@ -1,5 +1,5 @@
 import DatabaseService.getCorrectPredictionsForPeriod
-import DatabaseService.getMatchesWithoutMessageIdForNext8Hours
+import DatabaseService.getMatchesWithoutMessageIdForNext5Hours
 import dto.MatchInfo
 import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -293,7 +293,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
     fun sendUpcomingMatchesToTelegram() {
-        val matches = getMatchesWithoutMessageIdForNext8Hours()
+        val matches = getMatchesWithoutMessageIdForNext5Hours()
 
         if (matches.isNotEmpty()) {
             matches.forEach { match ->
