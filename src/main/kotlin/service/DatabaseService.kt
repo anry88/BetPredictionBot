@@ -26,7 +26,7 @@ object Leagues : Table() {
 
 open class LeagueTable(tableName: String) : Table(tableName) {
     val id = integer("id").autoIncrement()
-    val fixtureId = varchar("fixtureId", 50).uniqueIndex().nullable()
+    val fixtureId = varchar("fixtureId", 50).uniqueIndex()
     val datetime = varchar("datetime", 50)
     val matchType = varchar("matchType", 50)
     val teams = varchar("teams", 100)
