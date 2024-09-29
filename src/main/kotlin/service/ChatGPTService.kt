@@ -55,7 +55,7 @@ object ChatGPTService {
             )
 
             val predictionsText = response.choices.first().message.content
-            return parseSingleMatchInfo(predictionsText, matchInfo.fixtureId)
+            return parseSingleMatchInfo(predictionsText, matchInfo.fixtureId.toString())
         } catch (e: Exception) {
             logger.error("Error getting prediction from ChatGPT: ${e.message}")
             null

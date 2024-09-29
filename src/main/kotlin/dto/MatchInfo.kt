@@ -1,7 +1,7 @@
 package dto
 
 data class MatchInfo(
-    val fixtureId: String,
+    val fixtureId: String?,
     val datetime: String,
     val matchType: String,
     val teams: String,
