@@ -107,6 +107,12 @@ object DatabaseService {
                 SchemaUtils.createMissingTablesAndColumns(leagueTable)
                 logger.info("Ensured table and columns for league ${leagueTable.tableName}")
 
+                // Сначала удалим записи, где 'telegramMessageId' равно null
+                val deletedCount = leagueTable.deleteWhere { leagueTable.telegramMessageId.isNull() }
+                if (deletedCount > 0) {
+                    logger.info("Deleted $deletedCount records without telegramMessageId from table ${leagueTable.tableName}")
+                }
+
                 // Теперь обновим существующие записи, где 'fixtureId' равно null
                 val recordsToUpdate = leagueTable.select { leagueTable.fixtureId.isNull() }
                     .orderBy(leagueTable.id to SortOrder.ASC)
@@ -114,8 +120,9 @@ object DatabaseService {
                 if (recordsToUpdate.isNotEmpty()) {
                     recordsToUpdate.forEach { row ->
                         val id = row[leagueTable.id]
+                        val oldFixtureId = "old_$fixtureIdCounter"
                         leagueTable.update({ leagueTable.id eq id }) {
-                            it[fixtureId] = fixtureIdCounter.toString()
+                            it[fixtureId] = oldFixtureId
                         }
                         fixtureIdCounter++
                     }
@@ -124,6 +131,7 @@ object DatabaseService {
             }
         }
     }
+
 
     fun getMatchInfo(fixtureId: String, leagueName: String): MatchInfo? {
 //        val dt = OffsetDateTime.parse(datetime, dateTimeFormatterForISOOffset)
