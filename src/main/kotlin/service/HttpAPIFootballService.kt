@@ -15,6 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
 class HttpAPIFootballService(private val footballBot: FootballBot) {
@@ -49,45 +50,82 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         popularLeagues.forEach { leagueId ->
             val matches = getUpcomingMatches(leagueId, 2024, formattedCurrentDate, formattedNextDay)
-            val remainingRequests = matches.firstOrNull()?.remainingRequests ?: "Unknown"
-
-            logger.info("Found ${matches.size} matches for league ID $leagueId between $formattedCurrentDate and $formattedNextDay")
-            logger.info("Remaining API calls: $remainingRequests")
             matches.forEach { match ->
-                logger.info("Match found: ${match.teams.home.name} vs ${match.teams.away.name} on ${match.fixture.date}, League: ${match.league.name}")
-            }
+                val fixtureId = match.fixture.id.toString()
+                val leagueName = "${match.league.country} ${match.league.name}"
 
-            if (matches.isNotEmpty()) {
-                // Разбиваем матчи на пачки по 10 штук и отправляем их последовательно
-                matches.chunked(10).forEach { matchChunk ->
-                    val matchesText = matchChunk.joinToString(separator = "\n") { match ->
-                        "[Match Start UTC]: [${match.fixture.date}] [Match Type]: [${match.league.country} ${match.league.name}] [Teams]: [${match.teams.home.name} vs. ${match.teams.away.name}]"
-                    }
+                // Парсим дату и время матча
+                val isoDateTime = match.fixture.date // Оригинальная дата и время в ISO формате
+                val parsedDateTime = OffsetDateTime.parse(isoDateTime) // Парсим ISO строку
 
-                    val predictions = ChatGPTService.getMatchPredictionsWithRetry(matchesText)
-                    val newMatches = mutableListOf<MatchInfo>()
+                // Приводим к нужному формату
+                val formatterMatchDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
 
-                    predictions.forEach { prediction ->
-                        if (!matchExists(prediction)) {
-                            newMatches.add(prediction)
+                val teams = "${match.teams.home.name} vs. ${match.teams.away.name}"
+
+                // Создаём объект MatchInfo перед вызовом matchExists
+                val matchInfo = MatchInfo(
+                    fixtureId = fixtureId,
+                    datetime = datetime,
+                    matchType = leagueName,
+                    teams = teams,
+                    predictedOutcome = null,
+                    actualOutcome = null,
+                    predictedScore = null,
+                    actualScore = null,
+                    odds = null,
+                    telegramMessageId = null
+                )
+
+                // Проверяем, существует ли матч в базе данных
+                if (!DatabaseService.matchExists(matchInfo)) {
+                    // Вставляем матч в базу данных
+                    DatabaseService.appendRows(listOf(matchInfo))
+
+                    var prediction: MatchInfo? = null
+                    val maxAttempts = 3
+                    var attempts = 0
+
+                    // Пытаемся получить предсказание до 3 раз
+                    while (attempts < maxAttempts && prediction == null) {
+                        attempts++
+                        try {
+                            prediction = ChatGPTService.getMatchPrediction(matchInfo)
+                        } catch (e: Exception) {
+                            logger.error("Error during ChatGPT prediction attempt $attempts: ${e.message}")
+                        }
+
+                        if (prediction != null) {
+                            // Обновляем matchInfo предсказанием
+                            matchInfo.predictedOutcome = prediction.predictedOutcome
+                            matchInfo.predictedScore = prediction.predictedScore
+                            matchInfo.odds = prediction.odds
+
+                            // Обновляем базу данных предсказанием
+                            DatabaseService.updateMatchPredictions(matchInfo)
+                            logger.info("Prediction obtained for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempt(s)")
                         } else {
-                            logger.info("Duplicate match found: ${prediction.teams} at ${prediction.datetime}")
+                            logger.warn("Attempt $attempts: Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime}")
+                            if (attempts < maxAttempts) {
+                                // Ожидаем перед следующей попыткой
+                                Thread.sleep(1000) // Пауза между попытками
+                            }
                         }
                     }
 
-                    if (newMatches.isNotEmpty()) {
-                        DatabaseService.appendRows(newMatches)
-
-                        logger.info("New matches appended to database: ${newMatches.size} matches added.")
-                    } else {
-                        logger.info("All matches are duplicates, no new matches to append.")
+                    // Если после 3 попыток предсказание не удалось получить, удаляем матч из базы данных
+                    if (prediction == null) {
+                        DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId!!, matchInfo.matchType)
+                        logger.error("Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempts. Match deleted from database.")
                     }
+                } else {
+                    logger.info("Duplicate match found: $teams at $datetime")
                 }
-            } else {
-                logger.error("No matches found for the specified dates for league ID $leagueId.")
             }
         }
     }
+
 
     suspend fun fetchPastMatches() {
         val currentDate = LocalDate.now()
@@ -111,7 +149,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
 
                 // Получаем существующую запись матча из базы данных
-                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.date, "${match.teams.home.name} vs. ${match.teams.away.name}", "${match.league.country} ${match.league.name}")
+                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.id.toString(), "${match.league.country} ${match.league.name}")
                 // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
                 val matchInfo = existingMatchInfo?.copy(
                     actualOutcome = actualOutcome,
@@ -125,12 +163,19 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     predictedScore = existingMatchInfo?.predictedScore,      // Сохранение существующего значения
                     actualScore = actualScore,
                     odds = existingMatchInfo?.odds,                          // Сохранение существующего значения
-                    telegramMessageId = existingMatchInfo?.telegramMessageId
+                    telegramMessageId = existingMatchInfo?.telegramMessageId,
+                    fixtureId = match.fixture.id.toString()
                 )
                 if (matchInfo.telegramMessageId != null) {
                     val updatedMessageText = footballBot.formatMatchInfoWithResult(matchInfo)
+                    val messageId = matchInfo.telegramMessageId
 
-                    footballBot.updateMessage(channelId, matchInfo.telegramMessageId, updatedMessageText)
+                    if (messageId != null) {
+                        footballBot.updateMessage(channelId, messageId, updatedMessageText)
+                    }
+                    else{
+                        logger.error("Message wasn't updated because messageId is null")
+                    }
                 }
 
                 // Обновляем запись в базе данных
