@@ -275,17 +275,11 @@ object DatabaseService {
     fun matchExists(matchInfo: MatchInfo): Boolean {
         return transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
-            if (matchInfo.fixtureId != null) {
-                leagueTable.select {
-                    leagueTable.fixtureId eq matchInfo.fixtureId
-                }.count() > 0
-            } else {
-                // Логика для старых записей без fixtureId
-                leagueTable.select {
-                    (leagueTable.datetime eq matchInfo.datetime) and
-                            (leagueTable.teams.lowerCase() eq matchInfo.teams.lowercase())
-                }.count() > 0
-            }
+            // Создаем таблицу, если она не существует
+            SchemaUtils.createMissingTablesAndColumns(leagueTable)
+            leagueTable.select {
+                leagueTable.fixtureId eq matchInfo.fixtureId
+            }.count() > 0
         }
     }
 
