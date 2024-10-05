@@ -93,44 +93,7 @@ object DatabaseService {
 
     init {
         loadLeagues()
-        migrateTables()
     }
-
-    private fun migrateTables() {
-        transaction {
-            var fixtureIdCounter = 1 // Инициализируем счётчик перед циклом по таблицам
-
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                // Убедимся, что таблица и столбцы существуют
-                SchemaUtils.createMissingTablesAndColumns(leagueTable)
-                logger.info("Ensured table and columns for league ${leagueTable.tableName}")
-
-                // Сначала удалим записи, где 'telegramMessageId' равно null
-                val deletedCount = leagueTable.deleteWhere { leagueTable.telegramMessageId.isNull() }
-                if (deletedCount > 0) {
-                    logger.info("Deleted $deletedCount records without telegramMessageId from table ${leagueTable.tableName}")
-                }
-
-                // Теперь обновим существующие записи, где 'fixtureId' равно null
-                val recordsToUpdate = leagueTable.select { leagueTable.fixtureId.isNull() }
-                    .orderBy(leagueTable.id to SortOrder.ASC)
-                    .toList()
-                if (recordsToUpdate.isNotEmpty()) {
-                    recordsToUpdate.forEach { row ->
-                        val id = row[leagueTable.id]
-                        val oldFixtureId = "$fixtureIdCounter"
-                        leagueTable.update({ leagueTable.id eq id }) {
-                            it[fixtureId] = oldFixtureId
-                        }
-                        fixtureIdCounter++
-                    }
-                    logger.info("Assigned fixtureId to existing records in table ${leagueTable.tableName}")
-                }
-            }
-        }
-    }
-
 
     fun getMatchInfo(fixtureId: String, leagueName: String): MatchInfo? {
         return transaction {
