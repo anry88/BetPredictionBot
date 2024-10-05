@@ -1,7 +1,7 @@
 package service
 
-import DatabaseService.matchExists
 import FootballBot
+import dto.LeagueConfig
 import dto.MatchInfo
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -22,12 +22,12 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
-    private val popularLeagues = listOf(
-        39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
-        88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
-        2, 3, 5, 32, 34, 848,   // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
-        203, 253, 307           // Турецкая Супер лига, США МЛС, Про Лига Саудовской Аравии
-    )
+//    private val popularLeagues = listOf(
+//        39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
+//        88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
+//        2, 3, 5, 32, 34, 848,   // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
+//        203, 253, 307           // Турецкая Супер лига, США МЛС, Про Лига Саудовской Аравии
+//    )
     private val url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 //    private val url = "http://localhost:1080/v3/fixtures"
 
@@ -40,6 +40,21 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
     }
 
+    // Добавляем JSON-парсер
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
+
+    // Загружаем конфигурацию лиг из файла
+    private val leaguesConfig: List<LeagueConfig> = loadLeaguesConfig()
+
+    private fun loadLeaguesConfig(): List<LeagueConfig> {
+        val leaguesJson = javaClass.getResource("/leagues.json")?.readText()
+            ?: throw IllegalStateException("leagues.json not found")
+        return json.decodeFromString<List<LeagueConfig>>(leaguesJson)
+    }
+
     suspend fun fetchMatches() {
         val currentDate = LocalDate.now()
         val nextDay = currentDate.plusDays(1)
@@ -48,8 +63,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val formattedCurrentDate = currentDate.format(formatter)
         val formattedNextDay = nextDay.format(formatter)
 
-        popularLeagues.forEach { leagueId ->
-            val matches = getUpcomingMatches(leagueId, 2024, formattedCurrentDate, formattedNextDay)
+        leaguesConfig.forEach { leagueConfig ->
+            val matches = getUpcomingMatches(leagueConfig.leagueId, leagueConfig.season, formattedCurrentDate, formattedNextDay)
             matches.forEach { match ->
                 val fixtureId = match.fixture.id.toString()
                 val leagueName = "${match.league.country} ${match.league.name}"
@@ -135,8 +150,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val formattedPreviousDay = previousDay.format(formatter)
         val formattedCurrentDate = currentDate.format(formatter)
 
-        popularLeagues.forEach { leagueId ->
-            val matches = getPastMatches(leagueId, 2024, formattedPreviousDay, formattedCurrentDate)
+        leaguesConfig.forEach { leagueConfig ->
+            val matches = getPastMatches(leagueConfig.leagueId, leagueConfig.season, formattedPreviousDay, formattedCurrentDate)
 
             matches.forEach { match ->
                 // Записываем победителя или ничью непосредственно в actualOutcome
