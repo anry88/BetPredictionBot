@@ -33,8 +33,8 @@ object ChatGPTService {
 
             val response = HttpChatGPTService.api.getChatGPTRequest(
                 ChatGPTRequest(
-                    model = "gpt-4o-2024-05-13", //old version
 //                    model = "gpt-4o-2024-05-13", //old version
+                    model = "gpt-4o-2024-08-06", //new version
                     messages = listOf(
                         Message(
                             role = "user",
