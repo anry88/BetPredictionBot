@@ -1,5 +1,3 @@
-import DatabaseService.getCorrectPredictionsForPeriod
-import DatabaseService.getMatchesWithoutMessageIdForNext5Hours
 import dto.MatchInfo
 import `interface`.TelegramService
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -12,6 +10,10 @@ import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
+import service.DatabaseService
+import service.DatabaseService.getCorrectPredictionsForPeriod
+import service.DatabaseService.getMatchesWithoutMessageIdForNext5Hours
+import service.initDatabase
 import java.io.File
 import java.time.LocalDate
 import java.time.YearMonth

@@ -1,3 +1,5 @@
+package service
+
 import dto.MatchInfo
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -10,8 +12,8 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-object UserStats : Table() {
-    val id = integer("id").autoIncrement()
+private object UserStats : Table() {
+    private val id = integer("id").autoIncrement()
     val userId = varchar("userId", 50)
     val firstName = varchar("firstName", 50).nullable()
     val lastName = varchar("lastName", 50).nullable()
@@ -26,7 +28,7 @@ object Leagues : Table() {
 }
 
 open class LeagueTable(tableName: String) : Table(tableName) {
-    val id = integer("id").autoIncrement()
+    private val id = integer("id").autoIncrement()
     val fixtureId = varchar("fixtureId", 50).uniqueIndex()
     val datetime = varchar("datetime", 50)
     val matchType = varchar("matchType", 50)
@@ -81,7 +83,6 @@ fun initDatabase(dbPath: String) {
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
     private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    private val dateTimeFormatterForISOOffset = DateTimeFormatter.ISO_OFFSET_DATE_TIME
 
     private val listOfLeagues = mutableSetOf<String>()
     private fun loadLeagues() {

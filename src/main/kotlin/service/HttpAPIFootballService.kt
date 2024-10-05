@@ -1,3 +1,5 @@
+@file:Suppress("PLUGIN_IS_NOT_ENABLED")
+
 package service
 
 import FootballBot
@@ -22,12 +24,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
-//    private val popularLeagues = listOf(
-//        39, 140, 135, 78, 61,   // Премьер-лига, Ла Лига, Серия А, Бундеслига, Лига 1
-//        88, 333, 94, 235, 10,   // Эредивизи, Премьер-лига Украины, Примейра-лига, Российская Премьер Лига, Дружеские
-//        2, 3, 5, 32, 34, 848,   // Лига наций, Квалификации ЧМ, Лига чемпионов, Лига Европы, Лига конференций
-//        203, 253, 307           // Турецкая Супер лига, США МЛС, Про Лига Саудовской Аравии
-//    )
+
     private val url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 //    private val url = "http://localhost:1080/v3/fixtures"
 
@@ -131,7 +128,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                     // Если после 3 попыток предсказание не удалось получить, удаляем матч из базы данных
                     if (prediction == null) {
-                        DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId!!, matchInfo.matchType)
+                        DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
                         logger.error("Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempts. Match deleted from database.")
                     }
                 } else {
