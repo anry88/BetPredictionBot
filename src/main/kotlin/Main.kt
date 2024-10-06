@@ -19,13 +19,23 @@ class FetchMatchesJob : Job {
 class UpdateMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
-        val footballService = HttpAPIFootballService(footballBot)
+//        val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-            footballService.fetchPastMatches()
+//            footballService.fetchPastMatches()
             footballBot.sendUpcomingMatchesToTelegram()
         }
     }
 }
+
+class UpdateLiveMatchesJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.updateLiveMatches()
+        }
+    }
+}
+
 class SendAccuracyJob : Job {
     override fun execute(context: JobExecutionContext?) {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
@@ -145,6 +155,16 @@ fun main() {
         .withSchedule(CronScheduleBuilder.cronSchedule("0 33 8 1 1 ?"))
         .build()
 
+    val liveUpdateJob = JobBuilder.newJob(UpdateLiveMatchesJob::class.java)
+        .withIdentity("updateLiveMatchesJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val liveUpdateTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("updateLiveMatchesTrigger", "group1")
+        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
+        .build()
+
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateJob, dailyUpdateTrigger)
@@ -152,6 +172,7 @@ fun main() {
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
+    scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled UpdateMatchesJob to run at every hour")
@@ -160,4 +181,5 @@ fun main() {
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
     logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
     logger.info("Executed FetchMatchesJob immediately upon startup")
+    logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
 }
