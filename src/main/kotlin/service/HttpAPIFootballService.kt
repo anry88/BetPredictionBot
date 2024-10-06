@@ -245,6 +245,57 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
     }
 
+    suspend fun getLiveMatchInfo(fixtureId: String): MatchInfo? {
+        // Сначала получаем текущую информацию о матче из базы данных
+        val existingMatchInfo = DatabaseService.getMatchInfoByFixtureId(fixtureId)
+        if (existingMatchInfo == null) {
+            logger.warn("Match with fixtureId $fixtureId not found in the database")
+            return null
+        }
+
+        // Затем получаем актуальные данные о матче из API
+        val response: HttpResponse = client.get(url) {
+            headers {
+                append("X-RapidAPI-Key", apiKey)
+                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
+            }
+            parameter("id", fixtureId)
+        }
+        if (response.status == HttpStatusCode.OK) {
+            val result = response.body<ApiFootballResponse>()
+            val match = result.response.firstOrNull()
+            if (match != null) {
+                val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
+                val statusShort = match.fixture.status.short
+                val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
+                    when {
+                        match.teams.home.winner == true -> match.teams.home.name
+                        match.teams.away.winner == true -> match.teams.away.name
+                        else -> "Draw"
+                    }
+                } else {
+                    null
+                }
+
+                // Создаём обновлённый объект MatchInfo, обновляя только необходимые поля
+                val updatedMatchInfo = existingMatchInfo.copy(
+                    actualScore = actualScore,
+                    actualOutcome = actualOutcome
+                )
+
+                // Возвращаем обновлённый объект
+                return updatedMatchInfo
+            } else {
+                logger.warn("No match data found for fixtureId $fixtureId")
+                return null
+            }
+        } else {
+            logger.error("Failed to fetch live match info for fixtureId $fixtureId. HTTP status: ${response.status}")
+            return null
+        }
+    }
+
+
     @Serializable
     data class ApiFootballResponse(val response: List<Match>)
 

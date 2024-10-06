@@ -1,5 +1,6 @@
 import dto.MatchInfo
 import `interface`.TelegramService
+import kotlinx.coroutines.delay
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
@@ -13,6 +14,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import service.DatabaseService
 import service.DatabaseService.getCorrectPredictionsForPeriod
 import service.DatabaseService.getMatchesWithoutMessageIdForNext5Hours
+import service.HttpAPIFootballService
 import service.initDatabase
 import java.io.File
 import java.time.LocalDate
@@ -22,6 +24,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
+    private val footballService = HttpAPIFootballService(this)
 
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
@@ -238,6 +241,19 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         """.trimIndent()
     }
 
+    fun formatLiveMatch(matchInfo: MatchInfo): String{
+        val flag = getCountryFlag(matchInfo.matchType)
+        return """
+            Match Time UTC: ${matchInfo.datetime}
+            Match Type: ${matchInfo.matchType}$flag
+            Teams: ${matchInfo.teams}
+            Predicted Outcome: ${matchInfo.predictedOutcome}
+            Predicted Score: ${matchInfo.predictedScore}
+            Current Score: ${matchInfo.actualScore}
+            #live
+        """.trimIndent()
+    }
+
     private fun processMessage(messageText: String): String {
         return "This is a response to: $messageText"
     }
@@ -310,6 +326,36 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         }
     }
+
+    suspend fun updateLiveMatches() {
+        val matchesToUpdate = DatabaseService.getOngoingMatches()
+        for (match in matchesToUpdate) {
+            val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
+            if (updatedMatchInfo != null) {
+                // Обновляем базу данных с новыми actualScore и actualOutcome
+                DatabaseService.updateMatchResult(updatedMatchInfo)
+                // Выбираем форматирование в зависимости от статуса матча
+                val messageText = if (updatedMatchInfo.actualOutcome != null) {
+                    // Матч завершён, используем финальное форматирование
+                    formatMatchInfoWithResult(updatedMatchInfo)
+                } else {
+                    // Матч ещё идёт, используем форматирование для текущих матчей
+                    formatLiveMatch(updatedMatchInfo)
+                }
+                // Обновляем сообщение в Telegram
+                val messageId = updatedMatchInfo.telegramMessageId
+                if (messageId != null) {
+                    updateMessage(channelId, messageId, messageText)
+                } else {
+                    logger.warn("No telegramMessageId for match with fixtureId ${updatedMatchInfo.fixtureId}")
+                }
+            }
+            // Добавьте задержку, чтобы не превышать лимиты API
+            delay(10000)
+        }
+    }
+
+
     private fun getDaysInLastMonth(): Int {
         val currentDate = LocalDate.now()
         val lastMonth = currentDate.minusMonths(1)

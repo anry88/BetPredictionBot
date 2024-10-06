@@ -268,6 +268,73 @@ object DatabaseService {
         }
     }
 
+    fun getOngoingMatches(): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val threeHoursAgo = now.minusHours(6)
+        val actualNow = now.minusHours(3)
+        val matchesToUpdate = mutableListOf<MatchInfo>()
+
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+
+                leagueTable.selectAll().mapNotNullTo(matchesToUpdate) {
+                    val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+                    val isWithinTimeWindow = matchDateTime.isAfter(threeHoursAgo) && matchDateTime.isBefore(actualNow)
+
+                    if (isWithinTimeWindow) {
+                        MatchInfo(
+                            fixtureId = it[leagueTable.fixtureId],
+                            datetime = it[leagueTable.datetime],
+                            matchType = it[leagueTable.matchType],
+                            teams = it[leagueTable.teams],
+                            predictedOutcome = it[leagueTable.predictedOutcome],
+                            actualOutcome = it[leagueTable.actualOutcome],
+                            predictedScore = it[leagueTable.predictedScore],
+                            actualScore = it[leagueTable.actualScore],
+                            odds = it[leagueTable.odds],
+                            telegramMessageId = it[leagueTable.telegramMessageId]
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
+        return matchesToUpdate
+    }
+
+
+    fun getMatchInfoByFixtureId(fixtureId: String): MatchInfo? {
+        var matchInfo: MatchInfo? = null
+        transaction {
+            for (leagueName in listOfLeagues) {
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                val result = leagueTable.select {
+                    leagueTable.fixtureId eq fixtureId
+                }.mapNotNull {
+                    MatchInfo(
+                        fixtureId = it[leagueTable.fixtureId],
+                        datetime = it[leagueTable.datetime],
+                        matchType = it[leagueTable.matchType],
+                        teams = it[leagueTable.teams],
+                        predictedOutcome = it[leagueTable.predictedOutcome],
+                        actualOutcome = it[leagueTable.actualOutcome],
+                        predictedScore = it[leagueTable.predictedScore],
+                        actualScore = it[leagueTable.actualScore],
+                        odds = it[leagueTable.odds],
+                        telegramMessageId = it[leagueTable.telegramMessageId]
+                    )
+                }.singleOrNull()
+                if (result != null) {
+                    matchInfo = result
+                    break
+                }
+            }
+        }
+        return matchInfo
+    }
+
 
     fun addUserActivity(userId: String, firstName: String?, lastName: String?, username: String?) {
         val now = LocalDateTime.now(ZoneId.of("UTC+3")).format(dateTimeFormatter)
