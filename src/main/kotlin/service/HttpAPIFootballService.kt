@@ -281,11 +281,20 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     null
                 }
 
+                // Парсим дату и время матча
+                val isoDateTime = match.fixture.date // Оригинальная дата и время в ISO формате
+                val parsedDateTime = OffsetDateTime.parse(isoDateTime) // Парсим ISO строку
+
+                // Приводим к нужному формату
+                val formatterMatchDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
+
                 // Создаём обновлённый объект MatchInfo, обновляя только необходимые поля
                 val updatedMatchInfo = existingMatchInfo.copy(
                     actualScore = actualScore,
                     actualOutcome = actualOutcome,
-                    elapsed = elapsed
+                    elapsed = elapsed,
+                    datetime = datetime
                 )
 
                 // Возвращаем обновлённый объект

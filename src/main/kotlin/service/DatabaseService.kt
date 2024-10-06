@@ -171,6 +171,7 @@ object DatabaseService {
 
             try {
                 leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
+                    it[leagueTable.datetime] = matchInfo.datetime
                     it[leagueTable.actualOutcome] = matchInfo.actualOutcome
                     it[leagueTable.actualScore] = matchInfo.actualScore
                 }
