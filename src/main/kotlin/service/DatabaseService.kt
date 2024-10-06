@@ -203,6 +203,17 @@ object DatabaseService {
         }
     }
 
+    fun updateMatchDatetime(matchInfo: MatchInfo) {
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+
+            leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
+                it[leagueTable.datetime] = matchInfo.datetime
+            }
+            logger.info("Datetime updated for league: ${matchInfo.matchType}, match: ${matchInfo.teams} at ${matchInfo.datetime}")
+        }
+    }
+
     fun getUpcomingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val tomorrow = now.plusDays(1)

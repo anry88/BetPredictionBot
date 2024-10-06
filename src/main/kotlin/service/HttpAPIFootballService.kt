@@ -133,6 +133,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         logger.error("Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempts. Match deleted from database.")
                     }
                 } else {
+                    DatabaseService.updateMatchDatetime(matchInfo)
                     logger.info("Duplicate match found: $teams at $datetime")
                 }
             }
