@@ -115,7 +115,8 @@ object DatabaseService {
                         it[leagueTable.predictedScore],
                         it[leagueTable.actualScore],
                         it[leagueTable.odds],
-                        it[leagueTable.telegramMessageId]
+                        it[leagueTable.telegramMessageId],
+                        null
                     )
                 }.singleOrNull()
             } catch (e: ExposedSQLException) {
@@ -225,7 +226,8 @@ object DatabaseService {
                             it[leagueTable.predictedScore],
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
-                            it[leagueTable.telegramMessageId]
+                            it[leagueTable.telegramMessageId],
+                            null
                         )
                     } else {
                         null
@@ -293,7 +295,8 @@ object DatabaseService {
                             predictedScore = it[leagueTable.predictedScore],
                             actualScore = it[leagueTable.actualScore],
                             odds = it[leagueTable.odds],
-                            telegramMessageId = it[leagueTable.telegramMessageId]
+                            telegramMessageId = it[leagueTable.telegramMessageId],
+                            null
                         )
                     } else {
                         null
@@ -323,7 +326,8 @@ object DatabaseService {
                         predictedScore = it[leagueTable.predictedScore],
                         actualScore = it[leagueTable.actualScore],
                         odds = it[leagueTable.odds],
-                        telegramMessageId = it[leagueTable.telegramMessageId]
+                        telegramMessageId = it[leagueTable.telegramMessageId],
+                        null
                     )
                 }.singleOrNull()
                 if (result != null) {
@@ -401,7 +405,8 @@ object DatabaseService {
                         it[leagueTable.predictedScore],
                         it[leagueTable.actualScore],
                         it[leagueTable.odds],
-                        it[leagueTable.telegramMessageId]
+                        it[leagueTable.telegramMessageId],
+                        null
                     )
                 }
             }
@@ -432,7 +437,8 @@ object DatabaseService {
                             it[leagueTable.predictedScore],
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
-                            it[leagueTable.telegramMessageId]
+                            it[leagueTable.telegramMessageId],
+                            null
                         )
                     } else {
                         null

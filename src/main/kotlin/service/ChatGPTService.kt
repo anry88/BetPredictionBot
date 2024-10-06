@@ -66,7 +66,8 @@ object ChatGPTService {
                 odds = odds,
                 actualOutcome = null,
                 actualScore = null,
-                telegramMessageId = null
+                telegramMessageId = null,
+                elapsed = null
             )
         } else {
             logger.error("Failed to parse match info from text: $text")

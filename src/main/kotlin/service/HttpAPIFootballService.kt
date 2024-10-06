@@ -87,7 +87,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     predictedScore = null,
                     actualScore = null,
                     odds = null,
-                    telegramMessageId = null
+                    telegramMessageId = null,
+                    elapsed = null
                 )
 
                 // Проверяем, существует ли матч в базе данных
@@ -176,7 +177,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     actualScore = actualScore,
                     odds = existingMatchInfo?.odds,                          // Сохранение существующего значения
                     telegramMessageId = existingMatchInfo?.telegramMessageId,
-                    fixtureId = match.fixture.id.toString()
+                    fixtureId = match.fixture.id.toString(),
+                    elapsed = null
                 )
                 if (matchInfo.telegramMessageId != null) {
                     val updatedMessageText = footballBot.formatMatchInfoWithResult(matchInfo)
@@ -266,6 +268,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             val match = result.response.firstOrNull()
             if (match != null) {
                 val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
+                val elapsed = match.fixture.status.elapsed
                 val statusShort = match.fixture.status.short
                 val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
                     when {
@@ -280,7 +283,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 // Создаём обновлённый объект MatchInfo, обновляя только необходимые поля
                 val updatedMatchInfo = existingMatchInfo.copy(
                     actualScore = actualScore,
-                    actualOutcome = actualOutcome
+                    actualOutcome = actualOutcome,
+                    elapsed = elapsed
                 )
 
                 // Возвращаем обновлённый объект

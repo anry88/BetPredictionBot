@@ -10,5 +10,6 @@ data class MatchInfo(
     var predictedScore: String?,
     var actualScore: String?,
     var odds: String?,
-    var telegramMessageId: String?
+    var telegramMessageId: String?,
+    var elapsed: Int?
 )
