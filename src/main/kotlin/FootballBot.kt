@@ -475,6 +475,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "Saudi-Arabia" to "🇸🇦",
             "Saudi Arabia" to "🇸🇦", // Вариант без дефиса
             "United States" to "🇺🇸", // Дополнительный вариант для USA
+            "Argentina" to "🇦🇷",
+            "Brazil" to "🇧🇷",
             "UEFA" to "🇪🇺",
             "Europe" to "🌍", // Глобус с Европой и Африкой
             "Asia" to "🌏",   // Глобус с Азией и Австралией
