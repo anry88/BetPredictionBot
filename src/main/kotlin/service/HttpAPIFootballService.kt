@@ -97,7 +97,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     DatabaseService.appendRows(listOf(matchInfo))
 
                     var prediction: MatchInfo? = null
-                    val maxAttempts = 3
+                    val maxAttempts = 10
                     var attempts = 0
 
                     // Пытаемся получить предсказание до 3 раз
