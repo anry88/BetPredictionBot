@@ -268,7 +268,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             val match = result.response.firstOrNull()
             if (match != null) {
                 val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
-                val elapsed = match.fixture.status.elapsed
+                val elapsed = match.fixture.status.elapsed ?: 0
                 val statusShort = match.fixture.status.short
                 val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
                     when {
