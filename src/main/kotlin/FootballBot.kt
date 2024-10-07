@@ -348,6 +348,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     updateMessage(channelId, messageId, messageText)
                 } else {
                     logger.warn("No telegramMessageId for match with fixtureId ${updatedMatchInfo.fixtureId}")
+                    val telegramMessageId = sendMessageAndGetId(channelId, messageText)
+                    if (telegramMessageId != null) {
+                        val newMatchInfo = match.copy(telegramMessageId = telegramMessageId.toString())
+                        DatabaseService.updateMatchMessageId(newMatchInfo)
+                    }
                 }
             }
             // Добавьте задержку, чтобы не превышать лимиты API
