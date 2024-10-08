@@ -136,6 +136,9 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     DatabaseService.updateMatchDatetime(matchInfo)
                     logger.info("Duplicate match found: $teams at $datetime")
                 }
+                if (match.fixture.status.short == "CANC"){
+                    DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+                }
             }
         }
     }
