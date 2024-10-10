@@ -108,7 +108,7 @@ fun main() {
 
     val dailyUpdateTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateMatchesDailyTrigger", "group1")
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(5).repeatForever())
+        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
         .build()
 
     // Добавляем новый job для отправки сообщений с точностью предсказаний
