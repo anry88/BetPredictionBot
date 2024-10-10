@@ -218,9 +218,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
+        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
         return """
             Match Time UTC: ${matchInfo.datetime}
-            Match Type: ${matchInfo.matchType}$flag
+            Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
@@ -230,9 +231,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
+        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
         return """
             Match Time UTC: ${matchInfo.datetime}
-            Match Type: ${matchInfo.matchType}$flag
+            Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Actual Outcome: ${matchInfo.actualOutcome}$emoji
@@ -243,9 +245,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     fun formatLiveMatch(matchInfo: MatchInfo): String{
         val flag = getCountryFlag(matchInfo.matchType)
+        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+
         return """
             Match Time UTC: ${matchInfo.datetime}
-            Match Type: ${matchInfo.matchType}$flag
+            Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
@@ -482,7 +486,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "United States" to "🇺🇸", // Дополнительный вариант для USA
             "Argentina" to "🇦🇷",
             "Brazil" to "🇧🇷",
-            "UEFA" to "🇪🇺",
+//            "UEFA" to "🇪🇺",
+            "UEFA" to "🌍",
+            "CONMEBOL" to "🌎",
             "Europe" to "🌍", // Глобус с Европой и Африкой
             "Asia" to "🌏",   // Глобус с Азией и Австралией
             "Africa" to "🌍", // Можно использовать тот же глобус
