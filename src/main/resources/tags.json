@@ -1,0 +1,41 @@
+{
+  "leagues": {
+    "English Premier League": "#EnglishPremierLeague #PremierLeague",
+    "Spain La Liga": "#SpainLaLiga #LaLiga",
+    "Germany Bundesliga": "#GermanyBundesliga #Bundesliga",
+    "Italy Serie A": "#ItalySerieA #SerieA",
+    "France Ligue 1": "#FranceLigue1 #Ligue1",
+    "USA Major League Soccer": "#USAMLS #MLS #MajorLeagueSoccer",
+    "Friendlies" : "#Friendlies",
+    "Nations League": "#NationsLeague"
+  },
+  "teams": {
+    "Kazakhstan": "#Kazakhstan",
+    "Slovenia": "#Slovenia",
+    "Andorra": "#Andorra",
+    "San Marino": "#SanMarino",
+    "Armenia": "#Armenia",
+    "FYR Macedonia": "#Macedonia",
+    "Finland": "#Finland",
+    "England": "#England",
+    "Liechtenstein": "#Liechtenstein",
+    "Gibraltar": "#Gibraltar",
+    "Malta": "#Malta",
+    "Moldova": "#Moldova",
+    "Austria": "#Austria",
+    "Norway": "#Norway",
+    "Faroe Islands": "#FaroeIslands",
+    "Latvia": "#Latvia",
+    "Greece": "#Greece",
+    "Rep. Of Ireland": "#RepublicOfIreland #Ireland",
+    "New Zealand": "#NewZealand",
+    "Malaysia": "#Malaysia",
+    "Myanmar": "#Myanmar",
+    "Sri Lanka": "#SriLanka",
+    "Manchester United": "#ManUtd",
+    "Real Madrid": "#RealMadrid",
+    "Bayern Munich": "#Bayern",
+    "Juventus": "#Juventus",
+    "Paris Saint-Germain": "#PSG"
+  }
+}
