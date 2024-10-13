@@ -393,7 +393,7 @@ object DatabaseService {
 
     fun getMatchesWithoutMessageIdForNext5Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val fiveHoursLater = now.plusHours(2)
+        val fiveHoursLater = now.plusHours(24)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -613,6 +613,15 @@ object DatabaseService {
                 (LeaguePredictability.strategyRoi greaterEq strategyRoiThreshold) and
                         (LeaguePredictability.strategyAccuracy greaterEq strategyAccuracyThreshold)
             }.map { it[LeaguePredictability.leagueName] }
+        }
+    }
+    fun updateMatchOdds(matchInfo: MatchInfo) {
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+            leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
+                it[odds] = matchInfo.odds
+            }
+            logger.info("Updated odds for match ${matchInfo.teams} at ${matchInfo.datetime}")
         }
     }
 

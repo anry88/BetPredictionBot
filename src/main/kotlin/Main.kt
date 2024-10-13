@@ -27,6 +27,16 @@ class UpdateMatchesJob : Job {
     }
 }
 
+//class UpdateMatchesJob : Job {
+//    override fun execute(context: JobExecutionContext?) {
+//        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+//        runBlocking {
+//            footballBot.sendUpcomingMatchesToTelegram()
+//        }
+//    }
+//}
+
+
 class UpdateLiveMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot

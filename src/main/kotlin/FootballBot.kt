@@ -470,7 +470,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 //        }
 //    }
 
-    fun sendUpcomingMatchesToTelegram() {
+    suspend fun sendUpcomingMatchesToTelegram() {
         val matches = getMatchesWithoutMessageIdForNext5Hours()
 
         if (matches.isNotEmpty()) {
@@ -478,6 +478,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val predictableLeagues = DatabaseService.getPredictableLeagues(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
 
             matches.forEach { match ->
+                // Перед отправкой сообщения обновляем коэффициенты
+                val teamsForOdds = match.teams.split(" vs. ")
+                if (teamsForOdds.size == 2) {
+                    val homeTeam = teamsForOdds[0].trim()
+                    val awayTeam = teamsForOdds[1].trim()
+                    val odds = footballService.getOddsForFixture(match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam)
+                    if (odds != null) {
+                        match.odds = odds.toString()
+                        DatabaseService.updateMatchOdds(match)
+                    }
+                }
+
                 // Отправляем матч в основной канал, если он еще не был отправлен
                 val messageId = match.telegramMessageId ?: run {
                     val messageText = formatMatchInfo(match)
