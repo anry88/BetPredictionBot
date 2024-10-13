@@ -127,7 +127,7 @@ fun main() {
 
     val updateLeaguePredictabilityTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateLeaguePredictabilityTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(20, 37))  // Каждый день в 08:00
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 0))  // Каждый день в 08:00
         .build()
 
     // Добавляем новый job для отправки сообщений с точностью предсказаний

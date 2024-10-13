@@ -2,6 +2,7 @@ package service
 
 import dto.LeagueStats
 import dto.MatchInfo
+import dto.PeriodStats
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
@@ -425,7 +426,7 @@ object DatabaseService {
 
         return matchesToSend
     }
-    fun getCorrectPredictionsForPeriod(days: Int): Pair<Double, Pair<Int, Int>> {
+    fun getStatisticsForPeriod(days: Int): PeriodStats {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val startDate = now.minusDays(days.toLong())
         val allMatches = mutableListOf<MatchInfo>()
@@ -459,8 +460,56 @@ object DatabaseService {
             }
         }
 
-        val totalMatches = allMatches.size
-        val correctPredictions = allMatches.count { it.predictedOutcome?.lowercase() == it.actualOutcome?.lowercase() }
+        var totalMatches = 0
+        var correctPredictions = 0
+        var totalStakes = 0.0
+        var totalReturns = 0.0
+
+        var strategyTotalMatches = 0
+        var strategyCorrectPredictions = 0
+        var strategyTotalStakes = 0.0
+        var strategyTotalReturns = 0.0
+
+        val predictableLeagues = getPredictableLeagues(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
+
+        allMatches.forEach { match ->
+            totalMatches += 1
+            val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
+            val stake = 100.0
+            totalStakes += stake
+
+            if (match.predictedOutcome?.lowercase() == match.actualOutcome?.lowercase()) {
+                correctPredictions += 1
+                val profit = (oddsValue * stake) - stake
+                totalReturns += profit
+            } else {
+                totalReturns -= stake
+            }
+
+            // Проверяем, соответствует ли матч стратегии
+            val teams = match.teams.split(" vs. ")
+            if (teams.size == 2) {
+                val homeTeam = teams[0].trim()
+                val predictedOutcome = match.predictedOutcome
+                val isHomeTeamPredicted = predictedOutcome == homeTeam
+                val isPredictableLeague = match.matchType in predictableLeagues
+                val isOddsInRange = oddsValue in 1.20..2.20
+                val isNotDraw = predictedOutcome != "Draw"
+
+                if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw) {
+                    strategyTotalMatches += 1
+                    strategyTotalStakes += stake
+
+                    if (match.predictedOutcome?.lowercase() == match.actualOutcome?.lowercase()) {
+                        strategyCorrectPredictions += 1
+                        val profit = (oddsValue * stake) - stake
+                        strategyTotalReturns += profit
+                    } else {
+                        strategyTotalReturns -= stake
+                    }
+                }
+            }
+        }
 
         val accuracy = if (totalMatches > 0) {
             (correctPredictions.toDouble() / totalMatches) * 100
@@ -468,8 +517,40 @@ object DatabaseService {
             0.0
         }
 
-        return Pair(accuracy, Pair(correctPredictions, totalMatches))
+        val roi = if (totalStakes > 0) {
+            (totalReturns / totalStakes) * 100
+        } else {
+            0.0
+        }
+
+        val strategyAccuracy = if (strategyTotalMatches > 0) {
+            (strategyCorrectPredictions.toDouble() / strategyTotalMatches) * 100
+        } else {
+            0.0
+        }
+
+        val strategyRoi = if (strategyTotalStakes > 0) {
+            (strategyTotalReturns / strategyTotalStakes) * 100
+        } else {
+            0.0
+        }
+
+        return PeriodStats(
+            totalMatches = totalMatches,
+            correctPredictions = correctPredictions,
+            totalStakes = totalStakes,
+            totalReturns = totalReturns,
+            accuracy = accuracy,
+            roi = roi,
+            strategyTotalMatches = strategyTotalMatches,
+            strategyCorrectPredictions = strategyCorrectPredictions,
+            strategyTotalStakes = strategyTotalStakes,
+            strategyTotalReturns = strategyTotalReturns,
+            strategyAccuracy = strategyAccuracy,
+            strategyRoi = strategyRoi
+        )
     }
+
     fun getAllMatches(): List<MatchInfo> {
         val allMatches = mutableListOf<MatchInfo>()
         transaction {
