@@ -233,7 +233,7 @@ object DatabaseService {
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
                             it[leagueTable.telegramMessageId],
-                            null,
+                            it[leagueTable.strategyTelegramMessageId],
                             null
                         )
                     } else {
@@ -304,7 +304,7 @@ object DatabaseService {
                             actualScore = it[leagueTable.actualScore],
                             odds = it[leagueTable.odds],
                             telegramMessageId = it[leagueTable.telegramMessageId],
-                            null,
+                            strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
                             null
                         )
                     } else {
@@ -336,7 +336,7 @@ object DatabaseService {
                         actualScore = it[leagueTable.actualScore],
                         odds = it[leagueTable.odds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
-                        null,
+                        strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
                         null
                     )
                 }.singleOrNull()
@@ -393,7 +393,7 @@ object DatabaseService {
 
     fun getMatchesWithoutMessageIdForNext5Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val fiveHoursLater = now.plusHours(24)
+        val fiveHoursLater = now.plusHours(2)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -417,7 +417,7 @@ object DatabaseService {
                         it[leagueTable.actualScore],
                         it[leagueTable.odds],
                         it[leagueTable.telegramMessageId],
-                        null,
+                        it[leagueTable.strategyTelegramMessageId],
                         null
                     )
                 }
@@ -450,7 +450,7 @@ object DatabaseService {
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
                             it[leagueTable.telegramMessageId],
-                            null,
+                            it[leagueTable.strategyTelegramMessageId],
                             null
                         )
                     } else {

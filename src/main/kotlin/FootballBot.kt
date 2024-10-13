@@ -453,23 +453,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-//    fun sendUpcomingMatchesToTelegram() {
-//        val matches = getMatchesWithoutMessageIdForNext5Hours()
-//
-//        if (matches.isNotEmpty()) {
-//            matches.forEach { match ->
-//                val messageText = formatMatchInfo(match)
-//                val messageId = sendMessageAndGetId(channelId, messageText)
-//
-//                if (messageId != null) {
-//                    val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
-//                    DatabaseService.updateMatchMessageId(updatedMatchInfo)
-//                }
-//                Thread.sleep(10000)
-//            }
-//        }
-//    }
-
     suspend fun sendUpcomingMatchesToTelegram() {
         val matches = getMatchesWithoutMessageIdForNext5Hours()
 
@@ -534,39 +517,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-
-//    suspend fun updateLiveMatches() {
-//        val matchesToUpdate = DatabaseService.getOngoingMatches()
-//        for (match in matchesToUpdate) {
-//            val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
-//            if (updatedMatchInfo != null) {
-//                // Обновляем базу данных с новыми actualScore и actualOutcome
-//                DatabaseService.updateMatchResult(updatedMatchInfo)
-//                // Выбираем форматирование в зависимости от статуса матча
-//                val messageText = if (updatedMatchInfo.actualOutcome != null) {
-//                    // Матч завершён, используем финальное форматирование
-//                    formatMatchInfoWithResult(updatedMatchInfo)
-//                } else {
-//                    // Матч ещё идёт, используем форматирование для текущих матчей
-//                    formatLiveMatch(updatedMatchInfo)
-//                }
-//                // Обновляем сообщение в Telegram
-//                val messageId = updatedMatchInfo.telegramMessageId
-//                if (messageId != null) {
-//                    updateMessage(channelId, messageId, messageText)
-//                } else {
-//                    logger.warn("No telegramMessageId for match with fixtureId ${updatedMatchInfo.fixtureId}")
-//                    val telegramMessageId = sendMessageAndGetId(channelId, messageText)
-//                    if (telegramMessageId != null) {
-//                        val newMatchInfo = match.copy(telegramMessageId = telegramMessageId.toString())
-//                        DatabaseService.updateMatchMessageId(newMatchInfo)
-//                    }
-//                }
-//            }
-//            // Добавьте задержку, чтобы не превышать лимиты API
-//            delay(10000)
-//        }
-//    }
 
     suspend fun updateLiveMatches() {
         val matchesToUpdate = DatabaseService.getOngoingMatches()
@@ -708,7 +658,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val days = parts[1].toIntOrNull()
             if (days != null && days > 0) {
                 val stats = DatabaseService.getStatisticsForPeriod(days)
-                val messageText = if (stats.totalMatches > 0) {
+                val resultMessageText = if (stats.totalMatches > 0) {
                     """
                 📊 **Prediction Statistics for Last $days Days**
 
@@ -724,7 +674,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     "No matches were played in the last $days days."
                 }
 
-                sendMessage(chatId, messageText)
+                sendMessage(chatId, resultMessageText)
             } else {
                 sendMessage(chatId, "Please provide a valid number of days.")
             }
