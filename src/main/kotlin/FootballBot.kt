@@ -1,6 +1,8 @@
 import dto.MatchInfo
+import dto.TagsData
 import `interface`.TelegramService
 import kotlinx.coroutines.delay
+import kotlinx.serialization.json.Json
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
@@ -26,10 +28,16 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
     private val footballService = HttpAPIFootballService(this)
 
+    private val leagueTags: Map<String, String>
+    private val teamTags: Map<String, String>
+
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
         initDatabase("predictions.db") // Используем правильный путь к вашему файлу базы данных
         setCommands()
+        val tags = loadTags()
+        leagueTags = tags.first
+        teamTags = tags.second
     }
 
     override fun getBotToken(): String {
@@ -119,6 +127,35 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         }
     }
+
+    private fun loadTags(): Pair<Map<String, String>, Map<String, String>> {
+        val fileContent = javaClass.getResource("/tags.json")?.readText() ?: throw IllegalStateException("leagues.json not found")
+        val json = Json { ignoreUnknownKeys = true }
+        val tagsData = json.decodeFromString<TagsData>(fileContent)
+        return Pair(tagsData.leagues, tagsData.teams)
+    }
+
+    private fun getTags(matchType: String, teams: String): String {
+        val tags = mutableSetOf<String>()
+
+        // Добавляем тег для лиги
+        leagueTags.forEach { (leagueName, tag) ->
+            if (matchType.contains(leagueName, ignoreCase = true)) {
+                tags.add(tag)
+            }
+        }
+
+        // Добавляем теги для команд
+        teamTags.forEach { (teamName, tag) ->
+            if (teams.contains(teamName, ignoreCase = true)) {
+                tags.add(tag)
+            }
+        }
+
+        // Преобразуем набор тегов в строку с пробелами между тегами
+        return if (tags.isNotEmpty()) tags.joinToString(" ") else ""
+    }
+
 
     private fun handleStartCommand(chatId: String) {
         val description = """
@@ -219,12 +256,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
         val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val tags = getTags(matchType, matchInfo.teams)
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
+            $tags
         """.trimIndent()
     }
     fun formatMatchInfoWithResult(matchInfo: MatchInfo): String{
@@ -232,20 +272,24 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
         val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val tags = getTags(matchType, matchInfo.teams)
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome}
-            Actual Outcome: ${matchInfo.actualOutcome}$emoji
+            Predicted Outcome: ${matchInfo.predictedOutcome}$emoji
+            Actual Outcome: ${matchInfo.actualOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Actual Score: ${matchInfo.actualScore}
+            $tags
         """.trimIndent()
     }
 
-    fun formatLiveMatch(matchInfo: MatchInfo): String{
+    private fun formatLiveMatch(matchInfo: MatchInfo): String{
         val flag = getCountryFlag(matchInfo.matchType)
         val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val tags = getTags(matchType, matchInfo.teams)
 
         return """
             Match Time UTC: ${matchInfo.datetime}
@@ -254,7 +298,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
-            #live
+            #Live $tags
         """.trimIndent()
     }
 
