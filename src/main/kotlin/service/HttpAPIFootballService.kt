@@ -88,7 +88,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     actualScore = null,
                     odds = null,
                     telegramMessageId = null,
-                    elapsed = null
+                    elapsed = null,
+                    strategyTelegramMessageId = null
                 )
 
                 // Проверяем, существует ли матч в базе данных
@@ -136,73 +137,12 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     DatabaseService.updateMatchDatetime(matchInfo)
                     logger.info("Duplicate match found: $teams at $datetime")
                 }
-                if (match.fixture.status.short == "CANC"){
+                if (match.fixture.status?.short == "CANC"){
                     DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
                 }
             }
         }
     }
-
-
-    suspend fun fetchPastMatches() {
-        val currentDate = LocalDate.now()
-        val previousDay = currentDate.minusDays(1)
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-        val formattedPreviousDay = previousDay.format(formatter)
-        val formattedCurrentDate = currentDate.format(formatter)
-
-        leaguesConfig.forEach { leagueConfig ->
-            val matches = getPastMatches(leagueConfig.leagueId, leagueConfig.season, formattedPreviousDay, formattedCurrentDate)
-
-            matches.forEach { match ->
-                // Записываем победителя или ничью непосредственно в actualOutcome
-                val actualOutcome = when {
-                    match.teams.home.winner == true -> match.teams.home.name
-                    match.teams.away.winner == true -> match.teams.away.name
-                    else -> "Draw"
-                }
-
-                val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
-
-                // Получаем существующую запись матча из базы данных
-                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.id.toString(), "${match.league.country} ${match.league.name}")
-                // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
-                val matchInfo = existingMatchInfo?.copy(
-                    actualOutcome = actualOutcome,
-                    actualScore = actualScore
-                ) ?: MatchInfo(
-                    datetime = match.fixture.date,
-                    matchType = "${match.league.country} ${match.league.name}",
-                    teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
-                    predictedOutcome = existingMatchInfo?.predictedOutcome,  // Сохранение существующего значения
-                    actualOutcome = actualOutcome,
-                    predictedScore = existingMatchInfo?.predictedScore,      // Сохранение существующего значения
-                    actualScore = actualScore,
-                    odds = existingMatchInfo?.odds,                          // Сохранение существующего значения
-                    telegramMessageId = existingMatchInfo?.telegramMessageId,
-                    fixtureId = match.fixture.id.toString(),
-                    elapsed = null
-                )
-                if (matchInfo.telegramMessageId != null) {
-                    val updatedMessageText = footballBot.formatMatchInfoWithResult(matchInfo)
-                    val messageId = matchInfo.telegramMessageId
-
-                    if (messageId != null) {
-                        footballBot.updateMessage(channelId, messageId, updatedMessageText)
-                    }
-                    else{
-                        logger.error("Message wasn't updated because messageId is null")
-                    }
-                }
-
-                // Обновляем запись в базе данных
-                DatabaseService.updateMatchResult(matchInfo)
-                Thread.sleep(10000)
-            }
-        }
-    }
-
 
     private suspend fun getUpcomingMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
         val response: HttpResponse = client.get(url) {
@@ -272,8 +212,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             val match = result.response.firstOrNull()
             if (match != null) {
                 val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
-                val elapsed = match.fixture.status.elapsed ?: 0
-                val statusShort = match.fixture.status.short
+                val elapsed = match.fixture.status?.elapsed ?: 0
+                val statusShort = match.fixture.status?.short
                 val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
                     when {
                         match.teams.home.winner == true -> match.teams.home.name
@@ -312,6 +252,78 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
     }
 
+    suspend fun getOddsForFixture(fixtureId: String, predictedOutcome: String, homeTeam: String, awayTeam: String): Double? {
+        val oddsUrl = "https://api-football-v1.p.rapidapi.com/v3/odds"
+
+        val response: HttpResponse = client.get(oddsUrl) {
+            headers {
+                append("X-RapidAPI-Key", apiKey)
+                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
+            }
+            parameter("fixture", fixtureId)
+            parameter("bookmaker", 16) // Например, 16 - это Unibet
+        }
+
+        if (response.status == HttpStatusCode.OK) {
+            val result = response.body<OddsResponse>()
+            val oddsData = result.response.firstOrNull()
+            if (oddsData != null) {
+                val bets = oddsData.bookmakers.firstOrNull()?.bets
+                val matchWinnerBet = bets?.find { it.name == "Match Winner" || it.name == "1X2" || it.name == "Fulltime Result" }
+                val oddsMap = matchWinnerBet?.values?.associateBy { it.value }
+
+                // Сопоставляем predictedOutcome с "Home", "Away" или "Draw"
+                val outcomeKey = when {
+                    predictedOutcome.equals(homeTeam, ignoreCase = true) -> "Home"
+                    predictedOutcome.equals(awayTeam, ignoreCase = true) -> "Away"
+                    predictedOutcome.equals("Draw", ignoreCase = true) -> "Draw"
+                    else -> null
+                }
+
+                val oddsValue = outcomeKey?.let { oddsMap?.get(it)?.odd }
+                return oddsValue?.toDoubleOrNull()
+            }
+        } else {
+            logger.error("Failed to fetch odds for fixtureId $fixtureId. HTTP status: ${response.status}")
+        }
+
+        return null
+    }
+
+
+
+    @Serializable
+    data class OddsResponse(val response: List<OddsData>)
+
+    @Serializable
+    data class OddsData(
+        val league: League,
+        val fixture: Fixture,
+        val update: String,
+        val bookmakers: List<Bookmaker>,
+    )
+
+
+    @Serializable
+    data class Bookmaker(
+        val id: Int,
+        val name: String,
+        val bets: List<Bet>
+    )
+
+    @Serializable
+    data class Bet(
+        val id: Int,
+        val name: String,
+        val values: List<BetValue>
+    )
+
+    @Serializable
+    data class BetValue(
+        val value: String?,
+        val odd: String
+    )
+
 
     @Serializable
     data class ApiFootballResponse(val response: List<Match>)
@@ -329,12 +341,12 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     @Serializable
     data class Fixture(
         val id: Int,
-        val referee: String?,
+        val referee: String? = null,
         val timezone: String,
         val date: String,
         val timestamp: Long,
-        val venue: Venue,
-        val status: Status
+        val venue: Venue? = null,
+        val status: Status? = null
     )
 
     @Serializable
@@ -359,7 +371,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val logo: String?,
         val flag: String?,
         val season: Int,
-        val round: String
+        val round: String? = null
     )
 
     @Serializable

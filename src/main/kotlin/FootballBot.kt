@@ -1,3 +1,4 @@
+import dto.LeagueStats
 import dto.MatchInfo
 import dto.TagsData
 import `interface`.TelegramService
@@ -14,7 +15,6 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import service.DatabaseService
-import service.DatabaseService.getCorrectPredictionsForPeriod
 import service.DatabaseService.getMatchesWithoutMessageIdForNext5Hours
 import service.HttpAPIFootballService
 import service.initDatabase
@@ -27,6 +27,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val adminChatId = Config.getProperty("admin.chat.id") ?: throw IllegalStateException("Admin chat ID not found in config")
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
     private val footballService = HttpAPIFootballService(this)
+    private val strategyChannelId: String = Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
 
     private val leagueTags: Map<String, String>
     private val teamTags: Map<String, String>
@@ -306,10 +307,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return "This is a response to: $messageText"
     }
 
-    private fun sendMessage(chatId: String, text: String) {
+    private fun sendMessage(chatId: String, text: String, parseMode: String = "Markdown") {
         val message = SendMessage()
         message.chatId = chatId
         message.text = text
+        message.parseMode = parseMode
 
         try {
             execute(message)
@@ -333,23 +335,115 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             logger.error("Failed to set bot commands", e)
         }
     }
-    fun sendPredictionAccuracyMessage() {
-        val result = getCorrectPredictionsForPeriod(days = 1)
-        val accuracy = result.first
-        val correct = result.second.first
-        val totalMatches = result.second.second
 
-        val messageText = if (totalMatches > 0) {
-            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
-            "The accuracy of outcome predictions (not scores) in the last 24 hours is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+    fun updateLeaguePredictability() {
+        // Получаем все матчи из базы данных
+        val allMatches = DatabaseService.getAllMatches()
+
+        // Получаем список всех лиг
+        val allLeagues = DatabaseService.getAllLeagues()
+
+        // Обновляем статистику по лигам с учетом стратегии
+        val leagueStatsMap = calculateLeagueStats(allMatches, allLeagues)
+
+        // Сохраняем обновленные данные в базе данных
+        DatabaseService.updateLeaguePredictability(leagueStatsMap)
+
+        logger.info("League predictability updated successfully")
+    }
+
+
+    private fun calculateLeagueStats(matches: List<MatchInfo>, predictableLeagues: List<String>): Map<String, LeagueStats> {
+        val leagueStatsMap = mutableMapOf<String, LeagueStats>()
+
+        matches.forEach { match ->
+            val league = match.matchType
+            val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
+            val stake = 100.0
+            val actualOutcome = match.actualOutcome
+            val predictedOutcome = match.predictedOutcome
+
+            val stats = leagueStatsMap.getOrPut(league) { LeagueStats(leagueName = league) }
+
+            // Общая статистика
+            stats.totalMatches += 1
+            stats.totalStakes += stake
+
+            if (actualOutcome != null && predictedOutcome == actualOutcome) {
+                stats.successfulPredictions += 1
+                val profit = (oddsValue * stake) - stake
+                stats.totalReturns += profit
+            } else {
+                // Вычитаем ставку при проигрыше
+                stats.totalReturns -= stake
+            }
+
+            // Проверяем, соответствует ли матч стратегии
+            val teams = match.teams.split(" vs. ")
+            if (teams.size == 2) {
+                val homeTeam = teams[0].trim()
+                val awayTeam = teams[1].trim()
+                val isHomeTeamPredicted = predictedOutcome == homeTeam
+                val isAwayTeamPredicted = predictedOutcome == awayTeam
+                val isPredictableLeague = league in predictableLeagues
+                val isOddsInRange = oddsValue in 1.20..2.20
+                val isNotDraw = predictedOutcome != "Draw"
+
+                if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw) {
+                    // Статистика по стратегии
+                    stats.strategyTotalMatches += 1
+                    stats.strategyTotalStakes += stake
+
+                    if (actualOutcome != null && predictedOutcome == actualOutcome) {
+                        stats.strategySuccessfulPredictions += 1
+                        val profit = (oddsValue * stake) - stake
+                        stats.strategyTotalReturns += profit
+                    } else {
+                        // Вычитаем ставку при проигрыше
+                        stats.strategyTotalReturns -= stake
+                    }
+                }
+            }
+        }
+
+        // Расчет метрик для каждой лиги
+        leagueStatsMap.values.forEach { stats ->
+            // Общая статистика
+            stats.roi = if (stats.totalStakes > 0) (stats.totalReturns / stats.totalStakes) * 100 else 0.0
+            stats.accuracy = if (stats.totalMatches > 0) (stats.successfulPredictions.toDouble() / stats.totalMatches) * 100 else 0.0
+
+            // Статистика по стратегии
+            stats.strategyRoi = if (stats.strategyTotalStakes > 0) (stats.strategyTotalReturns / stats.strategyTotalStakes) * 100 else 0.0
+            stats.strategyAccuracy = if (stats.strategyTotalMatches > 0) (stats.strategySuccessfulPredictions.toDouble() / stats.strategyTotalMatches) * 100 else 0.0
+        }
+
+        return leagueStatsMap
+    }
+
+
+    fun sendPredictionAccuracyMessage() {
+        val stats = DatabaseService.getStatisticsForPeriod(days = 1)
+
+        val messageText = if (stats.totalMatches > 0) {
+            """
+        📊 **Daily Prediction Statistics**
+
+        **Overall:**
+        - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+        - ROI: ${"%.2f".format(stats.roi)}%
+
+        **Strategy Matches:**
+        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+        - ROI: ${"%.2f".format(stats.strategyRoi)}%
+        """.trimIndent()
         } else {
-            // Сообщение об отсутствии матчей
             "No matches were played in the last 24 hours."
         }
 
         val message = SendMessage()
         message.chatId = adminChatId
         message.text = messageText
+        message.enableMarkdown(true)
 
         try {
             execute(message)
@@ -358,22 +452,71 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             logger.error("Failed to send prediction accuracy message", e)
         }
     }
-    fun sendUpcomingMatchesToTelegram() {
+
+    suspend fun sendUpcomingMatchesToTelegram() {
         val matches = getMatchesWithoutMessageIdForNext5Hours()
 
         if (matches.isNotEmpty()) {
-            matches.forEach { match ->
-                val messageText = formatMatchInfo(match)
-                val messageId = sendMessageAndGetId(channelId, messageText)
+            // Получаем список предсказуемых лиг
+            val predictableLeagues = DatabaseService.getPredictableLeagues(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
 
-                if (messageId != null) {
-                    val updatedMatchInfo = match.copy(telegramMessageId = messageId.toString())
-                    DatabaseService.updateMatchMessageId(updatedMatchInfo)
+            matches.forEach { match ->
+                // Перед отправкой сообщения обновляем коэффициенты
+                val teamsForOdds = match.teams.split(" vs. ")
+                if (teamsForOdds.size == 2) {
+                    val homeTeam = teamsForOdds[0].trim()
+                    val awayTeam = teamsForOdds[1].trim()
+                    val odds = footballService.getOddsForFixture(match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam)
+                    if (odds != null) {
+                        match.odds = odds.toString()
+                        DatabaseService.updateMatchOdds(match)
+                    }
                 }
+
+                // Отправляем матч в основной канал, если он еще не был отправлен
+                val messageId = match.telegramMessageId ?: run {
+                    val messageText = formatMatchInfo(match)
+                    val newMessageId = sendMessageAndGetId(channelId, messageText)
+                    if (newMessageId != null) {
+                        val updatedMatchInfo = match.copy(telegramMessageId = newMessageId.toString())
+                        DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                    }
+                    newMessageId
+                }
+
+                // Проверяем, соответствует ли матч стратегии
+                val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
+                val teams = match.teams.split(" vs. ")
+                if (teams.size == 2) {
+                    val homeTeam = teams[0].trim()
+                    val awayTeam = teams[1].trim()
+                    val isHomeTeamPredicted = match.predictedOutcome == homeTeam
+                    val isAwayTeamPredicted = match.predictedOutcome == awayTeam
+                    val isPredictableLeague = match.matchType in predictableLeagues
+                    val isOddsInRange = oddsValue in 1.20..2.20
+                    val isNotDraw = match.predictedOutcome != "Draw"
+
+                    // Проверяем, если прогноз - победа домашней или гостевой команды, и остальные условия стратегии выполняются
+                    if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw) {
+                        // Проверяем, был ли матч уже отправлен в канал стратегии
+                        val strategyMessageId = match.strategyTelegramMessageId ?: run {
+                            // Отправляем в отдельный канал
+                            val strategyMessageText = formatMatchInfo(match)
+                            val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
+                            if (newStrategyMessageId != null) {
+                                val updatedMatchInfo = match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
+                                DatabaseService.updateMatchStrategyMessageId(updatedMatchInfo)
+                            }
+                            newStrategyMessageId
+                        }
+                    }
+                }
+
                 Thread.sleep(10000)
             }
         }
     }
+
 
     suspend fun updateLiveMatches() {
         val matchesToUpdate = DatabaseService.getOngoingMatches()
@@ -390,17 +533,16 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     // Матч ещё идёт, используем форматирование для текущих матчей
                     formatLiveMatch(updatedMatchInfo)
                 }
-                // Обновляем сообщение в Telegram
+                // Обновляем сообщение в основном канале
                 val messageId = updatedMatchInfo.telegramMessageId
                 if (messageId != null) {
                     updateMessage(channelId, messageId, messageText)
-                } else {
-                    logger.warn("No telegramMessageId for match with fixtureId ${updatedMatchInfo.fixtureId}")
-                    val telegramMessageId = sendMessageAndGetId(channelId, messageText)
-                    if (telegramMessageId != null) {
-                        val newMatchInfo = match.copy(telegramMessageId = telegramMessageId.toString())
-                        DatabaseService.updateMatchMessageId(newMatchInfo)
-                    }
+                }
+
+                // Обновляем сообщение в канале стратегии
+                val strategyMessageId = updatedMatchInfo.strategyTelegramMessageId
+                if (strategyMessageId != null) {
+                    updateMessage(strategyChannelId, strategyMessageId, messageText)
                 }
             }
             // Добавьте задержку, чтобы не превышать лимиты API
@@ -416,22 +558,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return lastMonthYearMonth.lengthOfMonth()
     }
     fun sendWeeklyPredictionAccuracyMessage() {
-        val result = getCorrectPredictionsForPeriod(days = 7)
-        val accuracy = result.first
-        val correct = result.second.first
-        val totalMatches = result.second.second
+        val stats = DatabaseService.getStatisticsForPeriod(days = 7)
 
-        val messageText = if (totalMatches > 0) {
-            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
-            "The accuracy of outcome predictions (not scores) in the last week is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+        val messageText = if (stats.totalMatches > 0) {
+            """
+        📊 **Weekly Prediction Statistics**
+
+        **Overall:**
+        - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+        - ROI: ${"%.2f".format(stats.roi)}%
+
+        **Strategy Matches:**
+        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+        - ROI: ${"%.2f".format(stats.strategyRoi)}%
+        """.trimIndent()
         } else {
-            // Сообщение об отсутствии матчей
             "No matches were played in the last week."
         }
 
         val message = SendMessage()
         message.chatId = adminChatId
         message.text = messageText
+        message.enableMarkdown(true)
 
         try {
             execute(message)
@@ -440,23 +588,30 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             logger.error("Failed to send weekly prediction accuracy message", e)
         }
     }
-    fun sendMonthlyPredictionAccuracyMessage() {
-        val result = getCorrectPredictionsForPeriod(getDaysInLastMonth())
-        val accuracy = result.first
-        val correct = result.second.first
-        val totalMatches = result.second.second
 
-        val messageText = if (totalMatches > 0) {
-            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
-            "The accuracy of outcome predictions (not scores) in the last month is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+    fun sendMonthlyPredictionAccuracyMessage() {
+        val stats = DatabaseService.getStatisticsForPeriod(getDaysInLastMonth())
+
+        val messageText = if (stats.totalMatches > 0) {
+            """
+        📊 **Monthly Prediction Statistics**
+
+        **Overall:**
+        - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+        - ROI: ${"%.2f".format(stats.roi)}%
+
+        **Strategy Matches:**
+        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+        - ROI: ${"%.2f".format(stats.strategyRoi)}%
+        """.trimIndent()
         } else {
-            // Сообщение об отсутствии матчей
             "No matches were played in the last month."
         }
 
         val message = SendMessage()
         message.chatId = adminChatId
         message.text = messageText
+        message.enableMarkdown(true)
 
         try {
             execute(message)
@@ -467,22 +622,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendYearlyPredictionAccuracyMessage() {
-        val result = getCorrectPredictionsForPeriod(days = 365)
-        val accuracy = result.first
-        val correct = result.second.first
-        val totalMatches = result.second.second
+        val stats = DatabaseService.getStatisticsForPeriod(days = 365)
 
-        val messageText = if (totalMatches > 0) {
-            // Сообщение с точностью исходов прогнозов и уточнением, что речь не о счетах
-            "The accuracy of outcome predictions (not scores) in the last year is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
+        val messageText = if (stats.totalMatches > 0) {
+            """
+        📊 **Yearly Prediction Statistics**
+
+        **Overall:**
+        - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+        - ROI: ${"%.2f".format(stats.roi)}%
+
+        **Strategy Matches:**
+        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+        - ROI: ${"%.2f".format(stats.strategyRoi)}%
+        """.trimIndent()
         } else {
-            // Сообщение об отсутствии матчей
-            "No matches were played in the last year."
+            "No matches were played in the last week."
         }
 
         val message = SendMessage()
         message.chatId = adminChatId
         message.text = messageText
+        message.enableMarkdown(true)
 
         try {
             execute(message)
@@ -496,12 +657,24 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (parts.size == 2) {
             val days = parts[1].toIntOrNull()
             if (days != null && days > 0) {
-                val result = getCorrectPredictionsForPeriod(days)
-                val accuracy = result.first
-                val correct = result.second.first
-                val totalMatches = result.second.second
-                val text = "The accuracy of predictions in the last $days days is ${"%.2f".format(accuracy)}% ($correct/$totalMatches)."
-                sendMessage(chatId, text)
+                val stats = DatabaseService.getStatisticsForPeriod(days)
+                val resultMessageText = if (stats.totalMatches > 0) {
+                    """
+                📊 **Prediction Statistics for Last $days Days**
+
+                **Overall:**
+                - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+                - ROI: ${"%.2f".format(stats.roi)}%
+
+                **Strategy Matches:**
+                - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+                - ROI: ${"%.2f".format(stats.strategyRoi)}%
+                """.trimIndent()
+                } else {
+                    "No matches were played in the last $days days."
+                }
+
+                sendMessage(chatId, resultMessageText)
             } else {
                 sendMessage(chatId, "Please provide a valid number of days.")
             }
