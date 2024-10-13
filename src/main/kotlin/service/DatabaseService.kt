@@ -1,5 +1,6 @@
 package service
 
+import dto.LeagueStats
 import dto.MatchInfo
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -39,6 +40,7 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val actualScore = varchar("actualScore", 50).nullable()
     val odds = varchar("odds", 50).nullable()
     val telegramMessageId = varchar("telegramMessageId", 50).nullable()
+    val strategyTelegramMessageId = varchar("strategyTelegramMessageId", 50).nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -52,6 +54,18 @@ object LeagueTableFactory {
         }
     }
 }
+
+object LeaguePredictability : Table() {
+    val leagueName = varchar("leagueName", 100)
+    val roi = double("roi").default(0.0)
+    val accuracy = double("accuracy").default(0.0)
+    // Новые поля для стратегии
+    val strategyRoi = double("strategyRoi").default(0.0)
+    val strategyAccuracy = double("strategyAccuracy").default(0.0)
+
+    override val primaryKey = PrimaryKey(leagueName)
+}
+
 
 fun initDatabase(dbPath: String) {
     val logger = LoggerFactory.getLogger("DatabaseService")
@@ -73,7 +87,7 @@ fun initDatabase(dbPath: String) {
 
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(UserStats, Leagues)
+        SchemaUtils.createMissingTablesAndColumns(UserStats, Leagues, LeaguePredictability)
         logger.info("Database initialized and tables 'UserStats' ensured.")
     }
 
@@ -97,41 +111,9 @@ object DatabaseService {
         loadLeagues()
     }
 
-    fun getMatchInfo(fixtureId: String, leagueName: String): MatchInfo? {
-        return transaction {
-            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-
-            try {
-                leagueTable.select {
-                    leagueTable.fixtureId eq fixtureId
-                }.mapNotNull {
-                    MatchInfo(
-                        it[leagueTable.fixtureId],
-                        it[leagueTable.datetime],
-                        it[leagueTable.matchType],
-                        it[leagueTable.teams],
-                        it[leagueTable.predictedOutcome],
-                        it[leagueTable.actualOutcome],
-                        it[leagueTable.predictedScore],
-                        it[leagueTable.actualScore],
-                        it[leagueTable.odds],
-                        it[leagueTable.telegramMessageId],
-                        null
-                    )
-                }.singleOrNull()
-            } catch (e: ExposedSQLException) {
-                if (e.message?.contains("no such table") == true) {
-                    // Таблица не существует, создаем её и возвращаем null, так как запись не может существовать
-                    SchemaUtils.createMissingTablesAndColumns(leagueTable)
-                    logger.warn("Table for league $leagueName did not exist. Created new table.")
-                    return@transaction null
-                } else {
-                    throw e
-                }
-            }
-        }
+    fun getAllLeagues(): List<String> {
+        return listOfLeagues.toList()
     }
-
 
     // Метод для вставки списка матчей
     fun appendRows(matches: List<MatchInfo>) {
@@ -204,6 +186,17 @@ object DatabaseService {
         }
     }
 
+    fun updateMatchStrategyMessageId(matchInfo: MatchInfo) {
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+            leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
+                it[leagueTable.strategyTelegramMessageId] = matchInfo.strategyTelegramMessageId
+            }
+            logger.info("Strategy Telegram message ID updated for league: ${matchInfo.matchType}, match: ${matchInfo.teams} at ${matchInfo.datetime}")
+        }
+    }
+
+
     fun updateMatchDatetime(matchInfo: MatchInfo) {
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
@@ -239,6 +232,7 @@ object DatabaseService {
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
                             it[leagueTable.telegramMessageId],
+                            null,
                             null
                         )
                     } else {
@@ -291,6 +285,7 @@ object DatabaseService {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                SchemaUtils.createMissingTablesAndColumns(leagueTable)
 
                 leagueTable.selectAll().mapNotNullTo(matchesToUpdate) {
                     val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
@@ -308,6 +303,7 @@ object DatabaseService {
                             actualScore = it[leagueTable.actualScore],
                             odds = it[leagueTable.odds],
                             telegramMessageId = it[leagueTable.telegramMessageId],
+                            null,
                             null
                         )
                     } else {
@@ -339,6 +335,7 @@ object DatabaseService {
                         actualScore = it[leagueTable.actualScore],
                         odds = it[leagueTable.odds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
+                        null,
                         null
                     )
                 }.singleOrNull()
@@ -401,6 +398,7 @@ object DatabaseService {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                SchemaUtils.createMissingTablesAndColumns(leagueTable)
 
                 leagueTable.select {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
@@ -418,6 +416,7 @@ object DatabaseService {
                         it[leagueTable.actualScore],
                         it[leagueTable.odds],
                         it[leagueTable.telegramMessageId],
+                        null,
                         null
                     )
                 }
@@ -450,6 +449,7 @@ object DatabaseService {
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
                             it[leagueTable.telegramMessageId],
+                            null,
                             null
                         )
                     } else {
@@ -469,6 +469,70 @@ object DatabaseService {
         }
 
         return Pair(accuracy, Pair(correctPredictions, totalMatches))
+    }
+    fun getAllMatches(): List<MatchInfo> {
+        val allMatches = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+
+                leagueTable.selectAll().mapNotNullTo(allMatches) {
+                    MatchInfo(
+                        fixtureId = it[leagueTable.fixtureId],
+                        datetime = it[leagueTable.datetime],
+                        matchType = it[leagueTable.matchType],
+                        teams = it[leagueTable.teams],
+                        predictedOutcome = it[leagueTable.predictedOutcome],
+                        actualOutcome = it[leagueTable.actualOutcome],
+                        predictedScore = it[leagueTable.predictedScore],
+                        actualScore = it[leagueTable.actualScore],
+                        odds = it[leagueTable.odds],
+                        telegramMessageId = it[leagueTable.telegramMessageId],
+                        strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
+                        elapsed = null
+                    )
+                }
+            }
+        }
+        return allMatches
+    }
+
+    fun updateLeaguePredictability(leagueStatsMap: Map<String, LeagueStats>) {
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+            leagueStatsMap.values.forEach { stats ->
+                val updatedRows = LeaguePredictability.update({ LeaguePredictability.leagueName eq stats.leagueName }) {
+                    it[roi] = stats.roi
+                    it[accuracy] = stats.accuracy
+                    it[strategyRoi] = stats.strategyRoi
+                    it[strategyAccuracy] = stats.strategyAccuracy
+                }
+
+                if (updatedRows == 0) {
+                    LeaguePredictability.insert {
+                        it[leagueName] = stats.leagueName
+                        it[roi] = stats.roi
+                        it[accuracy] = stats.accuracy
+                        it[strategyRoi] = stats.strategyRoi
+                        it[strategyAccuracy] = stats.strategyAccuracy
+                    }
+                    logger.info("Inserted new league predictability data for league: ${stats.leagueName}")
+                } else {
+                    logger.info("Updated league predictability data for league: ${stats.leagueName}")
+                }
+            }
+        }
+    }
+
+    fun getPredictableLeagues(strategyRoiThreshold: Double, strategyAccuracyThreshold: Double): List<String> {
+
+        return transaction {
+            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+            LeaguePredictability.select {
+                (LeaguePredictability.strategyRoi greaterEq strategyRoiThreshold) and
+                        (LeaguePredictability.strategyAccuracy greaterEq strategyAccuracyThreshold)
+            }.map { it[LeaguePredictability.leagueName] }
+        }
     }
 
 }

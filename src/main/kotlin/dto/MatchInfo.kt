@@ -10,6 +10,7 @@ data class MatchInfo(
     var predictedScore: String?,
     var actualScore: String?,
     var odds: String?,
-    var telegramMessageId: String?,
+    var telegramMessageId: String?, // Идентификатор сообщения в основном канале
+    var strategyTelegramMessageId: String?, // Новое поле для идентификатора сообщения в канале стратегии
     var elapsed: Int?
 )

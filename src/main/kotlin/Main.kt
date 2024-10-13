@@ -11,6 +11,7 @@ class FetchMatchesJob : Job {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
+            footballBot.updateLeaguePredictability()
             footballService.fetchMatches()
         }
     }
@@ -21,7 +22,6 @@ class UpdateMatchesJob : Job {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
 //        val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-//            footballService.fetchPastMatches()
             footballBot.sendUpcomingMatchesToTelegram()
         }
     }
@@ -32,6 +32,15 @@ class UpdateLiveMatchesJob : Job {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         runBlocking {
             footballBot.updateLiveMatches()
+        }
+    }
+}
+
+class UpdateLeaguePredictabilityJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.updateLeaguePredictability()
         }
     }
 }
@@ -111,6 +120,16 @@ fun main() {
         .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
         .build()
 
+    val updateLeaguePredictabilityJob = JobBuilder.newJob(UpdateLeaguePredictabilityJob::class.java)
+        .withIdentity("updateLeaguePredictabilityJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val updateLeaguePredictabilityTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("updateLeaguePredictabilityTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(20, 37))  // Каждый день в 08:00
+        .build()
+
     // Добавляем новый job для отправки сообщений с точностью предсказаний
     val accuracyJob = JobBuilder.newJob(SendAccuracyJob::class.java)
         .withIdentity("sendAccuracyJob", "group1")
@@ -168,6 +187,7 @@ fun main() {
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateJob, dailyUpdateTrigger)
+    scheduler.scheduleJob(updateLeaguePredictabilityJob, updateLeaguePredictabilityTrigger)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
@@ -176,6 +196,7 @@ fun main() {
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled UpdateMatchesJob to run at every hour")
+    logger.info("Scheduled UpdateLeaguePredictabilityJob to run daily at 08:00")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")

@@ -88,7 +88,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     actualScore = null,
                     odds = null,
                     telegramMessageId = null,
-                    elapsed = null
+                    elapsed = null,
+                    strategyTelegramMessageId = null
                 )
 
                 // Проверяем, существует ли матч в базе данных
@@ -142,67 +143,6 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             }
         }
     }
-
-
-    suspend fun fetchPastMatches() {
-        val currentDate = LocalDate.now()
-        val previousDay = currentDate.minusDays(1)
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-        val formattedPreviousDay = previousDay.format(formatter)
-        val formattedCurrentDate = currentDate.format(formatter)
-
-        leaguesConfig.forEach { leagueConfig ->
-            val matches = getPastMatches(leagueConfig.leagueId, leagueConfig.season, formattedPreviousDay, formattedCurrentDate)
-
-            matches.forEach { match ->
-                // Записываем победителя или ничью непосредственно в actualOutcome
-                val actualOutcome = when {
-                    match.teams.home.winner == true -> match.teams.home.name
-                    match.teams.away.winner == true -> match.teams.away.name
-                    else -> "Draw"
-                }
-
-                val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
-
-                // Получаем существующую запись матча из базы данных
-                val existingMatchInfo = DatabaseService.getMatchInfo(match.fixture.id.toString(), "${match.league.country} ${match.league.name}")
-                // Создаем новый экземпляр MatchInfo, сохраняя прогнозы и обновляя реальные результаты
-                val matchInfo = existingMatchInfo?.copy(
-                    actualOutcome = actualOutcome,
-                    actualScore = actualScore
-                ) ?: MatchInfo(
-                    datetime = match.fixture.date,
-                    matchType = "${match.league.country} ${match.league.name}",
-                    teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
-                    predictedOutcome = existingMatchInfo?.predictedOutcome,  // Сохранение существующего значения
-                    actualOutcome = actualOutcome,
-                    predictedScore = existingMatchInfo?.predictedScore,      // Сохранение существующего значения
-                    actualScore = actualScore,
-                    odds = existingMatchInfo?.odds,                          // Сохранение существующего значения
-                    telegramMessageId = existingMatchInfo?.telegramMessageId,
-                    fixtureId = match.fixture.id.toString(),
-                    elapsed = null
-                )
-                if (matchInfo.telegramMessageId != null) {
-                    val updatedMessageText = footballBot.formatMatchInfoWithResult(matchInfo)
-                    val messageId = matchInfo.telegramMessageId
-
-                    if (messageId != null) {
-                        footballBot.updateMessage(channelId, messageId, updatedMessageText)
-                    }
-                    else{
-                        logger.error("Message wasn't updated because messageId is null")
-                    }
-                }
-
-                // Обновляем запись в базе данных
-                DatabaseService.updateMatchResult(matchInfo)
-                Thread.sleep(10000)
-            }
-        }
-    }
-
 
     private suspend fun getUpcomingMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
         val response: HttpResponse = client.get(url) {
