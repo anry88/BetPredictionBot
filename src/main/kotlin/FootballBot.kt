@@ -268,7 +268,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             $tags
         """.trimIndent()
     }
-    fun formatMatchInfoWithResult(matchInfo: MatchInfo): String{
+    private fun formatMatchInfoWithResult(matchInfo: MatchInfo): String{
         val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
@@ -300,6 +300,57 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
             $tags #Live
+        """.trimIndent()
+    }
+
+    private fun formatPremiumMatchInfo(matchInfo: MatchInfo): String {
+        val flag = getCountryFlag(matchInfo.matchType)
+        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val tags = getTags(matchType, matchInfo.teams)
+
+        return """
+            Match Time UTC: ${matchInfo.datetime}
+            Match Type: $matchType$flag
+            Teams: ${matchInfo.teams}
+            Predicted Outcome: ${matchInfo.predictedOutcome}
+            Predicted Score: ${matchInfo.predictedScore}
+            Odds for the Predicted Outcome: ${matchInfo.odds}
+        """.trimIndent()
+    }
+
+    private fun formatPremiumMatchInfoWithResult(matchInfo: MatchInfo): String{
+        val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
+        val emoji = if (isPredictionCorrect) "✅" else "❌"
+        val flag = getCountryFlag(matchInfo.matchType)
+        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val tags = getTags(matchType, matchInfo.teams)
+
+        return """
+            Match Time UTC: ${matchInfo.datetime}
+            Match Type: $matchType$flag
+            Teams: ${matchInfo.teams}
+            Predicted Outcome: ${matchInfo.predictedOutcome}$emoji
+            Actual Outcome: ${matchInfo.actualOutcome}
+            Predicted Score: ${matchInfo.predictedScore}
+            Actual Score: ${matchInfo.actualScore}
+            Odds for the Predicted Outcome: ${matchInfo.odds}
+        """.trimIndent()
+    }
+
+    private fun formatLivePremiumMatch(matchInfo: MatchInfo): String{
+        val flag = getCountryFlag(matchInfo.matchType)
+        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val tags = getTags(matchType, matchInfo.teams)
+
+        return """
+            Match Time UTC: ${matchInfo.datetime}
+            Match Type: $matchType$flag
+            Teams: ${matchInfo.teams}
+            Predicted Outcome: ${matchInfo.predictedOutcome}
+            Predicted Score: ${matchInfo.predictedScore}
+            Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
+            Odds for the Predicted Outcome: ${matchInfo.odds}
+            #Live
         """.trimIndent()
     }
 
@@ -501,7 +552,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                         // Проверяем, был ли матч уже отправлен в канал стратегии
                         val strategyMessageId = match.strategyTelegramMessageId ?: run {
                             // Отправляем в отдельный канал
-                            val strategyMessageText = formatMatchInfo(match)
+                            val strategyMessageText = formatPremiumMatchInfo(match)
                             val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
                             if (newStrategyMessageId != null) {
                                 val updatedMatchInfo = match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
@@ -542,7 +593,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 // Обновляем сообщение в канале стратегии
                 val strategyMessageId = updatedMatchInfo.strategyTelegramMessageId
                 if (strategyMessageId != null) {
-                    updateMessage(strategyChannelId, strategyMessageId, messageText)
+                    // Выбираем форматирование в зависимости от статуса матча
+                    val strategyMessageText = if (updatedMatchInfo.actualOutcome != null) {
+                        // Матч завершён, используем финальное форматирование
+                        formatPremiumMatchInfoWithResult(updatedMatchInfo)
+                    } else {
+                        // Матч ещё идёт, используем форматирование для текущих матчей
+                        formatLivePremiumMatch(updatedMatchInfo)
+                    }
+                    updateMessage(strategyChannelId, strategyMessageId, strategyMessageText)
                 }
             }
             // Добавьте задержку, чтобы не превышать лимиты API
