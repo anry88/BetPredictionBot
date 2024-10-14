@@ -493,10 +493,11 @@ object DatabaseService {
                 val predictedOutcome = match.predictedOutcome
                 val isHomeTeamPredicted = predictedOutcome == homeTeam
                 val isPredictableLeague = match.matchType in predictableLeagues
+                val hasStrategyTelegramMessageId = match.strategyTelegramMessageId != null
                 val isOddsInRange = oddsValue in 1.20..2.20
                 val isNotDraw = predictedOutcome != "Draw"
 
-                if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw) {
+                if (isHomeTeamPredicted && hasStrategyTelegramMessageId && isOddsInRange && isNotDraw) {
                     strategyTotalMatches += 1
                     strategyTotalStakes += stake
 
