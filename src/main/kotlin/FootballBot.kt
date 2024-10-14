@@ -299,7 +299,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
-            #Live $tags
+            $tags #Live
         """.trimIndent()
     }
 
