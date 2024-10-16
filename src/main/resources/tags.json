@@ -9,7 +9,18 @@
     "Friendlies" : "#Friendlies",
     "Nations League": "#NationsLeague",
     "Africa Cup of Nations": "#AfricaCupofNations",
-    "World Cup": "#WorldCup"
+    "World Cup": "#WorldCup",
+    "UEFA Champions League": "#ChampionsLeague",
+    "UEFA Europa League": "#EuropaLeague",
+    "UEFA Europa Conference League": "#ConferenceLeague",
+    "Portugal Primeira Liga": "#PrimeiraLiga",
+    "Russia Premier League": "#RussiaPremierLeague",
+    "Netherlands Eredivisie": "#Eredivisie",
+    "Ukraine Premier League": "#UkrainePremierLeague",
+    "Turkey Süper Lig": "#SüperLig",
+    "Saudi-Arabia Pro League": "#ProLeague",
+    "Argentina Liga Profesional Argentina": "#LigaProfesional",
+    "Brazil Serie A": "#BrazilSerieA"
   },
   "teams": {
     "Kazakhstan": "#Kazakhstan",
