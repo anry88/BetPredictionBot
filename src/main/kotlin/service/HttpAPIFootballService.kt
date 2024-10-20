@@ -3,8 +3,10 @@
 package service
 
 import FootballBot
+import dto.BookmakerInfo
 import dto.LeagueConfig
 import dto.MatchInfo
+import dto.OddsInfo
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -17,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.awt.print.Book
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -25,6 +28,16 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
     private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
+
+    private val bookmakers = listOf(
+        BookmakerInfo(16, "Unibet"),
+        BookmakerInfo(8, "Bet365"),
+        BookmakerInfo(7, "William Hill"),
+        BookmakerInfo(11, "1xBet"),
+        BookmakerInfo(2, "Marathonbet"),
+        BookmakerInfo(27, "NordicBet")
+        // Add more bookmakers as needed
+    )
 
     private val url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 //    private val url = "http://localhost:1080/v3/fixtures"
@@ -90,7 +103,11 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     odds = null,
                     telegramMessageId = null,
                     elapsed = null,
-                    strategyTelegramMessageId = null
+                    strategyTelegramMessageId = null,
+                    bookmakerName = null,
+                    homeWinOdds = null,
+                    drawOdds = null,
+                    awayWinOdds = null
                 )
 
                 // Проверяем, существует ли матч в базе данных
@@ -303,45 +320,67 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
     }
 
-    suspend fun getOddsForFixture(fixtureId: String, predictedOutcome: String, homeTeam: String, awayTeam: String): Double? {
+    suspend fun getOddsForFixture(
+        fixtureId: String,
+        predictedOutcome: String,
+        homeTeam: String,
+        awayTeam: String
+    ): OddsInfo? {
         val oddsUrl = "https://api-football-v1.p.rapidapi.com/v3/odds"
 
-        val response: HttpResponse = client.get(oddsUrl) {
-            headers {
-                append("X-RapidAPI-Key", apiKey)
-                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
-            }
-            parameter("fixture", fixtureId)
-            parameter("bookmaker", 16) // Например, 16 - это Unibet
-        }
-
-        if (response.status == HttpStatusCode.OK) {
-            val result = response.body<OddsResponse>()
-            val oddsData = result.response.firstOrNull()
-            if (oddsData != null) {
-                val bets = oddsData.bookmakers.firstOrNull()?.bets
-                val matchWinnerBet = bets?.find { it.name == "Match Winner" || it.name == "1X2" || it.name == "Fulltime Result" }
-                val oddsMap = matchWinnerBet?.values?.associateBy { it.value }
-
-                // Сопоставляем predictedOutcome с "Home", "Away" или "Draw"
-                val outcomeKey = when {
-                    predictedOutcome.equals(homeTeam, ignoreCase = true) -> "Home"
-                    predictedOutcome.equals(awayTeam, ignoreCase = true) -> "Away"
-                    predictedOutcome.equals("Draw", ignoreCase = true) -> "Draw"
-                    else -> null
+        for (bookmaker in bookmakers) {
+            val response: HttpResponse = client.get(oddsUrl) {
+                headers {
+                    append("X-RapidAPI-Key", apiKey)
+                    append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
                 }
-
-                val oddsValue = outcomeKey?.let { oddsMap?.get(it)?.odd }
-                return oddsValue?.toDoubleOrNull()
+                parameter("fixture", fixtureId)
+                parameter("bookmaker", bookmaker.id)
             }
-        } else {
-            logger.error("Failed to fetch odds for fixtureId $fixtureId. HTTP status: ${response.status}")
+
+            if (response.status == HttpStatusCode.OK) {
+                val result = response.body<OddsResponse>()
+                val oddsData = result.response.firstOrNull()
+                if (oddsData != null) {
+                    val bets = oddsData.bookmakers.firstOrNull()?.bets
+                    val matchWinnerBet = bets?.find {
+                        it.name == "Match Winner"
+                    }
+                    val oddsMap = matchWinnerBet?.values?.associateBy { it.value }
+
+                    val homeWinOdds = oddsMap?.get("Home")?.odd?.toDoubleOrNull()
+                    val drawOdds = oddsMap?.get("Draw")?.odd?.toDoubleOrNull()
+                    val awayWinOdds = oddsMap?.get("Away")?.odd?.toDoubleOrNull()
+
+                    // Определяем коэффициент на прогнозируемый исход
+                    val oddsValue = when {
+                        predictedOutcome.equals(homeTeam, ignoreCase = true) -> homeWinOdds
+                        predictedOutcome.equals(awayTeam, ignoreCase = true) -> awayWinOdds
+                        predictedOutcome.equals("Draw", ignoreCase = true) -> drawOdds
+                        else -> null
+                    }
+
+                    if (oddsValue != null) {
+                        // Возвращаем все коэффициенты и имя букмекера
+                        return OddsInfo(
+                            odds = oddsValue,
+                            bookmakerName = bookmaker.name,
+                            homeWinOdds = homeWinOdds,
+                            drawOdds = drawOdds,
+                            awayWinOdds = awayWinOdds
+                        )
+                    }
+                }
+            } else {
+                logger.error("Не удалось получить коэффициенты для fixtureId $fixtureId от букмекера ${bookmaker.name}. HTTP статус: ${response.status}")
+            }
+            // Задержка между запросами для избежания ограничения по частоте запросов
+            delay(1000)
         }
 
+        // Если коэффициенты не найдены ни у одного букмекера
         return null
     }
-
-
 
     @Serializable
     data class OddsResponse(val response: List<OddsData>)

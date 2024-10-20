@@ -41,6 +41,10 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val predictedScore = varchar("predictedScore", 50).nullable()
     val actualScore = varchar("actualScore", 50).nullable()
     val odds = varchar("odds", 50).nullable()
+    val bookmakerName = varchar("bookmakerName", 50).nullable()
+    val homeWinOdds = varchar("homeWinOdds", 50).nullable()
+    val drawOdds = varchar("drawOdds", 50).nullable()
+    val awayWinOdds = varchar("awayWinOdds", 50).nullable()
     val telegramMessageId = varchar("telegramMessageId", 50).nullable()
     val strategyTelegramMessageId = varchar("strategyTelegramMessageId", 50).nullable()
 
@@ -234,6 +238,10 @@ object DatabaseService {
                             it[leagueTable.predictedScore],
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
+                            it[leagueTable.bookmakerName],
+                            it[leagueTable.homeWinOdds],
+                            it[leagueTable.drawOdds],
+                            it[leagueTable.awayWinOdds],
                             it[leagueTable.telegramMessageId],
                             it[leagueTable.strategyTelegramMessageId],
                             null
@@ -305,6 +313,10 @@ object DatabaseService {
                             predictedScore = it[leagueTable.predictedScore],
                             actualScore = it[leagueTable.actualScore],
                             odds = it[leagueTable.odds],
+                            bookmakerName = it[leagueTable.bookmakerName],
+                            homeWinOdds = it[leagueTable.homeWinOdds],
+                            drawOdds = it[leagueTable.drawOdds],
+                            awayWinOdds = it[leagueTable.awayWinOdds],
                             telegramMessageId = it[leagueTable.telegramMessageId],
                             strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
                             null
@@ -337,6 +349,10 @@ object DatabaseService {
                         predictedScore = it[leagueTable.predictedScore],
                         actualScore = it[leagueTable.actualScore],
                         odds = it[leagueTable.odds],
+                        bookmakerName = it[leagueTable.bookmakerName],
+                        homeWinOdds = it[leagueTable.homeWinOdds],
+                        drawOdds = it[leagueTable.drawOdds],
+                        awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
                         null
@@ -418,6 +434,10 @@ object DatabaseService {
                         it[leagueTable.predictedScore],
                         it[leagueTable.actualScore],
                         it[leagueTable.odds],
+                        it[leagueTable.bookmakerName],
+                        it[leagueTable.homeWinOdds],
+                        it[leagueTable.drawOdds],
+                        it[leagueTable.awayWinOdds],
                         it[leagueTable.telegramMessageId],
                         it[leagueTable.strategyTelegramMessageId],
                         null
@@ -451,6 +471,10 @@ object DatabaseService {
                             it[leagueTable.predictedScore],
                             it[leagueTable.actualScore],
                             it[leagueTable.odds],
+                            it[leagueTable.bookmakerName],
+                            it[leagueTable.homeWinOdds],
+                            it[leagueTable.drawOdds],
+                            it[leagueTable.awayWinOdds],
                             it[leagueTable.telegramMessageId],
                             it[leagueTable.strategyTelegramMessageId],
                             null
@@ -571,9 +595,13 @@ object DatabaseService {
                         predictedScore = it[leagueTable.predictedScore],
                         actualScore = it[leagueTable.actualScore],
                         odds = it[leagueTable.odds],
+                        bookmakerName = it[leagueTable.bookmakerName],
+                        homeWinOdds = it[leagueTable.homeWinOdds],
+                        drawOdds = it[leagueTable.drawOdds],
+                        awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        elapsed = null
+                        null
                     )
                 }
             }
@@ -623,6 +651,10 @@ object DatabaseService {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
             leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                 it[odds] = matchInfo.odds
+                it[bookmakerName] = matchInfo.bookmakerName
+                it[homeWinOdds] = matchInfo.homeWinOdds
+                it[drawOdds] = matchInfo.drawOdds
+                it[awayWinOdds] = matchInfo.awayWinOdds
             }
             logger.info("Updated odds for match ${matchInfo.teams} at ${matchInfo.datetime}")
         }
@@ -647,9 +679,13 @@ object DatabaseService {
                         predictedScore = it[leagueTable.predictedScore],
                         actualScore = it[leagueTable.actualScore],
                         odds = it[leagueTable.odds],
+                        bookmakerName = it[leagueTable.bookmakerName],
+                        homeWinOdds = it[leagueTable.homeWinOdds],
+                        drawOdds = it[leagueTable.drawOdds],
+                        awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        elapsed = null
+                        null
                     )
                 }
             }
