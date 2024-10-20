@@ -315,7 +315,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
-            Odds for the Predicted Outcome: ${matchInfo.odds}
+            Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
         """.trimIndent()
     }
 
@@ -334,7 +334,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Actual Outcome: ${matchInfo.actualOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Actual Score: ${matchInfo.actualScore}
-            Odds for the Predicted Outcome: ${matchInfo.odds}
+            Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName  ?: "Default"})
         """.trimIndent()
     }
 
@@ -350,7 +350,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
-            Odds for the Predicted Outcome: ${matchInfo.odds}
+            Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName  ?: "Default"})
             #Live
         """.trimIndent()
     }
@@ -520,9 +520,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 if (teamsForOdds.size == 2) {
                     val homeTeam = teamsForOdds[0].trim()
                     val awayTeam = teamsForOdds[1].trim()
-                    val odds = footballService.getOddsForFixture(match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam)
-                    if (odds != null) {
-                        match.odds = odds.toString()
+                    val oddsInfo = footballService.getOddsForFixture(match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam)
+                    if (oddsInfo != null) {
+                        match.odds = oddsInfo.odds.toString()
+                        match.bookmakerName = oddsInfo.bookmakerName
+                        match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
+                        match.drawOdds = oddsInfo.drawOdds?.toString()
+                        match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
+
                         DatabaseService.updateMatchOdds(match)
                     }
                 }
