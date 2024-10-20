@@ -195,6 +195,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     suspend fun updatePastMatches() {
         val currentDate = LocalDate.now()
         val twoDaysAgo = currentDate.minusDays(2)
+        val oneDayAgo = currentDate.minusDays(1)
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         val formattedTwoDaysAgo = twoDaysAgo.format(formatter)
@@ -231,7 +232,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
 
         // Delete matches older than two days with no actual result
-        val matchesToDelete = DatabaseService.getMatchesOlderThanTwoDaysWithoutResult(twoDaysAgo)
+        val matchesToDelete = DatabaseService.getMatchesOlderThanTwoDaysWithoutResult(oneDayAgo)
         matchesToDelete.forEach { matchInfo ->
             // Delete messages from channels if any
             footballBot.deleteMatchMessages(matchInfo)

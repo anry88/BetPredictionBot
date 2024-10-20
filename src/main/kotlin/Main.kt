@@ -11,7 +11,6 @@ class FetchMatchesJob : Job {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-            footballService.updatePastMatches()
             footballBot.updateLeaguePredictability()
             footballService.fetchMatches()
         }
