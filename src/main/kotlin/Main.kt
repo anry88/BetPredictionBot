@@ -11,6 +11,7 @@ class FetchMatchesJob : Job {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
+            footballService.updatePastMatches()
             footballBot.updateLeaguePredictability()
             footballService.fetchMatches()
         }
@@ -26,6 +27,17 @@ class UpdateMatchesJob : Job {
         }
     }
 }
+
+class UpdatePastMatchesJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        val footballService = HttpAPIFootballService(footballBot)
+        runBlocking {
+            footballService.updatePastMatches()
+        }
+    }
+}
+
 
 class UpdateLiveMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
@@ -130,6 +142,16 @@ fun main() {
         .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 0))  // Каждый день в 08:00
         .build()
 
+    val updatePastMatchesJob = JobBuilder.newJob(UpdatePastMatchesJob::class.java)
+        .withIdentity("updatePastMatchesJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val updatePastMatchesTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("updatePastMatchesTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(7, 0))  // Every day at 07:00 AM
+        .build()
+
     // Добавляем новый job для отправки сообщений с точностью предсказаний
     val accuracyJob = JobBuilder.newJob(SendAccuracyJob::class.java)
         .withIdentity("sendAccuracyJob", "group1")
@@ -187,6 +209,7 @@ fun main() {
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateJob, dailyUpdateTrigger)
+    scheduler.scheduleJob(updatePastMatchesJob, updatePastMatchesTrigger)
     scheduler.scheduleJob(updateLeaguePredictabilityJob, updateLeaguePredictabilityTrigger)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)

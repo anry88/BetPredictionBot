@@ -13,6 +13,7 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -190,6 +191,55 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             emptyList()
         }
     }
+
+    suspend fun updatePastMatches() {
+        val currentDate = LocalDate.now()
+        val twoDaysAgo = currentDate.minusDays(2)
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
+        val formattedTwoDaysAgo = twoDaysAgo.format(formatter)
+        val formattedCurrentDate = currentDate.format(formatter)
+
+        leaguesConfig.forEach { leagueConfig ->
+            val matches = getPastMatches(leagueConfig.leagueId, leagueConfig.season, formattedTwoDaysAgo, formattedCurrentDate)
+            matches.forEach { match ->
+                val fixtureId = match.fixture.id.toString()
+
+                val existingMatchInfo = DatabaseService.getMatchInfoByFixtureId(fixtureId)
+                if (existingMatchInfo != null) {
+                    // Update the actual outcome and actual score in the database
+                    val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
+                    val actualOutcome = when {
+                        match.teams.home.winner == true -> match.teams.home.name
+                        match.teams.away.winner == true -> match.teams.away.name
+                        else -> "Draw"
+                    }
+
+                    val updatedMatchInfo = existingMatchInfo.copy(
+                        actualOutcome = actualOutcome,
+                        actualScore = actualScore
+                    )
+
+                    // Update match result in database
+                    DatabaseService.updateMatchResult(updatedMatchInfo)
+
+                    // Update messages in the channels if necessary
+                    footballBot.updateMatchMessages(updatedMatchInfo)
+                    delay(10000)
+                }
+            }
+        }
+
+        // Delete matches older than two days with no actual result
+        val matchesToDelete = DatabaseService.getMatchesOlderThanTwoDaysWithoutResult(twoDaysAgo)
+        matchesToDelete.forEach { matchInfo ->
+            // Delete messages from channels if any
+            footballBot.deleteMatchMessages(matchInfo)
+            // Delete match from database
+            DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+        }
+    }
+
 
     suspend fun getLiveMatchInfo(fixtureId: String): MatchInfo? {
         // Сначала получаем текущую информацию о матче из базы данных
