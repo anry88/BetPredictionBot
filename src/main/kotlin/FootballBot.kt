@@ -22,6 +22,7 @@ import service.initDatabase
 import java.io.File
 import java.time.LocalDate
 import java.time.YearMonth
+import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
@@ -115,6 +116,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText.startsWith("/getAccuracy") -> {
                     handleGetAccuracyCommand(chatId, messageText)
                 }
+                chatId == adminChatId && messageText == "/getLeaguePredictability" -> {
+                    handleGetLeaguePredictabilityCommand(chatId)
+                }
                 messageText == "/start" -> {
                     handleStartCommand(chatId)
                 }
@@ -184,6 +188,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             /activeusercount - Get the count of unique users active last day
             /upcomingmatches - Get upcoming matches within the next 24 hours
             /topmatch - Get the top match
+            /getAccuracy n - Get prediction accuracy for 'n' period
+            /getLeaguePredictability - Get League Predictability data
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -389,14 +395,24 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun updateLeaguePredictability() {
-        // Получаем все матчи из базы данных
-        val allMatches = DatabaseService.getAllMatches()
-
         // Получаем список всех лиг
         val allLeagues = DatabaseService.getAllLeagues()
 
-        // Обновляем статистику по лигам с учетом стратегии
-        val leagueStatsMap = calculateLeagueStats(allMatches, allLeagues)
+        val leagueStatsMap = mutableMapOf<String, LeagueStats>()
+
+        allLeagues.forEach { leagueName ->
+            // Получаем последние 150 матчей для лиги
+            val matches = DatabaseService.getLastNMatchesForLeague(leagueName, 150)
+
+            // Если матчей недостаточно, можно пропустить или всё равно посчитать статистику
+            if (matches.isNotEmpty()) {
+                // Рассчитываем статистику для лиги
+                val stats = calculateLeagueStatsForLeague(leagueName, matches)
+                leagueStatsMap[leagueName] = stats
+            } else {
+                logger.warn("No matches found for league $leagueName")
+            }
+        }
 
         // Сохраняем обновленные данные в базе данных
         DatabaseService.updateLeaguePredictability(leagueStatsMap)
@@ -404,6 +420,69 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         logger.info("League predictability updated successfully")
     }
 
+    private fun calculateLeagueStatsForLeague(leagueName: String, matches: List<MatchInfo>): LeagueStats {
+        val stats = LeagueStats(leagueName = leagueName)
+
+        matches.forEach { match ->
+            val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
+            val stake = 100.0
+            val actualOutcome = match.actualOutcome
+            val predictedOutcome = match.predictedOutcome
+
+            // Общая статистика
+            stats.totalMatches += 1
+            stats.totalStakes += stake
+
+            if (predictedOutcome == actualOutcome) {
+                stats.successfulPredictions += 1
+                val profit = (oddsValue * stake) - stake
+                stats.totalReturns += profit
+            } else {
+                // Вычитаем ставку при проигрыше
+                stats.totalReturns -= stake
+            }
+
+            // Проверяем, соответствует ли матч стратегии
+            val teams = match.teams.split(" vs. ")
+            if (teams.size == 2) {
+                val homeTeam = teams[0].trim()
+                val isHomeTeamPredicted = predictedOutcome == homeTeam
+                val isOddsInRange = oddsValue in 1.20..2.20
+                val isNotDraw = predictedOutcome != "Draw"
+
+                if (isHomeTeamPredicted && isOddsInRange && isNotDraw) {
+                    // Статистика по стратегии
+                    stats.strategyTotalMatches += 1
+                    stats.strategyTotalStakes += stake
+
+                    if (predictedOutcome == actualOutcome) {
+                        stats.strategySuccessfulPredictions += 1
+                        val profit = (oddsValue * stake) - stake
+                        stats.strategyTotalReturns += profit
+                    } else {
+                        // Вычитаем ставку при проигрыше
+                        stats.strategyTotalReturns -= stake
+                    }
+                }
+            }
+        }
+
+        // Расчет метрик для лиги
+        stats.roi = if (stats.totalStakes > 0) (stats.totalReturns / stats.totalStakes) * 100 else 0.0
+        stats.accuracy = if (stats.totalMatches > 0) (stats.successfulPredictions.toDouble() / stats.totalMatches) * 100 else 0.0
+
+        // Статистика по стратегии
+        stats.strategyRoi = if (stats.strategyTotalStakes > 0) (stats.strategyTotalReturns / stats.strategyTotalStakes) * 100 else 0.0
+        stats.strategyAccuracy = if (stats.strategyTotalMatches > 0) (stats.strategySuccessfulPredictions.toDouble() / stats.strategyTotalMatches) * 100 else 0.0
+
+        // Округляем значения до двух знаков после точки
+        stats.roi = (stats.roi * 100.0).roundToInt() / 100.0
+        stats.accuracy = (stats.accuracy * 100.0).roundToInt() / 100.0
+        stats.strategyRoi = (stats.strategyRoi * 100.0).roundToInt() / 100.0
+        stats.strategyAccuracy = (stats.strategyAccuracy * 100.0).roundToInt() / 100.0
+
+        return stats
+    }
 
     private fun calculateLeagueStats(matches: List<MatchInfo>, predictableLeagues: List<String>): Map<String, LeagueStats> {
         val leagueStatsMap = mutableMapOf<String, LeagueStats>()
@@ -838,6 +917,47 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } catch (e: Exception) {
             logger.error("Failed to delete message with ID $messageId from chat $chatId", e)
         }
+    }
+
+    private fun handleGetLeaguePredictabilityCommand(chatId: String) {
+        val leagueStatsList = DatabaseService.getLeaguePredictabilityData()
+        if (leagueStatsList.isNotEmpty()) {
+            val messages = formatLeaguePredictabilityData(leagueStatsList)
+            messages.forEach { messageText ->
+                sendMessage(chatId, messageText)
+            }
+        } else {
+            sendMessage(chatId, "Данные о прогнозируемости лиг недоступны.")
+        }
+    }
+
+    private fun formatLeaguePredictabilityData(leagueStatsList: List<LeagueStats>): List<String> {
+        val messages = mutableListOf<String>()
+        val messageBuilder = StringBuilder()
+        messageBuilder.append("📊 **League Predictability Data**\n\n")
+        leagueStatsList.sortedBy { it.leagueName }.forEach { stats ->
+            val leagueInfo = """
+            **${stats.leagueName}**
+            - Accuracy: ${stats.accuracy}%
+            - ROI: ${stats.roi}%
+            - Strategy Accuracy: ${stats.strategyAccuracy}%
+            - Strategy ROI: ${stats.strategyRoi}%
+            
+        """.trimIndent()
+
+            // Проверяем, если сообщение превышает лимит по длине, добавляем его в список и начинаем новое
+            if (messageBuilder.length + leagueInfo.length > 4000) {
+                messages.add(messageBuilder.toString())
+                messageBuilder.clear()
+            }
+            messageBuilder.append(leagueInfo)
+        }
+
+        if (messageBuilder.isNotEmpty()) {
+            messages.add(messageBuilder.toString())
+        }
+
+        return messages
     }
 
 }

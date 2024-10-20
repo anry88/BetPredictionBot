@@ -693,4 +693,57 @@ object DatabaseService {
         return matchesToDelete
     }
 
+    fun getLastNMatchesForLeague(leagueName: String, n: Int): List<MatchInfo> {
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            leagueTable.select { leagueTable.actualOutcome.isNotNull() }
+                .orderBy(leagueTable.datetime, SortOrder.DESC)
+                .limit(n)
+                .mapNotNullTo(matches) {
+                    MatchInfo(
+                        fixtureId = it[leagueTable.fixtureId],
+                        datetime = it[leagueTable.datetime],
+                        matchType = it[leagueTable.matchType],
+                        teams = it[leagueTable.teams],
+                        predictedOutcome = it[leagueTable.predictedOutcome],
+                        actualOutcome = it[leagueTable.actualOutcome],
+                        predictedScore = it[leagueTable.predictedScore],
+                        actualScore = it[leagueTable.actualScore],
+                        odds = it[leagueTable.odds],
+                        bookmakerName = it[leagueTable.bookmakerName],
+                        homeWinOdds = it[leagueTable.homeWinOdds],
+                        drawOdds = it[leagueTable.drawOdds],
+                        awayWinOdds = it[leagueTable.awayWinOdds],
+                        telegramMessageId = it[leagueTable.telegramMessageId],
+                        strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
+                        elapsed = null
+                    )
+                }
+        }
+        return matches
+    }
+
+    fun getLeaguePredictabilityData(): List<LeagueStats> {
+        return transaction {
+            LeaguePredictability.selectAll().map {
+                LeagueStats(
+                    leagueName = it[LeaguePredictability.leagueName],
+                    roi = it[LeaguePredictability.roi].toDouble(),
+                    accuracy = it[LeaguePredictability.accuracy].toDouble(),
+                    strategyRoi = it[LeaguePredictability.strategyRoi].toDouble(),
+                    strategyAccuracy = it[LeaguePredictability.strategyAccuracy].toDouble(),
+                    totalMatches = 0, // Если у вас есть эти данные в таблице, обновите соответствующим образом
+                    successfulPredictions = 0,
+                    totalStakes = 0.0,
+                    totalReturns = 0.0,
+                    strategyTotalMatches = 0,
+                    strategySuccessfulPredictions = 0,
+                    strategyTotalStakes = 0.0,
+                    strategyTotalReturns = 0.0
+                )
+            }
+        }
+    }
+
 }
