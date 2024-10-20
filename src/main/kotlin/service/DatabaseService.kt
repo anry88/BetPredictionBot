@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -98,6 +99,7 @@ fun initDatabase(dbPath: String) {
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
     private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     private val listOfLeagues = mutableSetOf<String>()
     private fun loadLeagues() {
@@ -624,6 +626,35 @@ object DatabaseService {
             }
             logger.info("Updated odds for match ${matchInfo.teams} at ${matchInfo.datetime}")
         }
+    }
+
+    fun getMatchesOlderThanTwoDaysWithoutResult(cutoffDate: LocalDate): List<MatchInfo> {
+        val matchesToDelete = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                leagueTable.select {
+                    (leagueTable.datetime less cutoffDate.format(dateFormatter)) and
+                            (leagueTable.actualOutcome.isNull())
+                }.mapNotNullTo(matchesToDelete) {
+                    MatchInfo(
+                        fixtureId = it[leagueTable.fixtureId],
+                        datetime = it[leagueTable.datetime],
+                        matchType = it[leagueTable.matchType],
+                        teams = it[leagueTable.teams],
+                        predictedOutcome = it[leagueTable.predictedOutcome],
+                        actualOutcome = it[leagueTable.actualOutcome],
+                        predictedScore = it[leagueTable.predictedScore],
+                        actualScore = it[leagueTable.actualScore],
+                        odds = it[leagueTable.odds],
+                        telegramMessageId = it[leagueTable.telegramMessageId],
+                        strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
+                        elapsed = null
+                    )
+                }
+            }
+        }
+        return matchesToDelete
     }
 
 }

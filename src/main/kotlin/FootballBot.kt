@@ -12,6 +12,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import org.slf4j.LoggerFactory
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import service.DatabaseService
@@ -796,6 +797,42 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         // Если страна не найдена, возвращаем пустую строку или можно вернуть специальный символ, например, белый флаг
         return "" // Или " " для белого флага по умолчанию
+    }
+
+    fun updateMatchMessages(matchInfo: MatchInfo) {
+        // Update message in the main channel
+        if (matchInfo.telegramMessageId != null) {
+            val messageText = formatMatchInfoWithResult(matchInfo)
+            updateMessage(channelId, matchInfo.telegramMessageId!!, messageText)
+        }
+        // Update message in the strategy channel
+        if (matchInfo.strategyTelegramMessageId != null) {
+            val strategyMessageText = formatPremiumMatchInfoWithResult(matchInfo)
+            updateMessage(strategyChannelId, matchInfo.strategyTelegramMessageId!!, strategyMessageText)
+        }
+    }
+
+    fun deleteMatchMessages(matchInfo: MatchInfo) {
+        // If message was sent to the main channel, delete it
+        if (matchInfo.telegramMessageId != null) {
+            deleteMessage(channelId, matchInfo.telegramMessageId!!)
+        }
+        // If message was sent to the strategy channel, delete it
+        if (matchInfo.strategyTelegramMessageId != null) {
+            deleteMessage(strategyChannelId, matchInfo.strategyTelegramMessageId!!)
+        }
+    }
+
+    private fun deleteMessage(chatId: String, messageId: String) {
+        try {
+            val deleteMessage = DeleteMessage()
+            deleteMessage.chatId = chatId
+            deleteMessage.messageId = messageId.toInt()
+            execute(deleteMessage)
+            logger.info("Message with ID $messageId deleted successfully from chat $chatId")
+        } catch (e: Exception) {
+            logger.error("Failed to delete message with ID $messageId from chat $chatId", e)
+        }
     }
 
 }
