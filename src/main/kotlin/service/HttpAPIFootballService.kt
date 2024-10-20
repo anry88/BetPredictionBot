@@ -231,8 +231,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             }
         }
 
-        // Delete matches older than two days with no actual result
-        val matchesToDelete = DatabaseService.getMatchesOlderThanTwoDaysWithoutResult(oneDayAgo)
+        // Delete matches older than one day with no actual result
+        val matchesToDelete = DatabaseService.getMatchesOlderThanOneDayWithoutResult(oneDayAgo)
         matchesToDelete.forEach { matchInfo ->
             // Delete messages from channels if any
             footballBot.deleteMatchMessages(matchInfo)

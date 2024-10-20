@@ -628,7 +628,7 @@ object DatabaseService {
         }
     }
 
-    fun getMatchesOlderThanTwoDaysWithoutResult(cutoffDate: LocalDate): List<MatchInfo> {
+    fun getMatchesOlderThanOneDayWithoutResult(cutoffDate: LocalDate): List<MatchInfo> {
         val matchesToDelete = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
