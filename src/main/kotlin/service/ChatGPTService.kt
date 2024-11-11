@@ -32,7 +32,7 @@ object ChatGPTService {
                         )
                     ),
                     max_tokens = 1000,
-                    temperature = 1.0
+                    temperature = 0.5
                 )
             )
 
