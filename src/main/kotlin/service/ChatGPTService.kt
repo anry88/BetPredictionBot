@@ -14,7 +14,6 @@ object ChatGPTService {
 
             val response = HttpChatGPTService.api.getChatGPTRequest(
                 ChatGPTRequest(
-//                    model = "gpt-4o-2024-05-13", //old version
                     model = "gpt-4o-2024-08-06", //new version
                     messages = listOf(
                         Message(
@@ -55,6 +54,12 @@ object ChatGPTService {
             val outcome = match.groups[5]?.value?.trim() ?: ""
             val score = match.groups[6]?.value?.trim() ?: ""
             val odds = match.groups[7]?.value?.trim() ?: ""
+
+            // Проверяем, что счет имеет формат int:int
+            if (!score.matches(Regex("""^\d+:\d+$"""))) {
+                logger.error("Predicted score is not in the correct format int:int: $score")
+                return null
+            }
 
             return MatchInfo(
                 fixtureId = fixtureId,
