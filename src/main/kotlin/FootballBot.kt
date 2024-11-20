@@ -141,24 +141,47 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return Pair(tagsData.leagues, tagsData.teams)
     }
 
+//    private fun getTags(matchType: String, teams: String): String {
+//        val tags = mutableSetOf<String>()
+//
+//        // Добавляем тег для лиги
+//        leagueTags.forEach { (leagueName, tag) ->
+//            if (matchType.contains(leagueName, ignoreCase = true)) {
+//                tags.add(tag)
+//            }
+//        }
+//
+//        // Добавляем теги для команд
+//        teamTags.forEach { (teamName, tag) ->
+//            if (teams.contains(teamName, ignoreCase = true)) {
+//                tags.add(tag)
+//            }
+//        }
+//
+//        // Преобразуем набор тегов в строку с пробелами между тегами
+//        return if (tags.isNotEmpty()) tags.joinToString(" ") else ""
+//    }
+
     private fun getTags(matchType: String, teams: String): String {
         val tags = mutableSetOf<String>()
 
-        // Добавляем тег для лиги
+        // Add tag for the league
         leagueTags.forEach { (leagueName, tag) ->
-            if (matchType.contains(leagueName, ignoreCase = true)) {
+            val regex = "\\b${Regex.escape(leagueName)}\\b".toRegex(RegexOption.IGNORE_CASE)
+            if (regex.containsMatchIn(matchType)) {
                 tags.add(tag)
             }
         }
 
-        // Добавляем теги для команд
+        // Add tags for the teams
         teamTags.forEach { (teamName, tag) ->
-            if (teams.contains(teamName, ignoreCase = true)) {
+            val regex = "\\b${Regex.escape(teamName)}\\b".toRegex(RegexOption.IGNORE_CASE)
+            if (regex.containsMatchIn(teams)) {
                 tags.add(tag)
             }
         }
 
-        // Преобразуем набор тегов в строку с пробелами между тегами
+        // Convert the set of tags to a string with spaces between tags
         return if (tags.isNotEmpty()) tags.joinToString(" ") else ""
     }
 
@@ -633,9 +656,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     val isPredictableLeague = match.matchType in predictableLeagues
                     val isOddsInRange = oddsValue in 1.20..2.20
                     val isNotDraw = match.predictedOutcome != "Draw"
+                    val isNotDefaultBookmaker = match.bookmakerName != "Default"
 
                     // Проверяем, если прогноз - победа домашней или гостевой команды, и остальные условия стратегии выполняются
-                    if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw) {
+                    if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw &&isNotDefaultBookmaker) {
                         // Проверяем, был ли матч уже отправлен в канал стратегии
                         val strategyMessageId = match.strategyTelegramMessageId ?: run {
                             // Отправляем в отдельный канал
