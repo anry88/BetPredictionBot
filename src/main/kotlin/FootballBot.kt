@@ -1,8 +1,10 @@
+import dto.JsonlMatch
 import dto.LeagueStats
 import dto.MatchInfo
 import dto.TagsData
 import `interface`.TelegramService
 import kotlinx.coroutines.delay
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
@@ -119,6 +121,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText == "/getLeaguePredictability" -> {
                     handleGetLeaguePredictabilityCommand(chatId)
                 }
+                chatId == adminChatId && messageText == "/getjsonl" -> {
+                    handleGetJsonlCommand(chatId)
+                }
                 messageText == "/start" -> {
                     handleStartCommand(chatId)
                 }
@@ -140,27 +145,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val tagsData = json.decodeFromString<TagsData>(fileContent)
         return Pair(tagsData.leagues, tagsData.teams)
     }
-
-//    private fun getTags(matchType: String, teams: String): String {
-//        val tags = mutableSetOf<String>()
-//
-//        // Добавляем тег для лиги
-//        leagueTags.forEach { (leagueName, tag) ->
-//            if (matchType.contains(leagueName, ignoreCase = true)) {
-//                tags.add(tag)
-//            }
-//        }
-//
-//        // Добавляем теги для команд
-//        teamTags.forEach { (teamName, tag) ->
-//            if (teams.contains(teamName, ignoreCase = true)) {
-//                tags.add(tag)
-//            }
-//        }
-//
-//        // Преобразуем набор тегов в строку с пробелами между тегами
-//        return if (tags.isNotEmpty()) tags.joinToString(" ") else ""
-//    }
 
     private fun getTags(matchType: String, teams: String): String {
         val tags = mutableSetOf<String>()
@@ -213,6 +197,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             /topmatch - Get the top match
             /getAccuracy n - Get prediction accuracy for 'n' period
             /getLeaguePredictability - Get League Predictability data
+            /getjsonl - Get the matches data in .jsonl format
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -281,6 +266,61 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         val message = SendMessage(chatId, responseText)
         execute(message)
+    }
+
+    private fun handleGetJsonlCommand(chatId: String) {
+        val matches = DatabaseService.getAllMatches()
+        if (matches.isNotEmpty()) {
+            val jsonlFile = createJsonlFile(matches)
+            if (jsonlFile != null && jsonlFile.exists()) {
+                val document = SendDocument()
+                document.chatId = chatId
+                document.document = InputFile(jsonlFile)
+                document.caption = "Here is the .jsonl file."
+                execute(document)
+                jsonlFile.delete() // Delete the file after sending
+            } else {
+                sendMessage(chatId, "Failed to create the .jsonl file.")
+            }
+        } else {
+            sendMessage(chatId, "No matches found.")
+        }
+    }
+
+    private fun createJsonlFile(matches: List<MatchInfo>): File? {
+        return try {
+            val file = File("matches.jsonl")
+            file.bufferedWriter().use { writer ->
+                for (match in matches) {
+                    val jsonLine = createJsonObjectString(match)
+                    writer.write(jsonLine)
+                    writer.newLine()
+                }
+            }
+            file
+        } catch (e: Exception) {
+            logger.error("Failed to create .jsonl file", e)
+            null
+        }
+    }
+
+    private fun createJsonObjectString(match: MatchInfo): String {
+        val jsonlMatch = JsonlMatch(
+            date = match.datetime,
+            matchType = match.matchType,
+            teams = match.teams,
+            predictedScore = match.predictedScore,
+            actualScore = match.actualScore,
+            predictedOutcome = match.predictedOutcome,
+            actualOutcome = match.actualOutcome,
+            odds = match.odds,
+            bookmakerName = match.bookmakerName,
+            homeWinOdds = match.homeWinOdds,
+            drawOdds = match.drawOdds,
+            awayWinOdds = match.awayWinOdds
+        )
+        val json = Json { prettyPrint = false }
+        return json.encodeToString(jsonlMatch)
     }
 
 
