@@ -1,7 +1,9 @@
 import dto.JsonlMatch
 import dto.LeagueStats
 import dto.MatchInfo
+import dto.OutcomeStrategyConfig
 import dto.TagsData
+import dto.outcomeStrategyConfigs
 import `interface`.TelegramService
 import kotlinx.coroutines.delay
 import kotlinx.serialization.encodeToString
@@ -726,60 +728,57 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
+    // In FootballBot.kt
     suspend fun sendUpcomingMatchesToTelegram() {
         val matches = getMatchesWithoutMessageIdForNext5Hours()
 
         if (matches.isNotEmpty()) {
-            // Получаем список предсказуемых лиг
-            val predictableLeagues = DatabaseService.getPredictableLeagues(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
+            // Loop over each outcome strategy configuration
+            for (config in outcomeStrategyConfigs) {
+                // Get predictable leagues for the current outcome type
+                val predictableLeagues = DatabaseService.getPredictableLeagues(
+                    outcomeType = config.outcomeType,
+                    roiThreshold = config.roiThreshold,
+                    accuracyThreshold = config.accuracyThreshold
+                )
 
-            matches.forEach { match ->
-                // Перед отправкой сообщения обновляем коэффициенты
-                val teamsForOdds = match.teams.split(" vs. ")
-                if (teamsForOdds.size == 2) {
-                    val homeTeam = teamsForOdds[0].trim()
-                    val awayTeam = teamsForOdds[1].trim()
-                    val oddsInfo = footballService.getOddsForFixture(match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam)
-                    if (oddsInfo != null) {
-                        match.odds = oddsInfo.odds.toString()
-                        match.bookmakerName = oddsInfo.bookmakerName
-                        match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
-                        match.drawOdds = oddsInfo.drawOdds?.toString()
-                        match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
+                // Process each match
+                for (match in matches) {
+                    // Update odds if necessary
+                    val teamsForOdds = match.teams.split(" vs. ")
+                    if (teamsForOdds.size == 2) {
+                        val homeTeam = teamsForOdds[0].trim()
+                        val awayTeam = teamsForOdds[1].trim()
+                        val oddsInfo = footballService.getOddsForFixture(
+                            match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam
+                        )
+                        if (oddsInfo != null) {
+                            match.odds = oddsInfo.odds.toString()
+                            match.bookmakerName = oddsInfo.bookmakerName
+                            match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
+                            match.drawOdds = oddsInfo.drawOdds?.toString()
+                            match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
 
-                        DatabaseService.updateMatchOdds(match)
+                            DatabaseService.updateMatchOdds(match)
+                        }
                     }
-                }
 
-                // Отправляем матч в основной канал, если он еще не был отправлен
-                val messageId = match.telegramMessageId ?: run {
-                    val messageText = formatMatchInfo(match)
-                    val newMessageId = sendMessageAndGetId(channelId, messageText)
-                    if (newMessageId != null) {
-                        val updatedMatchInfo = match.copy(telegramMessageId = newMessageId.toString())
-                        DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                    // Send match to main channel if not sent yet
+                    val messageId = match.telegramMessageId ?: run {
+                        val messageText = formatMatchInfo(match)
+                        val newMessageId = sendMessageAndGetId(channelId, messageText)
+                        if (newMessageId != null) {
+                            val updatedMatchInfo = match.copy(telegramMessageId = newMessageId.toString())
+                            DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                        }
+                        newMessageId
                     }
-                    newMessageId
-                }
 
-                // Проверяем, соответствует ли матч стратегии
-                val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
-                val teams = match.teams.split(" vs. ")
-                if (teams.size == 2) {
-                    val homeTeam = teams[0].trim()
-                    val awayTeam = teams[1].trim()
-                    val isHomeTeamPredicted = match.predictedOutcome == homeTeam
-                    val isAwayTeamPredicted = match.predictedOutcome == awayTeam
-                    val isPredictableLeague = match.matchType in predictableLeagues
-                    val isOddsInRange = oddsValue in 1.20..2.20
-                    val isNotDraw = match.predictedOutcome != "Draw"
-                    val isNotDefaultBookmaker = match.bookmakerName != "Default"
-
-                    // Проверяем, если прогноз - победа домашней или гостевой команды, и остальные условия стратегии выполняются
-                    if (isHomeTeamPredicted && isPredictableLeague && isOddsInRange && isNotDraw &&isNotDefaultBookmaker) {
-                        // Проверяем, был ли матч уже отправлен в канал стратегии
+                    // Check if match fits the strategy
+                    if (isMatchFitsStrategy(match, config, predictableLeagues)) {
+                        // Check if the match has already been sent to the premium channel
                         val strategyMessageId = match.strategyTelegramMessageId ?: run {
-                            // Отправляем в отдельный канал
+                            // Send to premium channel
                             val strategyMessageText = formatPremiumMatchInfo(match)
                             val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
                             if (newStrategyMessageId != null) {
@@ -789,13 +788,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                             newStrategyMessageId
                         }
                     }
-                }
 
-                Thread.sleep(10000)
+                    // Delay between messages to avoid API rate limits
+                    delay(10000)
+                }
             }
         }
     }
-
 
     suspend fun updateLiveMatches() {
         val matchesToUpdate = DatabaseService.getOngoingMatches()
@@ -1107,5 +1106,31 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return messages
     }
 
+    // In FootballBot.kt
+    private fun isMatchFitsStrategy(
+        match: MatchInfo,
+        config: OutcomeStrategyConfig,
+        predictableLeagues: List<String>
+    ): Boolean {
+        val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
+        val teams = match.teams.split(" vs. ")
+        if (teams.size == 2) {
+            val homeTeam = teams[0].trim()
+            val awayTeam = teams[1].trim()
+            val predictedOutcome = match.predictedOutcome
+            val isOutcomePredicted = when (config.outcomeType) {
+                "HomeWin" -> predictedOutcome == homeTeam
+                "AwayWin" -> predictedOutcome == awayTeam
+                "Draw" -> predictedOutcome == "Draw"
+                else -> false
+            }
+            val isPredictableLeague = match.matchType in predictableLeagues
+            val isOddsInRange = oddsValue in config.minOdds..config.maxOdds
+            val isNotDefaultBookmaker = match.bookmakerName != "Default"
+
+            return isOutcomePredicted && isPredictableLeague && isOddsInRange && isNotDefaultBookmaker
+        }
+        return false
+    }
 
 }
