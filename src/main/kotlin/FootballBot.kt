@@ -553,13 +553,35 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
                 // Проверяем, соответствует ли матч стратегии
 //            val teams = match.teams.split(" vs. ")
-                if (teams.size == 2) {
-                    val homeTeam = teams[0].trim()
-                    val isHomeTeamPredicted = predictedOutcome == homeTeam
-                    val isOddsInRange = oddsValue in 1.20..2.20
-                    val isNotDraw = predictedOutcome != "Draw"
-
-                    if (isHomeTeamPredicted && isOddsInRange && isNotDraw) {
+//                if (teams.size == 2) {
+//                    val homeTeam = teams[0].trim()
+//                    val isHomeTeamPredicted = predictedOutcome == homeTeam
+//                    val isOddsInRange = oddsValue in 1.20..2.20
+//                    val isNotDraw = predictedOutcome != "Draw"
+//
+//                    if (isHomeTeamPredicted && isOddsInRange && isNotDraw) {
+//                        // Статистика по стратегии
+//                        stats.strategyTotalMatches += 1
+//                        stats.strategyTotalStakes += stake
+//
+//                        if (predictedOutcome == actualOutcome) {
+//                            stats.strategySuccessfulPredictions += 1
+//                            val profit = (oddsValue * stake) - stake
+//                            stats.strategyTotalReturns += profit
+//                        } else {
+//                            // Вычитаем ставку при проигрыше
+//                            stats.strategyTotalReturns -= stake
+//                        }
+//                    }
+//                }
+                for (config in outcomeStrategyConfigs) {
+                    // Get predictable leagues for the current outcome type
+                    val predictableLeagues = DatabaseService.getPredictableLeagues(
+                        outcomeType = config.outcomeType,
+                        roiThreshold = config.roiThreshold,
+                        accuracyThreshold = config.accuracyThreshold
+                    )
+                    if (isMatchFitsStrategy(match, config, predictableLeagues)) {
                         // Статистика по стратегии
                         stats.strategyTotalMatches += 1
                         stats.strategyTotalStakes += stake
