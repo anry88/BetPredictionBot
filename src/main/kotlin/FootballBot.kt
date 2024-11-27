@@ -755,6 +755,38 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matches = getMatchesWithoutMessageIdForNext5Hours()
 
         if (matches.isNotEmpty()) {
+            // Process each match
+            for (match in matches) {
+                // Update odds if necessary
+                val teamsForOdds = match.teams.split(" vs. ")
+                if (teamsForOdds.size == 2) {
+                    val homeTeam = teamsForOdds[0].trim()
+                    val awayTeam = teamsForOdds[1].trim()
+                    val oddsInfo = footballService.getOddsForFixture(
+                        match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam
+                    )
+                    if (oddsInfo != null) {
+                        match.odds = oddsInfo.odds.toString()
+                        match.bookmakerName = oddsInfo.bookmakerName
+                        match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
+                        match.drawOdds = oddsInfo.drawOdds?.toString()
+                        match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
+
+                        DatabaseService.updateMatchOdds(match)
+                    }
+                }
+
+                // Send match to main channel if not sent yet
+                val messageId = match.telegramMessageId ?: run {
+                    val messageText = formatMatchInfo(match)
+                    val newMessageId = sendMessageAndGetId(channelId, messageText)
+                    if (newMessageId != null) {
+                        val updatedMatchInfo = match.copy(telegramMessageId = newMessageId.toString())
+                        DatabaseService.updateMatchMessageId(updatedMatchInfo)
+                    }
+                    newMessageId
+                }
+
             // Loop over each outcome strategy configuration
             for (config in outcomeStrategyConfigs) {
                 // Get predictable leagues for the current outcome type
@@ -763,39 +795,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     roiThreshold = config.roiThreshold,
                     accuracyThreshold = config.accuracyThreshold
                 )
-
-                // Process each match
-                for (match in matches) {
-                    // Update odds if necessary
-                    val teamsForOdds = match.teams.split(" vs. ")
-                    if (teamsForOdds.size == 2) {
-                        val homeTeam = teamsForOdds[0].trim()
-                        val awayTeam = teamsForOdds[1].trim()
-                        val oddsInfo = footballService.getOddsForFixture(
-                            match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam
-                        )
-                        if (oddsInfo != null) {
-                            match.odds = oddsInfo.odds.toString()
-                            match.bookmakerName = oddsInfo.bookmakerName
-                            match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
-                            match.drawOdds = oddsInfo.drawOdds?.toString()
-                            match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
-
-                            DatabaseService.updateMatchOdds(match)
-                        }
-                    }
-
-                    // Send match to main channel if not sent yet
-                    val messageId = match.telegramMessageId ?: run {
-                        val messageText = formatMatchInfo(match)
-                        val newMessageId = sendMessageAndGetId(channelId, messageText)
-                        if (newMessageId != null) {
-                            val updatedMatchInfo = match.copy(telegramMessageId = newMessageId.toString())
-                            DatabaseService.updateMatchMessageId(updatedMatchInfo)
-                        }
-                        newMessageId
-                    }
-
                     // Check if match fits the strategy
                     if (isMatchFitsStrategy(match, config, predictableLeagues)) {
                         // Check if the match has already been sent to the premium channel
@@ -810,10 +809,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                             newStrategyMessageId
                         }
                     }
-
-                    // Delay between messages to avoid API rate limits
-                    delay(10000)
                 }
+                // Delay between messages to avoid API rate limits
+                delay(10000)
             }
         }
     }
@@ -1148,7 +1146,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
             val isPredictableLeague = match.matchType in predictableLeagues
             val isOddsInRange = oddsValue in config.minOdds..config.maxOdds
-            val isNotDefaultBookmaker = match.bookmakerName != "Default"
+            val isNotDefaultBookmaker = match.bookmakerName != "Default" && match.bookmakerName != null
 
             return isOutcomePredicted && isPredictableLeague && isOddsInRange && isNotDefaultBookmaker
         }
