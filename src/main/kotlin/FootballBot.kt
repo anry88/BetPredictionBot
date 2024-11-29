@@ -787,29 +787,34 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     newMessageId
                 }
 
-            // Loop over each outcome strategy configuration
-            for (config in outcomeStrategyConfigs) {
-                // Get predictable leagues for the current outcome type
-                val predictableLeagues = DatabaseService.getPredictableLeagues(
-                    outcomeType = config.outcomeType,
-                    roiThreshold = config.roiThreshold,
-                    accuracyThreshold = config.accuracyThreshold
-                )
-                    // Check if match fits the strategy
-                    if (isMatchFitsStrategy(match, config, predictableLeagues)) {
-                        // Check if the match has already been sent to the premium channel
-                        val strategyMessageId = match.strategyTelegramMessageId ?: run {
-                            // Send to premium channel
-                            val strategyMessageText = formatPremiumMatchInfo(match)
-                            val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
-                            if (newStrategyMessageId != null) {
-                                val updatedMatchInfo = match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
-                                DatabaseService.updateMatchStrategyMessageId(updatedMatchInfo)
+                val fitsStrategyLeagues = DatabaseService.isLeagueFitsStrategy(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
+
+                if (match.matchType in fitsStrategyLeagues){
+                    // Loop over each outcome strategy configuration
+                    for (config in outcomeStrategyConfigs) {
+                        // Get predictable leagues for the current outcome type
+                        val predictableLeagues = DatabaseService.getPredictableLeagues(
+                            outcomeType = config.outcomeType,
+                            roiThreshold = config.roiThreshold,
+                            accuracyThreshold = config.accuracyThreshold
+                        )
+                        // Check if match fits the strategy
+                        if (isMatchFitsStrategy(match, config, predictableLeagues)) {
+                            // Check if the match has already been sent to the premium channel
+                            val strategyMessageId = match.strategyTelegramMessageId ?: run {
+                                // Send to premium channel
+                                val strategyMessageText = formatPremiumMatchInfo(match)
+                                val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
+                                if (newStrategyMessageId != null) {
+                                    val updatedMatchInfo = match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
+                                    DatabaseService.updateMatchStrategyMessageId(updatedMatchInfo)
+                                }
+                                newStrategyMessageId
                             }
-                            newStrategyMessageId
                         }
                     }
                 }
+
                 // Delay between messages to avoid API rate limits
                 delay(10000)
             }

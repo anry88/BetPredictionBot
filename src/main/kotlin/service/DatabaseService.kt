@@ -712,6 +712,16 @@ object DatabaseService {
         }
     }
 
+    fun isLeagueFitsStrategy(strategyRoiThreshold: Double, strategyAccuracyThreshold: Double): List<String> {
+        return transaction {
+            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+            LeaguePredictability.select {
+                (LeaguePredictability.strategyRoi greaterEq strategyRoiThreshold) and
+                        (LeaguePredictability.strategyAccuracy greaterEq strategyAccuracyThreshold)
+            }.map { it[LeaguePredictability.leagueName] }
+        }
+    }
+
     fun updateMatchOdds(matchInfo: MatchInfo) {
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
