@@ -14,10 +14,8 @@ val outcomeStrategyConfigs = listOf(
         outcomeType = "HomeWin",
         roiThreshold = 5.0,
         accuracyThreshold = 60.0,
-//        minOdds = 1.20,
-//        maxOdds = 2.20
-        minOdds = 1.00,
-        maxOdds = 10.20
+        minOdds = 1.20,
+        maxOdds = 2.20
     ),
     OutcomeStrategyConfig(
         outcomeType = "Draw",
