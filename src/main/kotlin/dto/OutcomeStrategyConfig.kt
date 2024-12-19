@@ -12,17 +12,19 @@ data class OutcomeStrategyConfig(
 val outcomeStrategyConfigs = listOf(
     OutcomeStrategyConfig(
         outcomeType = "HomeWin",
-        roiThreshold = 10.0,
+        roiThreshold = 5.0,
         accuracyThreshold = 60.0,
-        minOdds = 1.20,
-        maxOdds = 2.20
+//        minOdds = 1.20,
+//        maxOdds = 2.20
+        minOdds = 1.00,
+        maxOdds = 10.20
     ),
     OutcomeStrategyConfig(
         outcomeType = "Draw",
         roiThreshold = 20.0,
         accuracyThreshold = 30.0,
         minOdds = 2.50,
-        maxOdds = 3.50
+        maxOdds = 4.50
     ),
     OutcomeStrategyConfig(
         outcomeType = "AwayWin",

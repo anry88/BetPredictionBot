@@ -489,110 +489,92 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val stats = LeagueStats(leagueName = leagueName)
 
         matches.forEach { match ->
-            val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
-            val stake = 100.0
-            val actualOutcome = match.actualOutcome
-            val predictedOutcome = match.predictedOutcome
+            if (match.bookmakerName != "Default" && match.bookmakerName != null){
 
-            // Общая статистика
-            stats.totalMatches += 1
-            stats.totalStakes += stake
+                val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
+                val stake = 100.0
+                val actualOutcome = match.actualOutcome
+                val predictedOutcome = match.predictedOutcome
 
-            if (predictedOutcome != null && actualOutcome != null) {
-                val teams = match.teams.split(" vs. ")
-                if (teams.size == 2) {
-                    val homeTeam = teams[0].trim()
-                    val awayTeam = teams[1].trim()
+                // Общая статистика
+                stats.totalMatches += 1
+                stats.totalStakes += stake
 
-                    // Определяем тип предсказания и обновляем соответствующие счетчики и ROI
-                    when (predictedOutcome) {
-                        homeTeam -> {
-                            stats.homeWinPredictions += 1
-                            stats.homeWinStakes += stake
-                            if (predictedOutcome == actualOutcome) {
-                                stats.homeWinSuccesses += 1
-                                val profit = (oddsValue * stake) - stake
-                                stats.homeWinReturns += profit
-                            } else {
-                                stats.homeWinReturns -= stake
+                if (predictedOutcome != null && actualOutcome != null) {
+                    val teams = match.teams.split(" vs. ")
+                    if (teams.size == 2) {
+                        val homeTeam = teams[0].trim()
+                        val awayTeam = teams[1].trim()
+
+                        // Определяем тип предсказания и обновляем соответствующие счетчики и ROI
+                        when (predictedOutcome) {
+                            homeTeam -> {
+                                stats.homeWinPredictions += 1
+                                stats.homeWinStakes += stake
+                                if (predictedOutcome == actualOutcome) {
+                                    stats.homeWinSuccesses += 1
+                                    val profit = (oddsValue * stake) - stake
+                                    stats.homeWinReturns += profit
+                                } else {
+                                    stats.homeWinReturns -= stake
+                                }
                             }
-                        }
-                        awayTeam -> {
-                            stats.awayWinPredictions += 1
-                            stats.awayWinStakes += stake
-                            if (predictedOutcome == actualOutcome) {
-                                stats.awayWinSuccesses += 1
-                                val profit = (oddsValue * stake) - stake
-                                stats.awayWinReturns += profit
-                            } else {
-                                stats.awayWinReturns -= stake
+
+                            awayTeam -> {
+                                stats.awayWinPredictions += 1
+                                stats.awayWinStakes += stake
+                                if (predictedOutcome == actualOutcome) {
+                                    stats.awayWinSuccesses += 1
+                                    val profit = (oddsValue * stake) - stake
+                                    stats.awayWinReturns += profit
+                                } else {
+                                    stats.awayWinReturns -= stake
+                                }
                             }
-                        }
-                        "Draw" -> {
-                            stats.drawPredictions += 1
-                            stats.drawStakes += stake
-                            if (predictedOutcome == actualOutcome) {
-                                stats.drawSuccesses += 1
-                                val profit = (oddsValue * stake) - stake
-                                stats.drawReturns += profit
-                            } else {
-                                stats.drawReturns -= stake
+
+                            "Draw" -> {
+                                stats.drawPredictions += 1
+                                stats.drawStakes += stake
+                                if (predictedOutcome == actualOutcome) {
+                                    stats.drawSuccesses += 1
+                                    val profit = (oddsValue * stake) - stake
+                                    stats.drawReturns += profit
+                                } else {
+                                    stats.drawReturns -= stake
+                                }
                             }
                         }
                     }
-                }
 
-                // Обновляем общую статистику
-                if (predictedOutcome == actualOutcome) {
-                    stats.successfulPredictions += 1
-                    val profit = (oddsValue * stake) - stake
-                    stats.totalReturns += profit
-                } else {
-                    stats.totalReturns -= stake
-                }
+                    // Обновляем общую статистику
+                    if (predictedOutcome == actualOutcome) {
+                        stats.successfulPredictions += 1
+                        val profit = (oddsValue * stake) - stake
+                        stats.totalReturns += profit
+                    } else {
+                        stats.totalReturns -= stake
+                    }
 
-                // Проверяем, соответствует ли матч стратегии
-//            val teams = match.teams.split(" vs. ")
-//                if (teams.size == 2) {
-//                    val homeTeam = teams[0].trim()
-//                    val isHomeTeamPredicted = predictedOutcome == homeTeam
-//                    val isOddsInRange = oddsValue in 1.20..2.20
-//                    val isNotDraw = predictedOutcome != "Draw"
-//
-//                    if (isHomeTeamPredicted && isOddsInRange && isNotDraw) {
-//                        // Статистика по стратегии
-//                        stats.strategyTotalMatches += 1
-//                        stats.strategyTotalStakes += stake
-//
-//                        if (predictedOutcome == actualOutcome) {
-//                            stats.strategySuccessfulPredictions += 1
-//                            val profit = (oddsValue * stake) - stake
-//                            stats.strategyTotalReturns += profit
-//                        } else {
-//                            // Вычитаем ставку при проигрыше
-//                            stats.strategyTotalReturns -= stake
-//                        }
-//                    }
-//                }
-                for (config in outcomeStrategyConfigs) {
-                    // Get predictable leagues for the current outcome type
-                    val predictableLeagues = DatabaseService.getPredictableLeagues(
-                        outcomeType = config.outcomeType,
-                        roiThreshold = config.roiThreshold,
-                        accuracyThreshold = config.accuracyThreshold
-                    )
-                    if (isMatchFitsStrategy(match, config, predictableLeagues)) {
-                        // Статистика по стратегии
-                        stats.strategyTotalMatches += 1
-                        stats.strategyTotalStakes += stake
+                    for (config in outcomeStrategyConfigs) {
+                        // Get predictable leagues for the current outcome type
+                        val predictableLeagues = DatabaseService.getPredictableLeagues(
+                            outcomeType = config.outcomeType,
+                            roiThreshold = config.roiThreshold,
+                            accuracyThreshold = config.accuracyThreshold
+                        )
+                        if (isMatchFitsStrategy(match, config, predictableLeagues)) {
+                            // Статистика по стратегии
+                            stats.strategyTotalMatches += 1
+                            stats.strategyTotalStakes += stake
 
-                        if (predictedOutcome == actualOutcome) {
-                            stats.strategySuccessfulPredictions += 1
-                            val profit = (oddsValue * stake) - stake
-                            stats.strategyTotalReturns += profit
-                        } else {
-                            // Вычитаем ставку при проигрыше
-                            stats.strategyTotalReturns -= stake
+                            if (predictedOutcome == actualOutcome) {
+                                stats.strategySuccessfulPredictions += 1
+                                val profit = (oddsValue * stake) - stake
+                                stats.strategyTotalReturns += profit
+                            } else {
+                                // Вычитаем ставку при проигрыше
+                                stats.strategyTotalReturns -= stake
+                            }
                         }
                     }
                 }
@@ -647,76 +629,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         return stats
     }
-
-//    private fun calculateLeagueStats(matches: List<MatchInfo>, predictableLeagues: List<String>): Map<String, LeagueStats> {
-//        val leagueStatsMap = mutableMapOf<String, LeagueStats>()
-//
-//        matches.forEach { match ->
-//            val league = match.matchType
-//            val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
-//            val stake = 100.0
-//            val actualOutcome = match.actualOutcome
-//            val predictedOutcome = match.predictedOutcome
-//
-//            val stats = leagueStatsMap.getOrPut(league) { LeagueStats(leagueName = league) }
-//
-//            if (actualOutcome != null) {
-//                // Общая статистика
-//                stats.totalMatches += 1
-//                stats.totalStakes += stake
-//
-//                if (predictedOutcome == actualOutcome) {
-//                    stats.successfulPredictions += 1
-//                    val profit = (oddsValue * stake) - stake
-//                    stats.totalReturns += profit
-//                } else {
-//                    // Вычитаем ставку при проигрыше
-//                    stats.totalReturns -= stake
-//                }
-//
-//                // Проверяем, соответствует ли матч стратегии
-//                val teams = match.teams.split(" vs. ")
-//                if (teams.size == 2) {
-//                    val homeTeam = teams[0].trim()
-//                    val awayTeam = teams[1].trim()
-//                    val isHomeTeamPredicted = predictedOutcome == homeTeam
-//                    val isAwayTeamPredicted = predictedOutcome == awayTeam
-//                    val isPredictableLeague = league in predictableLeagues
-//                    val isOddsInRange = oddsValue in 1.20..2.20
-//                    val isNotDraw = predictedOutcome != "Draw"
-//
-//                    if (isHomeTeamPredicted && isOddsInRange && isNotDraw) {
-//                        // Статистика по стратегии
-//                        stats.strategyTotalMatches += 1
-//                        stats.strategyTotalStakes += stake
-//
-//                        if (predictedOutcome == actualOutcome) {
-//                            stats.strategySuccessfulPredictions += 1
-//                            val profit = (oddsValue * stake) - stake
-//                            stats.strategyTotalReturns += profit
-//                        } else {
-//                            // Вычитаем ставку при проигрыше
-//                            stats.strategyTotalReturns -= stake
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-//        // Расчет метрик для каждой лиги
-//        leagueStatsMap.values.forEach { stats ->
-//            // Общая статистика
-//            stats.roi = if (stats.totalStakes > 0) (stats.totalReturns / stats.totalStakes) * 100 else 0.0
-//            stats.accuracy = if (stats.totalMatches > 0) (stats.successfulPredictions.toDouble() / stats.totalMatches) * 100 else 0.0
-//
-//            // Статистика по стратегии
-//            stats.strategyRoi = if (stats.strategyTotalStakes > 0) (stats.strategyTotalReturns / stats.strategyTotalStakes) * 100 else 0.0
-//            stats.strategyAccuracy = if (stats.strategyTotalMatches > 0) (stats.strategySuccessfulPredictions.toDouble() / stats.strategyTotalMatches) * 100 else 0.0
-//        }
-//
-//        return leagueStatsMap
-//    }
-
 
     fun sendPredictionAccuracyMessage() {
         val stats = DatabaseService.getStatisticsForPeriod(days = 1)
@@ -787,34 +699,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     newMessageId
                 }
 
-                val fitsStrategyLeagues = DatabaseService.isLeagueFitsStrategy(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
-
-                if (match.matchType in fitsStrategyLeagues){
-                    // Loop over each outcome strategy configuration
-                    for (config in outcomeStrategyConfigs) {
-                        // Get predictable leagues for the current outcome type
-                        val predictableLeagues = DatabaseService.getPredictableLeagues(
-                            outcomeType = config.outcomeType,
-                            roiThreshold = config.roiThreshold,
-                            accuracyThreshold = config.accuracyThreshold
-                        )
-                        // Check if match fits the strategy
-                        if (isMatchFitsStrategy(match, config, predictableLeagues)) {
-                            // Check if the match has already been sent to the premium channel
-                            val strategyMessageId = match.strategyTelegramMessageId ?: run {
-                                // Send to premium channel
-                                val strategyMessageText = formatPremiumMatchInfo(match)
-                                val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
-                                if (newStrategyMessageId != null) {
-                                    val updatedMatchInfo = match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
-                                    DatabaseService.updateMatchStrategyMessageId(updatedMatchInfo)
-                                }
-                                newStrategyMessageId
+                for (config in outcomeStrategyConfigs) {
+                    // Get predictable leagues for the current outcome type
+                    val predictableLeagues = DatabaseService.getPredictableLeagues(
+                        outcomeType = config.outcomeType,
+                        roiThreshold = config.roiThreshold,
+                        accuracyThreshold = config.accuracyThreshold
+                    )
+                    // Check if match fits the strategy
+                    if (isMatchFitsStrategy(match, config, predictableLeagues)) {
+                        // Check if the match has already been sent to the premium channel
+                        val strategyMessageId = match.strategyTelegramMessageId ?: run {
+                            // Send to premium channel
+                            val strategyMessageText = formatPremiumMatchInfo(match)
+                            val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
+                            if (newStrategyMessageId != null) {
+                                val updatedMatchInfo = match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
+                                DatabaseService.updateMatchStrategyMessageId(updatedMatchInfo)
                             }
+                            newStrategyMessageId
                         }
                     }
                 }
-
                 // Delay between messages to avoid API rate limits
                 delay(10000)
             }
@@ -1135,7 +1041,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun isMatchFitsStrategy(
         match: MatchInfo,
         config: OutcomeStrategyConfig,
-        predictableLeagues: List<String>
+        predictableLeagues: List<String>,
     ): Boolean {
         val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
         val teams = match.teams.split(" vs. ")
@@ -1149,6 +1055,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 "Draw" -> predictedOutcome == "Draw"
                 else -> false
             }
+
             val isPredictableLeague = match.matchType in predictableLeagues
             val isOddsInRange = oddsValue in config.minOdds..config.maxOdds
             val isNotDefaultBookmaker = match.bookmakerName != "Default" && match.bookmakerName != null
