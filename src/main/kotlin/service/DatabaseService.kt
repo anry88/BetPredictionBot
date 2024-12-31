@@ -2,6 +2,7 @@ package service
 
 import dto.LeagueStats
 import dto.MatchInfo
+import dto.OutcomeStrategyConfig
 import dto.PeriodStats
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -65,13 +66,24 @@ object LeaguePredictability : Table() {
     val leagueName = varchar("leagueName", 100)
     val roi = double("roi").default(0.0)
     val accuracy = double("accuracy").default(0.0)
-    // Новые поля для стратегии
     val strategyRoi = double("strategyRoi").default(0.0)
     val strategyAccuracy = double("strategyAccuracy").default(0.0)
+    // Новые столбцы для детальной статистики
+    val homeWinPredictions = integer("homeWinPredictions").default(0)
+    val homeWinSuccesses = integer("homeWinSuccesses").default(0)
+    val homeWinAccuracy = double("homeWinAccuracy").default(0.0)
+    val homeWinRoi = double("homeWinRoi").default(0.0)
+    val drawPredictions = integer("drawPredictions").default(0)
+    val drawSuccesses = integer("drawSuccesses").default(0)
+    val drawAccuracy = double("drawAccuracy").default(0.0)
+    val drawRoi = double("drawRoi").default(0.0)
+    val awayWinPredictions = integer("awayWinPredictions").default(0)
+    val awayWinSuccesses = integer("awayWinSuccesses").default(0)
+    val awayWinAccuracy = double("awayWinAccuracy").default(0.0)
+    val awayWinRoi = double("awayWinRoi").default(0.0)
 
     override val primaryKey = PrimaryKey(leagueName)
 }
-
 
 fun initDatabase(dbPath: String) {
     val logger = LoggerFactory.getLogger("DatabaseService")
@@ -462,22 +474,22 @@ object DatabaseService {
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                     if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) && it[leagueTable.actualOutcome] != null) {
                         MatchInfo(
-                            it[leagueTable.fixtureId],
-                            it[leagueTable.datetime],
-                            it[leagueTable.matchType],
-                            it[leagueTable.teams],
-                            it[leagueTable.predictedOutcome],
-                            it[leagueTable.actualOutcome],
-                            it[leagueTable.predictedScore],
-                            it[leagueTable.actualScore],
-                            it[leagueTable.odds],
-                            it[leagueTable.bookmakerName],
-                            it[leagueTable.homeWinOdds],
-                            it[leagueTable.drawOdds],
-                            it[leagueTable.awayWinOdds],
-                            it[leagueTable.telegramMessageId],
-                            it[leagueTable.strategyTelegramMessageId],
-                            null
+                            fixtureId = it[leagueTable.fixtureId],
+                            datetime = it[leagueTable.datetime],
+                            matchType = it[leagueTable.matchType],
+                            teams = it[leagueTable.teams],
+                            predictedOutcome = it[leagueTable.predictedOutcome],
+                            actualOutcome = it[leagueTable.actualOutcome],
+                            predictedScore = it[leagueTable.predictedScore],
+                            actualScore = it[leagueTable.actualScore],
+                            odds = it[leagueTable.odds],
+                            bookmakerName = it[leagueTable.bookmakerName],
+                            homeWinOdds = it[leagueTable.homeWinOdds],
+                            drawOdds = it[leagueTable.drawOdds],
+                            awayWinOdds = it[leagueTable.awayWinOdds],
+                            telegramMessageId = it[leagueTable.telegramMessageId],
+                            strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
+                            elapsed = null
                         )
                     } else {
                         null
@@ -496,7 +508,12 @@ object DatabaseService {
         var strategyTotalStakes = 0.0
         var strategyTotalReturns = 0.0
 
-        val predictableLeagues = getPredictableLeagues(strategyRoiThreshold = 10.0, strategyAccuracyThreshold = 60.0)
+        // Updated function call with correct parameter names and outcomeType
+        val predictableLeagues = getPredictableLeagues(
+            outcomeType = "HomeWin",
+            roiThreshold = 10.0,
+            accuracyThreshold = 60.0
+        )
 
         allMatches.forEach { match ->
             totalMatches += 1
@@ -512,7 +529,7 @@ object DatabaseService {
                 totalReturns -= stake
             }
 
-            // Проверяем, соответствует ли матч стратегии
+            // Checking if the match fits the strategy
             val teams = match.teams.split(" vs. ")
             if (teams.size == 2) {
                 val homeTeam = teams[0].trim()
@@ -523,7 +540,7 @@ object DatabaseService {
                 val isOddsInRange = oddsValue in 1.20..2.20
                 val isNotDraw = predictedOutcome != "Draw"
 
-                if (isHomeTeamPredicted && hasStrategyTelegramMessageId && isOddsInRange && isNotDraw) {
+                if (hasStrategyTelegramMessageId) {
                     strategyTotalMatches += 1
                     strategyTotalStakes += stake
 
@@ -618,6 +635,19 @@ object DatabaseService {
                     it[accuracy] = stats.accuracy
                     it[strategyRoi] = stats.strategyRoi
                     it[strategyAccuracy] = stats.strategyAccuracy
+                    // Новые поля
+                    it[homeWinPredictions] = stats.homeWinPredictions
+                    it[homeWinSuccesses] = stats.homeWinSuccesses
+                    it[homeWinAccuracy] = stats.homeWinAccuracy
+                    it[homeWinRoi] = stats.homeWinRoi
+                    it[drawPredictions] = stats.drawPredictions
+                    it[drawSuccesses] = stats.drawSuccesses
+                    it[drawAccuracy] = stats.drawAccuracy
+                    it[drawRoi] = stats.drawRoi
+                    it[awayWinPredictions] = stats.awayWinPredictions
+                    it[awayWinSuccesses] = stats.awayWinSuccesses
+                    it[awayWinAccuracy] = stats.awayWinAccuracy
+                    it[awayWinRoi] = stats.awayWinRoi
                 }
 
                 if (updatedRows == 0) {
@@ -627,6 +657,19 @@ object DatabaseService {
                         it[accuracy] = stats.accuracy
                         it[strategyRoi] = stats.strategyRoi
                         it[strategyAccuracy] = stats.strategyAccuracy
+                        // Новые поля
+                        it[homeWinPredictions] = stats.homeWinPredictions
+                        it[homeWinSuccesses] = stats.homeWinSuccesses
+                        it[homeWinAccuracy] = stats.homeWinAccuracy
+                        it[homeWinRoi] = stats.homeWinRoi
+                        it[drawPredictions] = stats.drawPredictions
+                        it[drawSuccesses] = stats.drawSuccesses
+                        it[drawAccuracy] = stats.drawAccuracy
+                        it[drawRoi] = stats.drawRoi
+                        it[awayWinPredictions] = stats.awayWinPredictions
+                        it[awayWinSuccesses] = stats.awayWinSuccesses
+                        it[awayWinAccuracy] = stats.awayWinAccuracy
+                        it[awayWinRoi] = stats.awayWinRoi
                     }
                     logger.info("Inserted new league predictability data for league: ${stats.leagueName}")
                 } else {
@@ -636,8 +679,40 @@ object DatabaseService {
         }
     }
 
-    fun getPredictableLeagues(strategyRoiThreshold: Double, strategyAccuracyThreshold: Double): List<String> {
 
+    // In DatabaseService.kt
+    fun getPredictableLeagues(
+        outcomeType: String,
+        roiThreshold: Double,
+        accuracyThreshold: Double
+    ): List<String> {
+        return transaction {
+            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+            when (outcomeType) {
+                "HomeWin" -> {
+                    LeaguePredictability.select {
+                        (LeaguePredictability.homeWinRoi greaterEq roiThreshold) and
+                                (LeaguePredictability.homeWinAccuracy greaterEq accuracyThreshold)
+                    }.map { it[LeaguePredictability.leagueName] }
+                }
+                "Draw" -> {
+                    LeaguePredictability.select {
+                        (LeaguePredictability.drawRoi greaterEq roiThreshold) and
+                                (LeaguePredictability.drawAccuracy greaterEq accuracyThreshold)
+                    }.map { it[LeaguePredictability.leagueName] }
+                }
+                "AwayWin" -> {
+                    LeaguePredictability.select {
+                        (LeaguePredictability.awayWinRoi greaterEq roiThreshold) and
+                                (LeaguePredictability.awayWinAccuracy greaterEq accuracyThreshold)
+                    }.map { it[LeaguePredictability.leagueName] }
+                }
+                else -> emptyList()
+            }
+        }
+    }
+
+    fun isLeagueFitsStrategy(strategyRoiThreshold: Double, strategyAccuracyThreshold: Double): List<String> {
         return transaction {
             SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
             LeaguePredictability.select {
@@ -646,6 +721,7 @@ object DatabaseService {
             }.map { it[LeaguePredictability.leagueName] }
         }
     }
+
     fun updateMatchOdds(matchInfo: MatchInfo) {
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
@@ -729,18 +805,22 @@ object DatabaseService {
             LeaguePredictability.selectAll().map {
                 LeagueStats(
                     leagueName = it[LeaguePredictability.leagueName],
-                    roi = it[LeaguePredictability.roi].toDouble(),
-                    accuracy = it[LeaguePredictability.accuracy].toDouble(),
-                    strategyRoi = it[LeaguePredictability.strategyRoi].toDouble(),
-                    strategyAccuracy = it[LeaguePredictability.strategyAccuracy].toDouble(),
-                    totalMatches = 0, // Если у вас есть эти данные в таблице, обновите соответствующим образом
-                    successfulPredictions = 0,
-                    totalStakes = 0.0,
-                    totalReturns = 0.0,
-                    strategyTotalMatches = 0,
-                    strategySuccessfulPredictions = 0,
-                    strategyTotalStakes = 0.0,
-                    strategyTotalReturns = 0.0
+                    roi = it[LeaguePredictability.roi],
+                    accuracy = it[LeaguePredictability.accuracy],
+                    strategyRoi = it[LeaguePredictability.strategyRoi],
+                    strategyAccuracy = it[LeaguePredictability.strategyAccuracy],
+                    homeWinPredictions = it[LeaguePredictability.homeWinPredictions],
+                    homeWinSuccesses = it[LeaguePredictability.homeWinSuccesses],
+                    homeWinAccuracy = it[LeaguePredictability.homeWinAccuracy],
+                    homeWinRoi = it[LeaguePredictability.homeWinRoi],
+                    drawPredictions = it[LeaguePredictability.drawPredictions],
+                    drawSuccesses = it[LeaguePredictability.drawSuccesses],
+                    drawAccuracy = it[LeaguePredictability.drawAccuracy],
+                    drawRoi = it[LeaguePredictability.drawRoi],
+                    awayWinPredictions = it[LeaguePredictability.awayWinPredictions],
+                    awayWinSuccesses = it[LeaguePredictability.awayWinSuccesses],
+                    awayWinAccuracy = it[LeaguePredictability.awayWinAccuracy],
+                    awayWinRoi = it[LeaguePredictability.awayWinRoi]
                 )
             }
         }
