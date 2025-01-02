@@ -154,7 +154,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         // Add tag for the league
         leagueTags.forEach { (leagueName, tag) ->
             val regex = "\\b${Regex.escape(leagueName)}\\b".toRegex(RegexOption.IGNORE_CASE)
-            if (regex.containsMatchIn(matchType)) {
+            if (regex.equals(matchType)) {
                 tags.add(tag)
             }
         }
@@ -162,7 +162,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         // Add tags for the teams
         teamTags.forEach { (teamName, tag) ->
             val regex = "\\b${Regex.escape(teamName)}\\b".toRegex(RegexOption.IGNORE_CASE)
-            if (regex.containsMatchIn(teams)) {
+            if (regex.equals(teams)) {
                 tags.add(tag)
             }
         }
