@@ -920,6 +920,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "United States" to "🇺🇸", // Дополнительный вариант для USA
             "Argentina" to "🇦🇷",
             "Brazil" to "🇧🇷",
+            "Greece" to "🇬🇷",
 //            "UEFA" to "🇪🇺",
             "UEFA" to "🌍",
             "CONMEBOL" to "🌎",
