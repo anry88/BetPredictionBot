@@ -149,27 +149,47 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     private fun getTags(matchType: String, teams: String): String {
-        val tags = mutableSetOf<String>()
+        // Разделяем команды по " vs. "
+        val splitTeams = teams.split(" vs. ")
+        val homeTeam = splitTeams.getOrNull(0)?.trim()
+        val awayTeam = splitTeams.getOrNull(1)?.trim()
 
-        // Add tag for the league
-        leagueTags.forEach { (leagueName, tag) ->
-            val regex = "\\b${Regex.escape(leagueName)}\\b".toRegex(RegexOption.IGNORE_CASE)
-            if (regex.equals(matchType)) {
-                tags.add(tag)
-            }
+        // 1. Ищем ровно один тег для лиги (берём первый совпавший)
+        val leagueTag = leagueTags.entries.firstOrNull { (leagueName, _) ->
+            // здесь можно сделать и точное, и частичное сравнение
+            // если названия в leagueTags совпадают «один в один», можно использовать:
+            //   matchType.equals(leagueName, ignoreCase = true)
+            // а если нужно «содержится в названии лиги»:
+            matchType.contains(leagueName, ignoreCase = true)
+        }?.value
+
+        // 2. Пытаемся найти ровно один тег для домашней команды
+        val homeTag = homeTeam?.let { ht ->
+            teamTags.entries.firstOrNull { (teamName, _) ->
+                // при строгом сравнении:
+                   ht.equals(teamName, ignoreCase = true)
+                // или при частичном:
+//                ht.contains(teamName, ignoreCase = true)
+            }?.value
         }
 
-        // Add tags for the teams
-        teamTags.forEach { (teamName, tag) ->
-            val regex = "\\b${Regex.escape(teamName)}\\b".toRegex(RegexOption.IGNORE_CASE)
-            if (regex.equals(teams)) {
-                tags.add(tag)
-            }
+        // 3. Пытаемся найти ровно один тег для гостевой команды
+        val awayTag = awayTeam?.let { at ->
+            teamTags.entries.firstOrNull { (teamName, _) ->
+                // при строгом сравнении:
+                   at.equals(teamName, ignoreCase = true)
+                // или при частичном:
+//                at.contains(teamName, ignoreCase = true)
+            }?.value
         }
 
-        // Convert the set of tags to a string with spaces between tags
-        return if (tags.isNotEmpty()) tags.joinToString(" ") else ""
+        // Собираем итоговые теги
+        val tags = listOfNotNull(leagueTag, homeTag, awayTag)
+
+        // Склеиваем в строку или возвращаем пусто, если ничего не нашли
+        return tags.joinToString(" ").ifBlank { "" }
     }
+
 
 
     private fun handleStartCommand(chatId: String) {
