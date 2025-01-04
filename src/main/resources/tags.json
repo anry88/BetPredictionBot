@@ -20,7 +20,8 @@
     "Turkey Süper Lig": "#SüperLig",
     "Saudi-Arabia Pro League": "#ProLeague",
     "Argentina Liga Profesional Argentina": "#LigaProfesional",
-    "Brazil Serie A": "#BrazilSerieA"
+    "Brazil Serie A": "#BrazilSerieA",
+    "Greece Super League 1": "#GreeceSuperLeague1"
   },
   "teams": {
     "Kazakhstan": "#Kazakhstan",
@@ -459,6 +460,17 @@
     "Heart Of Midlothian": "#HeartOfMidlothian",
     "Petrocub": "#Petrocub",
     "FC ST. Gallen": "#FCSTGallen",
-    "Shamrock Rovers": "#ShamrockRovers"
+    "Shamrock Rovers": "#ShamrockRovers",
+    "Kallithea": "#Kallithea",
+    "Lamia": "#Lamia",
+    "Levadiakos": "#Levadiakos",
+    "Panserraikos": "#Panserraikos",
+    "Aris Thessalonikis": "#Aris",
+    "OFI": "#OFI",
+    "Volos NFC": "#Volos",
+    "AEK Athens FC": "#AEK",
+    "Atromitos": "#Atromitos",
+    "Asteras Tripolis": "#Asteras",
+    "PAOK": "#PAOK"
   }
 }
