@@ -184,7 +184,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         // Собираем итоговые теги
-        val tags = listOfNotNull(leagueTag, homeTag, awayTag)
+        val tags = listOfNotNull("#Football", leagueTag, homeTag, awayTag)
 
         // Склеиваем в строку или возвращаем пусто, если ничего не нашли
         return tags.joinToString(" ").ifBlank { "" }
