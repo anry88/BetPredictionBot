@@ -22,7 +22,7 @@ val outcomeStrategyConfigs = listOf(
         roiThreshold = 20.0,
         accuracyThreshold = 30.0,
         minOdds = 2.50,
-        maxOdds = 4.50
+        maxOdds = 5.50
     ),
     OutcomeStrategyConfig(
         outcomeType = "AwayWin",
