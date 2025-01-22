@@ -66,6 +66,11 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         return json.decodeFromString<List<LeagueConfig>>(leaguesJson)
     }
 
+    // В FootballBot или где удобно
+    fun getModelBasedLeaguesFromConfig(): List<LeagueConfig> {
+        return leaguesConfig.filter { it.modelBased }
+    }
+
     suspend fun fetchMatches() {
         val currentDate = LocalDate.now()
         val nextDay = currentDate.plusDays(1)
@@ -115,42 +120,78 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     // Вставляем матч в базу данных
                     DatabaseService.appendRows(listOf(matchInfo))
 
-                    var prediction: MatchInfo? = null
-                    val maxAttempts = 10
-                    var attempts = 0
+                    // Получаем прогноз
+                    val homeTeam = match.teams.home.name
+                    val awayTeam = match.teams.away.name
 
-                    // Пытаемся получить предсказание до 3 раз
-                    while (attempts < maxAttempts && prediction == null) {
-                        attempts++
-                        try {
-                            prediction = ChatGPTService.getMatchPrediction(matchInfo)
-                        } catch (e: Exception) {
-                            logger.error("Error during ChatGPT prediction attempt $attempts: ${e.message}")
+                    var finalPrediction: MatchInfo? = null
+
+                    // Если лига modelBased -> пробуем вызвать локальную модель
+                    if (leagueConfig.modelBased) {
+                        finalPrediction = HttpLocalModelService.getModelPrediction(
+                            homeTeam = homeTeam,
+                            awayTeam = awayTeam,
+                            fixtureId = fixtureId,
+                            matchInfo = matchInfo
+                        )
+                        // Если локальная модель вернула null, fallback на ChatGPT
+                        if (finalPrediction == null) {
+                            logger.warn("Local model failed. Fallback to ChatGPT for $teams.")
+                            finalPrediction = ChatGPTService.getMatchPrediction(matchInfo)
                         }
-
-                        if (prediction != null) {
-                            // Обновляем matchInfo предсказанием
-                            matchInfo.predictedOutcome = prediction.predictedOutcome
-                            matchInfo.predictedScore = prediction.predictedScore
-                            matchInfo.odds = prediction.odds
-
-                            // Обновляем базу данных предсказанием
-                            DatabaseService.updateMatchPredictions(matchInfo)
-                            logger.info("Prediction obtained for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempt(s)")
-                        } else {
-                            logger.warn("Attempt $attempts: Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime}")
-                            if (attempts < maxAttempts) {
-                                // Ожидаем перед следующей попыткой
-                                Thread.sleep(1000) // Пауза между попытками
-                            }
-                        }
+                    } else {
+                        // Сразу ChatGPT
+                        finalPrediction = ChatGPTService.getMatchPrediction(matchInfo)
                     }
 
-                    // Если после 3 попыток предсказание не удалось получить, удаляем матч из базы данных
-                    if (prediction == null) {
+                    // Если и ChatGPT не смог (finalPrediction = null), удаляем матч
+                    if (finalPrediction == null) {
                         DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
-                        logger.error("Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempts. Match deleted from database.")
+                        logger.error("Failed to get any prediction for $teams; match removed from DB.")
+                    } else {
+                        // Обновляем базу
+                        matchInfo.predictedOutcome = finalPrediction.predictedOutcome
+                        matchInfo.predictedScore = finalPrediction.predictedScore
+                        matchInfo.odds = finalPrediction.odds
+                        DatabaseService.updateMatchPredictions(matchInfo)
                     }
+
+//                    var prediction: MatchInfo? = null
+//                    val maxAttempts = 10
+//                    var attempts = 0
+//
+//                    // Пытаемся получить предсказание до 3 раз
+//                    while (attempts < maxAttempts && prediction == null) {
+//                        attempts++
+//                        try {
+//                            prediction = ChatGPTService.getMatchPrediction(matchInfo)
+//                        } catch (e: Exception) {
+//                            logger.error("Error during ChatGPT prediction attempt $attempts: ${e.message}")
+//                        }
+//
+//                        if (prediction != null) {
+//                            // Обновляем matchInfo предсказанием
+//                            matchInfo.predictedOutcome = prediction.predictedOutcome
+//                            matchInfo.predictedScore = prediction.predictedScore
+//                            matchInfo.odds = prediction.odds
+//
+//                            // Обновляем базу данных предсказанием
+//                            DatabaseService.updateMatchPredictions(matchInfo)
+//                            logger.info("Prediction obtained for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempt(s)")
+//                        } else {
+//                            logger.warn("Attempt $attempts: Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime}")
+//                            if (attempts < maxAttempts) {
+//                                // Ожидаем перед следующей попыткой
+//                                Thread.sleep(1000) // Пауза между попытками
+//                            }
+//                        }
+//                    }
+//
+//                    // Если после 3 попыток предсказание не удалось получить, удаляем матч из базы данных
+//                    if (prediction == null) {
+//                        DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+//                        logger.error("Failed to get prediction for match ${matchInfo.teams} at ${matchInfo.datetime} after $attempts attempts. Match deleted from database.")
+//                    }
                 } else {
                     DatabaseService.updateMatchDatetime(matchInfo)
                     logger.info("Duplicate match found: $teams at $datetime")

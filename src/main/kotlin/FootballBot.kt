@@ -1,4 +1,5 @@
 import dto.JsonlMatch
+import dto.LeagueConfig
 import dto.LeagueStats
 import dto.MatchInfo
 import dto.OutcomeStrategyConfig
@@ -348,7 +349,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
-        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
         return """
@@ -364,7 +365,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
-        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
         return """
@@ -381,7 +382,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatLiveMatch(matchInfo: MatchInfo): String{
         val flag = getCountryFlag(matchInfo.matchType)
-        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
         return """
@@ -397,7 +398,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatPremiumMatchInfo(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
-        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
         return """
@@ -414,7 +415,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
-        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
         return """
@@ -431,7 +432,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatLivePremiumMatch(matchInfo: MatchInfo): String{
         val flag = getCountryFlag(matchInfo.matchType)
-        val matchType = if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+        val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
         return """
@@ -1086,4 +1087,21 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return false
     }
 
+
+    /**
+     * Пример того, как вы у себя формируете итоговое leagueName:
+     * возможно, вы писали: "${match.league.country} ${match.league.name}"
+     * или иначе. Нужно чтобы совпадало с matchInfo.matchType
+     */
+    fun combineLeagueName(matchInfo: MatchInfo): String {
+        // Пример: ищем в вашей кодовой базе, как именно вы формируете leagueName
+        // Иногда бывает "England Premier League"
+        // Иногда "World Champions League"
+        // Можно упростить, если вы храните где-то маппинг (id -> название).
+        // Для примера примем упрощённо:
+        // Возвращаем просто строку без "Страна":
+        // "League #${leagueConfig.leagueId}, season ${leagueConfig.season}"
+        // Но лучше, конечно, сделать один в один, как в fetchMatches().
+        return if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
+    }
 }
