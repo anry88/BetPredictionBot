@@ -267,7 +267,7 @@
     "Al Wehda Club": "#AlWehdaClub",
     "Damac": "#Damac",
     "Al Taawon": "#AlTaawon",
-    "Al-Ittihad": "#AlIttihad",
+    "Al-Ittihad FC": "#AlIttihad",
     "Al-Qadisiyah FC": "#AlQadisiyah",
     "Alaves": "#Alaves",
     "Valladolid": "#Valladolid",
@@ -477,6 +477,11 @@
     "Sturm Graz": "#Sturm",
     "Club Brugge KV": "#ClubBrugge",
     "FK Crvena Zvezda": "#CrvenaZvezda",
-    "Slovan Bratislava": "#Slovan"
+    "Slovan Bratislava": "#Slovan",
+    "Sparta Praha": "#SpartaPraha",
+    "Red Bull Salzburg": "#RedBullSalzburg",
+    "Celtic": "#Celtic",
+    "BSC Young Boys": "#BSCYoungBoys",
+    "Dinamo Zagreb": "#DinamoZagreb"
   }
 }
