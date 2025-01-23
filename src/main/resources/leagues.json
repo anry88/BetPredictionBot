@@ -8,7 +8,7 @@
   {"leagueId": 333, "season": 2024, "description": "Ukraine Premier League", "modelBased": true},
   {"leagueId": 94, "season": 2024, "description": "Portugal Primeira Liga", "modelBased": true},
   {"leagueId": 235, "season": 2024, "description": "Russia Premier League", "modelBased": true},
-  {"leagueId": 10, "season": 2024, "description": "World Friendlies", "modelBased": true},
+  {"leagueId": 10, "season": 2025, "description": "World Friendlies", "modelBased": true},
   {"leagueId": 2, "season": 2024, "description": "World UEFA Champions League", "modelBased": false},
   {"leagueId": 3, "season": 2024, "description": "World UEFA Europa League", "modelBased": false},
   {"leagueId": 5, "season": 2024, "description": "World UEFA Nations League", "modelBased": true},
