@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -48,6 +49,11 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val awayWinOdds = varchar("awayWinOdds", 50).nullable()
     val telegramMessageId = varchar("telegramMessageId", 50).nullable()
     val strategyTelegramMessageId = varchar("strategyTelegramMessageId", 50).nullable()
+    val modelHomeWinProb = double("modelHomeWinProb").nullable()
+    val modelDrawProb = double("modelDrawProb").nullable()
+    val modelAwayWinProb = double("modelAwayWinProb").nullable()
+    val modelExpectedHomeGoals = double("modelExpectedHomeGoals").nullable()
+    val modelExpectedAwayGoals = double("modelExpectedAwayGoals").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -57,7 +63,7 @@ object LeagueTableFactory {
     fun getTableForLeague(leagueName: String): LeagueTable {
 
         return tables.getOrPut(leagueName) {
-            LeagueTable(leagueName.replace(" ", "_").lowercase())
+            LeagueTable(leagueName.replace(" ", "_").replace("-", "_").lowercase())
         }
     }
 }
@@ -85,6 +91,32 @@ object LeaguePredictability : Table() {
     override val primaryKey = PrimaryKey(leagueName)
 }
 
+//fun initDatabase(dbPath: String) {
+//    val logger = LoggerFactory.getLogger("DatabaseService")
+//    val dbFile = File(dbPath)
+//
+//    logger.info("Database file path: $dbPath")
+//
+//    if (!dbFile.exists()) {
+//        try {
+//            dbFile.createNewFile()
+//            logger.info("Database file created at: $dbPath")
+//        } catch (e: IOException) {
+//            logger.error("Failed to create database file", e)
+//            throw e
+//        }
+//    } else {
+//        logger.info("Database file already exists at: $dbPath")
+//    }
+//
+//    Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
+//    transaction {
+//        SchemaUtils.createMissingTablesAndColumns(UserStats, Leagues, LeaguePredictability)
+//        logger.info("Database initialized and tables 'UserStats' ensured.")
+//    }
+//
+//}
+
 fun initDatabase(dbPath: String) {
     val logger = LoggerFactory.getLogger("DatabaseService")
     val dbFile = File(dbPath)
@@ -103,14 +135,170 @@ fun initDatabase(dbPath: String) {
         logger.info("Database file already exists at: $dbPath")
     }
 
+    // Подключаемся к SQLite
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
+
+    // Запускаем ручную миграцию
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(UserStats, Leagues, LeaguePredictability)
-        logger.info("Database initialized and tables 'UserStats' ensured.")
+        runManualMigration()
     }
 
+    logger.info("Database initialized (manual migration done).")
+}
+fun execSql(sql: String) {
+    transaction {
+        exec(sql)
+    }
+}
+/**
+ * Здесь вручную создаём таблицы/столбцы.
+ * Если нужно, делаем ALTER TABLE, проверяем столбцы и т.д.
+ */
+private fun runManualMigration() {
+    // userStats
+    execSql("""
+        CREATE TABLE IF NOT EXISTS UserStats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId TEXT NOT NULL,
+            firstName TEXT,
+            lastName TEXT,
+            username TEXT,
+            lastActivity TEXT NOT NULL
+        );
+    """.trimIndent())
+
+    // leagues
+    execSql("""
+        CREATE TABLE IF NOT EXISTS Leagues (
+            name TEXT NOT NULL UNIQUE,
+            PRIMARY KEY(name)
+        );
+    """.trimIndent())
+
+    // leaguePredictability
+    execSql("""
+        CREATE TABLE IF NOT EXISTS LeaguePredictability (
+            leagueName TEXT NOT NULL,
+            roi REAL DEFAULT 0.0,
+            accuracy REAL DEFAULT 0.0,
+            strategyRoi REAL DEFAULT 0.0,
+            strategyAccuracy REAL DEFAULT 0.0,
+
+            homeWinPredictions INTEGER DEFAULT 0,
+            homeWinSuccesses INTEGER DEFAULT 0,
+            homeWinAccuracy REAL DEFAULT 0.0,
+            homeWinRoi REAL DEFAULT 0.0,
+
+            drawPredictions INTEGER DEFAULT 0,
+            drawSuccesses INTEGER DEFAULT 0,
+            drawAccuracy REAL DEFAULT 0.0,
+            drawRoi REAL DEFAULT 0.0,
+
+            awayWinPredictions INTEGER DEFAULT 0,
+            awayWinSuccesses INTEGER DEFAULT 0,
+            awayWinAccuracy REAL DEFAULT 0.0,
+            awayWinRoi REAL DEFAULT 0.0,
+
+            PRIMARY KEY(leagueName)
+        );
+    """.trimIndent())
+
+    // и так далее для остальных таблиц, которые у вас есть «общие» (если нужно).
+
+    // Для LeagueTable (одна таблица на лигу) — можно создать по необходимости,
+    // но часто у вас их динамически много. Если нужно создать «пачку» таких таблиц
+    // вручную, делайте аналогично (CREATE TABLE IF NOT EXISTS ...).
+
+    // Пример одного LeagueTable (хотя у вас их может быть много)
+    // "leagueName" берём из логики, или делаем это позже при добавлении новой лиги:
+
+    // createLeagueTableIfNeeded("england_premier_league") // пример
+    // createLeagueTableIfNeeded("spain_la_liga") // пример
 }
 
+/**
+ * Пример, как вручную создать таблицу лиги (leagueTable).
+ * Вы можете вызывать это при добавлении новой лиги (или когда впервые записываете матч).
+ */
+fun createLeagueTableIfNeeded(tableName: String) {
+    execSql("""
+        CREATE TABLE IF NOT EXISTS ${tableName.replace(" ", "_").replace("-", "_").lowercase()} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fixtureId TEXT NOT NULL UNIQUE,
+            datetime TEXT NOT NULL,
+            matchType TEXT NOT NULL,
+            teams TEXT NOT NULL,
+            predictedOutcome TEXT,
+            actualOutcome TEXT,
+            predictedScore TEXT,
+            actualScore TEXT,
+            odds TEXT,
+            bookmakerName TEXT,
+            homeWinOdds TEXT,
+            drawOdds TEXT,
+            awayWinOdds TEXT,
+            telegramMessageId TEXT,
+            strategyTelegramMessageId TEXT,
+            modelHomeWinProb REAL,
+            modelDrawProb REAL,
+            modelAwayWinProb REAL,
+            modelExpectedHomeGoals REAL,
+            modelExpectedAwayGoals REAL
+        );
+    """.trimIndent())
+
+    // Если нужно «добавить» новые столбцы — проверяем, нет ли их.
+    // Можно сделать helper: addColumnIfNotExists(tableName, "newColumn", "REAL")
+}
+
+fun <T : Any> execAndMap(sql: String, transform: (ResultSet) -> T): T? {
+    return transaction {
+        exec(sql) { rs ->
+            transform(rs)
+        }
+    }
+}
+
+
+/**
+ * Проверяем, есть ли столбец columnName в таблице tableName.
+ * Если нет, делаем ALTER TABLE ... ADD COLUMN
+ */
+fun addColumnIfNotExists(tableName: String, columnName: String, columnDefinition: String) {
+    // Пример:
+    val newTableName = tableName.replace(" ", "_").replace("-","_").lowercase()
+
+    val cols = mutableListOf<String>()
+
+    transaction {
+        val stmt = this.connection.prepareStatement("PRAGMA table_info('$newTableName')", false)
+        try {
+            val rs = stmt.executeQuery()
+            while (rs.next()) {
+                cols += rs.getString("name")
+            }
+            cols
+        } finally {
+            stmt.closeIfPossible()
+        }
+    }
+
+
+    if (!cols.contains(columnName)) {
+        execSql("ALTER TABLE $newTableName ADD COLUMN $columnName $columnDefinition;")
+    }
+}
+
+/**
+ * Пример использования:
+ */
+fun addMissingColumnsForLeague(tableName: String) {
+    addColumnIfNotExists(tableName, "modelHomeWinProb", "DOUBLE")
+    addColumnIfNotExists(tableName, "modelDrawProb", "DOUBLE")
+    addColumnIfNotExists(tableName, "modelAwayWinProb", "DOUBLE")
+    addColumnIfNotExists(tableName, "modelExpectedHomeGoals", "DOUBLE")
+    addColumnIfNotExists(tableName, "modelExpectedAwayGoals", "DOUBLE")
+}
 
 object DatabaseService {
     private val logger = LoggerFactory.getLogger(DatabaseService::class.java)
@@ -147,8 +335,10 @@ object DatabaseService {
                     }
                     listOfLeagues.add(match.matchType)
                 }
+                createLeagueTableIfNeeded(match.matchType)
+                addMissingColumnsForLeague(match.matchType)
 
-                SchemaUtils.createMissingTablesAndColumns(leagueTable)
+//                SchemaUtils.createMissingTablesAndColumns(leagueTable)
                 leagueTable.insert {
                     it[leagueTable.fixtureId] = match.fixtureId
                     it[leagueTable.datetime] = match.datetime
@@ -180,7 +370,7 @@ object DatabaseService {
             } catch (e: ExposedSQLException) {
                 if (e.message?.contains("no such table") == true) {
                     // Таблица не существует, создаем её и повторяем попытку обновления
-                    SchemaUtils.createMissingTablesAndColumns(leagueTable)
+//                    SchemaUtils.createMissingTablesAndColumns(leagueTable)
                     logger.warn("Table for league ${matchInfo.matchType} did not exist. Created new table.")
                     leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                         it[leagueTable.actualOutcome] = matchInfo.actualOutcome
@@ -271,8 +461,10 @@ object DatabaseService {
     fun matchExists(matchInfo: MatchInfo): Boolean {
         return transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+
             // Создаем таблицу, если она не существует
-            SchemaUtils.createMissingTablesAndColumns(leagueTable)
+//            SchemaUtils.createMissingTablesAndColumns(leagueTable)
+            createLeagueTableIfNeeded(matchInfo.matchType)
             leagueTable.select {
                 leagueTable.fixtureId eq matchInfo.fixtureId
             }.count() > 0
@@ -286,6 +478,11 @@ object DatabaseService {
                 it[predictedOutcome] = matchInfo.predictedOutcome
                 it[predictedScore] = matchInfo.predictedScore
                 it[odds] = matchInfo.odds
+                it[modelHomeWinProb] = matchInfo.modelHomeWinProb
+                it[modelDrawProb] = matchInfo.modelDrawProb
+                it[modelAwayWinProb] = matchInfo.modelAwayWinProb
+                it[modelExpectedHomeGoals] = matchInfo.modelExpectedHomeGoals
+                it[modelExpectedAwayGoals] = matchInfo.modelExpectedAwayGoals
             }
             logger.info("Updated predictions for match ${matchInfo.teams} at ${matchInfo.datetime}")
         }
@@ -308,7 +505,8 @@ object DatabaseService {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                SchemaUtils.createMissingTablesAndColumns(leagueTable)
+                addMissingColumnsForLeague(leagueName)
+//                SchemaUtils.createMissingTablesAndColumns(leagueTable)
 
                 leagueTable.selectAll().mapNotNullTo(matchesToUpdate) {
                     val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
@@ -429,8 +627,8 @@ object DatabaseService {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                SchemaUtils.createMissingTablesAndColumns(leagueTable)
-
+//                SchemaUtils.createMissingTablesAndColumns(leagueTable)
+                addMissingColumnsForLeague(leagueName)
                 leagueTable.select {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
                             (leagueTable.datetime lessEq fiveHoursLater.format(dateTimeFormatter)) and
@@ -628,7 +826,7 @@ object DatabaseService {
 
     fun updateLeaguePredictability(leagueStatsMap: Map<String, LeagueStats>) {
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+//            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
             leagueStatsMap.values.forEach { stats ->
                 val updatedRows = LeaguePredictability.update({ LeaguePredictability.leagueName eq stats.leagueName }) {
                     it[roi] = stats.roi
@@ -687,7 +885,7 @@ object DatabaseService {
         accuracyThreshold: Double
     ): List<String> {
         return transaction {
-            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+//            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
             when (outcomeType) {
                 "HomeWin" -> {
                     LeaguePredictability.select {
@@ -714,7 +912,7 @@ object DatabaseService {
 
     fun isLeagueFitsStrategy(strategyRoiThreshold: Double, strategyAccuracyThreshold: Double): List<String> {
         return transaction {
-            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
+//            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
             LeaguePredictability.select {
                 (LeaguePredictability.strategyRoi greaterEq strategyRoiThreshold) and
                         (LeaguePredictability.strategyAccuracy greaterEq strategyAccuracyThreshold)

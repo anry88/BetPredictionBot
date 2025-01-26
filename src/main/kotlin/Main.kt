@@ -1,17 +1,27 @@
+import dto.JsonlMatch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.runBlocking
 import org.quartz.*
 import org.quartz.impl.StdSchedulerFactory
 import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
+import service.DatabaseService
 import service.HttpAPIFootballService
+import java.io.File
 
 class FetchMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-            footballBot.updateLeaguePredictability()
             footballService.fetchMatches()
         }
     }
@@ -88,6 +98,88 @@ class SendYearlyAccuracyJob : Job {
         }
     }
 }
+
+class UploadModelDataJob : Job {
+    private val logger = LoggerFactory.getLogger(UploadModelDataJob::class.java)
+    private val client = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json()
+        }
+    }
+
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        val footballService = HttpAPIFootballService(footballBot)
+        runBlocking {
+            // 1. Выбираем матчи только из lиг, где modelBased = true,
+            //    и только сыгранные (actualOutcome != null).
+            val modelBasedLeagues = footballService.getModelBasedLeaguesFromConfig()
+            val completedMatches = DatabaseService.getAllMatches().filter { match ->
+                modelBasedLeagues.any { leagueConfig ->
+                    leagueConfig.modelBased
+//                            &&
+//                            match.matchType == footballService.combineLeagueName(match)
+                } && match.actualOutcome != null
+            }
+
+            if (completedMatches.isEmpty()) {
+                logger.info("No completed matches found for model-based leagues")
+                return@runBlocking
+            }
+
+            // 2. Формируем .jsonl
+            val file = createJsonlFileForModel(completedMatches)
+            // 3. Отправляем файл на http://localhost:7007/uploadLines
+            val responseStatus = uploadJsonlToLocalModel(file)
+            logger.info("Upload to local model finished with status: $responseStatus")
+
+            // При необходимости можно удалить временный файл:
+            file.delete()
+        }
+    }
+
+    private fun createJsonlFileForModel(matches: List<dto.MatchInfo>): File {
+        val file = File("modelData.jsonl")
+        file.bufferedWriter().use { writer ->
+            matches.forEach { match ->
+                val jsonlMatch = JsonlMatch(
+                    date = match.datetime,
+                    matchType = match.matchType,
+                    teams = match.teams,
+                    predictedScore = match.predictedScore,
+                    actualScore = match.actualScore,
+                    predictedOutcome = match.predictedOutcome,
+                    actualOutcome = match.actualOutcome,
+                    odds = match.odds,
+                    bookmakerName = match.bookmakerName,
+                    homeWinOdds = match.homeWinOdds,
+                    drawOdds = match.drawOdds,
+                    awayWinOdds = match.awayWinOdds
+                )
+                val line = Json.encodeToString(jsonlMatch)
+                writer.write(line)
+                writer.newLine()
+            }
+        }
+        return file
+    }
+
+    private suspend fun uploadJsonlToLocalModel(jsonlFile: File): Int {
+        val url = "http://localhost:7007/uploadLines"
+        return try {
+            client.post(url) {
+                // Если сервер принимает как "application/json" c сырым текстом:
+                contentType(io.ktor.http.ContentType.Application.Json)
+                setBody(jsonlFile.readText())
+            }.status.value
+        } catch (e: Exception) {
+            logger.error("Error uploading to local model: ${e.message}")
+            -1
+        }
+    }
+
+}
+
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
     val botsApi = TelegramBotsApi(DefaultBotSession::class.java)
@@ -205,6 +297,17 @@ fun main() {
         .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
         .build()
 
+    val uploadModelDataJob = JobBuilder.newJob(UploadModelDataJob::class.java)
+        .withIdentity("uploadModelDataJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    // CRON: запускаем каждую неделю по понедельникам в 01:00
+    val uploadModelDataTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("uploadModelDataTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 1, 0))
+        .build()
+
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateJob, dailyUpdateTrigger)
@@ -215,6 +318,7 @@ fun main() {
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
+    scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled UpdateMatchesJob to run at every hour")
@@ -225,4 +329,5 @@ fun main() {
     logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
+    logger.info("Executed UploadModelDataJob every monday at 1:00")
 }
