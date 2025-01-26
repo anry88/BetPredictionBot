@@ -16,5 +16,10 @@ data class MatchInfo(
     var awayWinOdds: String?,    // Новое поле для коэффициента на победу гостей
     var telegramMessageId: String?,
     var strategyTelegramMessageId: String?,
-    var elapsed: Int?
+    var elapsed: Int?,
+    var modelHomeWinProb: Double? = null,
+    var modelDrawProb: Double? = null,
+    var modelAwayWinProb: Double? = null,
+    var modelExpectedHomeGoals: Double? = null,
+    var modelExpectedAwayGoals: Double? = null
 )

@@ -46,7 +46,12 @@ object HttpLocalModelService {
      * - Если всё ок, возвращает MatchInfo с заполненными predictedOutcome и predictedScore
      * - Если ошибка, возвращает null
      */
-    suspend fun getModelPrediction(homeTeam: String, awayTeam: String, fixtureId: String, matchInfo: MatchInfo): MatchInfo? {
+    suspend fun getModelPrediction(
+        homeTeam: String,
+        awayTeam: String,
+        fixtureId: String,
+        matchInfo: MatchInfo
+    ): MatchInfo? {
         val url = "http://localhost:7007/predict"
         return try {
             val response: HttpResponse = client.get(url) {
@@ -56,11 +61,17 @@ object HttpLocalModelService {
             if (response.status == HttpStatusCode.OK) {
                 val data = response.body<LocalModelResponse>()
 
+                // Заполняем новые поля в matchInfo
+                matchInfo.modelHomeWinProb = data.homeWin
+                matchInfo.modelDrawProb = data.draw
+                matchInfo.modelAwayWinProb = data.awayWin
+                matchInfo.modelExpectedHomeGoals = data.expectedHomeGoals
+                matchInfo.modelExpectedAwayGoals = data.expectedAwayGoals
+
                 // Округляем ожидаемые голы:
                 val roundedHomeGoals = kotlin.math.round(data.expectedHomeGoals).toInt()
                 val roundedAwayGoals = kotlin.math.round(data.expectedAwayGoals).toInt()
 
-                // Определяем исход:
                 val outcome = when {
                     roundedHomeGoals > roundedAwayGoals -> homeTeam
                     roundedHomeGoals < roundedAwayGoals -> awayTeam
@@ -68,11 +79,10 @@ object HttpLocalModelService {
                 }
                 val score = "$roundedHomeGoals:$roundedAwayGoals"
 
-                // Возвращаем новый MatchInfo (обновим только нужные поля)
-                return matchInfo.copy(
-                    predictedOutcome = outcome,
-                    predictedScore = score
-                )
+                matchInfo.predictedOutcome = outcome
+                matchInfo.predictedScore = score
+
+                matchInfo // возвращаем обновлённый
             } else {
                 logger.error("Local model returned non-OK status: ${response.status}")
                 null
@@ -82,4 +92,5 @@ object HttpLocalModelService {
             null
         }
     }
+
 }

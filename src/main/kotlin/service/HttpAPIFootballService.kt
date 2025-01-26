@@ -79,6 +79,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val formattedCurrentDate = currentDate.format(formatter)
         val formattedNextDay = nextDay.format(formatter)
 
+        val chatGptMaxAttempts = 10
+
         leaguesConfig.forEach { leagueConfig ->
             val matches = getUpcomingMatches(leagueConfig.leagueId, leagueConfig.season, formattedCurrentDate, formattedNextDay)
             matches.forEach { match ->
@@ -136,12 +138,33 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         )
                         // Если локальная модель вернула null, fallback на ChatGPT
                         if (finalPrediction == null) {
-                            logger.warn("Local model failed. Fallback to ChatGPT for $teams.")
-                            finalPrediction = ChatGPTService.getMatchPrediction(matchInfo)
+                            var attempts = 0
+                            while (attempts < chatGptMaxAttempts && finalPrediction == null) {
+                                attempts++
+                                try {
+                                    finalPrediction = ChatGPTService.getMatchPrediction(matchInfo)
+                                } catch (e: Exception) {
+                                    logger.error("ChatGPT error on attempt #$attempts: ${e.message}")
+                                }
+                                if (finalPrediction == null) {
+                                    logger.warn("ChatGPT attempt #$attempts failed, will retry...")
+                                }
+                            }
                         }
                     } else {
                         // Сразу ChatGPT
-                        finalPrediction = ChatGPTService.getMatchPrediction(matchInfo)
+                        var attempts = 0
+                        while (attempts < chatGptMaxAttempts && finalPrediction == null) {
+                            attempts++
+                            try {
+                                finalPrediction = ChatGPTService.getMatchPrediction(matchInfo)
+                            } catch (e: Exception) {
+                                logger.error("ChatGPT error on attempt #$attempts: ${e.message}")
+                            }
+                            if (finalPrediction == null) {
+                                logger.warn("ChatGPT attempt #$attempts failed, will retry...")
+                            }
+                        }
                     }
 
                     // Если и ChatGPT не смог (finalPrediction = null), удаляем матч
@@ -153,6 +176,11 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         matchInfo.predictedOutcome = finalPrediction.predictedOutcome
                         matchInfo.predictedScore = finalPrediction.predictedScore
                         matchInfo.odds = finalPrediction.odds
+                        matchInfo.modelHomeWinProb = finalPrediction.modelHomeWinProb
+                        matchInfo.modelDrawProb = finalPrediction.modelDrawProb
+                        matchInfo.modelAwayWinProb = finalPrediction.modelAwayWinProb
+                        matchInfo.modelExpectedHomeGoals = finalPrediction.modelExpectedHomeGoals
+                        matchInfo.modelExpectedAwayGoals = finalPrediction.modelExpectedAwayGoals
                         DatabaseService.updateMatchPredictions(matchInfo)
                     }
 
