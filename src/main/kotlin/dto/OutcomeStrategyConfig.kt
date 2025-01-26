@@ -21,7 +21,7 @@ val outcomeStrategyConfigs = listOf(
         maxOdds = 2.20,
         homeWinModelProb = 0.7,
         drawModelProb = 0.0,
-        homeAwayModelProb = 1.0
+        homeAwayModelProb = 0.0
     ),
     OutcomeStrategyConfig(
         outcomeType = "Draw",
@@ -39,7 +39,7 @@ val outcomeStrategyConfigs = listOf(
         accuracyThreshold = 60.0,
         minOdds = 1.30,
         maxOdds = 2.50,
-        homeWinModelProb = 1.0,
+        homeWinModelProb = 0.0,
         drawModelProb = 0.0,
         homeAwayModelProb = 0.6
     )
