@@ -30,7 +30,7 @@ val outcomeStrategyConfigs = listOf(
         minOdds = 2.50,
         maxOdds = 5.50,
         homeWinModelProb = 0.45,
-        drawModelProb = 0.3,
+        drawModelProb = 0.5,
         homeAwayModelProb = 0.45
     ),
     OutcomeStrategyConfig(
