@@ -446,7 +446,12 @@ object DatabaseService {
                             it[leagueTable.awayWinOdds],
                             it[leagueTable.telegramMessageId],
                             it[leagueTable.strategyTelegramMessageId],
-                            null
+                            null,
+                            it[leagueTable.modelHomeWinProb],
+                            it[leagueTable.modelDrawProb],
+                            it[leagueTable.modelAwayWinProb],
+                            it[leagueTable.modelExpectedHomeGoals],
+                            it[leagueTable.modelExpectedAwayGoals]
                         )
                     } else {
                         null
@@ -529,7 +534,12 @@ object DatabaseService {
                             awayWinOdds = it[leagueTable.awayWinOdds],
                             telegramMessageId = it[leagueTable.telegramMessageId],
                             strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                            null
+                            null,
+                            modelHomeWinProb = it[leagueTable.modelHomeWinProb],
+                            modelDrawProb = it[leagueTable.modelDrawProb],
+                            modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                            modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                            modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
                         )
                     } else {
                         null
@@ -565,7 +575,12 @@ object DatabaseService {
                         awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        null
+                        null,
+                        modelHomeWinProb = it[leagueTable.modelHomeWinProb],
+                        modelDrawProb = it[leagueTable.modelDrawProb],
+                        modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                        modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                        modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
                     )
                 }.singleOrNull()
                 if (result != null) {
@@ -692,7 +707,12 @@ object DatabaseService {
                             awayWinOdds = it[leagueTable.awayWinOdds],
                             telegramMessageId = it[leagueTable.telegramMessageId],
                             strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                            elapsed = null
+                            elapsed = null,
+                            modelHomeWinProb =  it[leagueTable.modelHomeWinProb],
+                            modelDrawProb = it[leagueTable.modelDrawProb],
+                            modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                            modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                            modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
                         )
                     } else {
                         null
@@ -821,7 +841,12 @@ object DatabaseService {
                         awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        null
+                        null,
+                        modelHomeWinProb = it[leagueTable.modelHomeWinProb],
+                        modelDrawProb = it[leagueTable.modelDrawProb],
+                        modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                        modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                        modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
                     )
                 }
             }
@@ -964,7 +989,12 @@ object DatabaseService {
                         awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        null
+                        null,
+                        modelHomeWinProb = it[leagueTable.modelHomeWinProb],
+                        modelDrawProb = it[leagueTable.modelDrawProb],
+                        modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                        modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                        modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
                     )
                 }
             }
@@ -996,7 +1026,12 @@ object DatabaseService {
                         awayWinOdds = it[leagueTable.awayWinOdds],
                         telegramMessageId = it[leagueTable.telegramMessageId],
                         strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        elapsed = null
+                        elapsed = null,
+                        modelHomeWinProb = it[leagueTable.modelHomeWinProb],
+                        modelDrawProb = it[leagueTable.modelDrawProb],
+                        modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                        modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                        modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
                     )
                 }
         }
