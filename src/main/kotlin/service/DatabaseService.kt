@@ -650,7 +650,12 @@ object DatabaseService {
                         it[leagueTable.awayWinOdds],
                         it[leagueTable.telegramMessageId],
                         it[leagueTable.strategyTelegramMessageId],
-                        null
+                        null,
+                        it[leagueTable.modelHomeWinProb],
+                        it[leagueTable.modelDrawProb],
+                        it[leagueTable.modelAwayWinProb],
+                        it[leagueTable.modelExpectedHomeGoals],
+                        it[leagueTable.modelExpectedAwayGoals]
                     )
                 }
             }

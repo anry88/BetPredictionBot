@@ -9,7 +9,7 @@ data class OutcomeStrategyConfig(
     val maxOdds: Double,
     val homeWinModelProb: Double,
     val drawModelProb: Double,
-    val homeAwayModelProb: Double
+    val awayWinModelProb: Double
 )
 // In FootballBot.kt or a configuration file
 val outcomeStrategyConfigs = listOf(
@@ -21,7 +21,7 @@ val outcomeStrategyConfigs = listOf(
         maxOdds = 2.20,
         homeWinModelProb = 0.7,
         drawModelProb = 0.0,
-        homeAwayModelProb = 0.0
+        awayWinModelProb = 0.0
     ),
     OutcomeStrategyConfig(
         outcomeType = "Draw",
@@ -31,7 +31,7 @@ val outcomeStrategyConfigs = listOf(
         maxOdds = 5.50,
         homeWinModelProb = 0.45,
         drawModelProb = 0.5,
-        homeAwayModelProb = 0.45
+        awayWinModelProb = 0.45
     ),
     OutcomeStrategyConfig(
         outcomeType = "AwayWin",
@@ -41,6 +41,6 @@ val outcomeStrategyConfigs = listOf(
         maxOdds = 2.50,
         homeWinModelProb = 0.0,
         drawModelProb = 0.0,
-        homeAwayModelProb = 0.6
+        awayWinModelProb = 0.6
     )
 )
