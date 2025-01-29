@@ -220,7 +220,7 @@ fun main() {
 
     val dailyUpdateTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateMatchesDailyTrigger", "group1")
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(1).repeatForever())
+        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
         .build()
 
     val updateLeaguePredictabilityJob = JobBuilder.newJob(UpdateLeaguePredictabilityJob::class.java)
