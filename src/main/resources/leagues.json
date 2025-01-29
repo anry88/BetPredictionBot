@@ -24,5 +24,8 @@
   {"leagueId": 11, "season": 2024, "description": "World CONMEBOL Sudamericana", "modelBased": false},
   {"leagueId": 13, "season": 2024, "description": "World CONMEBOL Libertadores", "modelBased": false},
   {"leagueId": 36, "season": 2025, "description": "World Africa Cup of Nations - Qualification", "modelBased": true},
-  {"leagueId": 197, "season": 2024, "description": "Greece Super League 1", "modelBased": true}
+  {"leagueId": 197, "season": 2024, "description": "Greece Super League 1", "modelBased": true},
+  {"leagueId": 144, "season": 2024, "description": "Belgium Jupiler Pro League", "modelBased": false},
+  {"leagueId": 345, "season": 2024, "description": "Czech-Republic Czech Liga", "modelBased": false},
+  {"leagueId": 179, "season": 2024, "description": "Scotland Premiership", "modelBased": false}
 ]

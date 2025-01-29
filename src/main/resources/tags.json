@@ -21,7 +21,8 @@
     "Saudi-Arabia Pro League": "#ProLeague",
     "Argentina Liga Profesional Argentina": "#LigaProfesional",
     "Brazil Serie A": "#BrazilSerieA",
-    "Greece Super League 1": "#GreeceSuperLeague1"
+    "Greece Super League 1": "#GreeceSuperLeague1",
+    "Belgium Jupiler Pro League": "#BelgiumJupilerProLeague"
   },
   "teams": {
     "Kazakhstan": "#Kazakhstan",
@@ -482,6 +483,24 @@
     "Red Bull Salzburg": "#RedBullSalzburg",
     "Celtic": "#Celtic",
     "BSC Young Boys": "#BSCYoungBoys",
-    "Dinamo Zagreb": "#DinamoZagreb"
+    "Dinamo Zagreb": "#DinamoZagreb",
+    "Aldosivi": "#Aldosivi",
+    "Huracan": "#Huracan",
+    "San Martin S.J.": "#SanMartinSJ",
+    "IF Elfsborg": "#IFElfsborg",
+    "Ludogorets": "#Ludogorets",
+    "Bodo/Glimt": "#BodoGlimt",
+    "Rangers": "#Rangers",
+    "Union St. Gilloise": "#UnionStGilloise",
+    "FC Midtjylland": "#FCMidtjylland",
+    "Plzen": "#Plzen",
+    "Qarabag": "#Qarabag",
+    "Anderlecht": "#Anderlecht",
+    "FCSB": "#FCSB",
+    "Slavia Praha": "#SlaviaPraha",
+    "Malmo FF": "#MalmoFF",
+    "Rīgas FS": "#RīgasFS",
+    "Maccabi Tel Aviv": "#MaccabiTelAviv",
+    "Ferencvarosi TC": "#FerencvarosiTC"
   }
 }
