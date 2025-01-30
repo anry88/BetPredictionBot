@@ -114,7 +114,12 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     bookmakerName = null,
                     homeWinOdds = null,
                     drawOdds = null,
-                    awayWinOdds = null
+                    awayWinOdds = null,
+                    modelHomeWinProb = null,
+                    modelDrawProb = null,
+                    modelAwayWinProb = null,
+                    modelExpectedHomeGoals = null,
+                    modelExpectedAwayGoals = null
                 )
 
                 // Проверяем, существует ли матч в базе данных

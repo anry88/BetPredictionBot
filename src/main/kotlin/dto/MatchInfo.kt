@@ -17,9 +17,9 @@ data class MatchInfo(
     var telegramMessageId: String?,
     var strategyTelegramMessageId: String?,
     var elapsed: Int?,
-    var modelHomeWinProb: Double? = null,
-    var modelDrawProb: Double? = null,
-    var modelAwayWinProb: Double? = null,
-    var modelExpectedHomeGoals: Double? = null,
-    var modelExpectedAwayGoals: Double? = null
+    var modelHomeWinProb: Double? ,
+    var modelDrawProb: Double?,
+    var modelAwayWinProb: Double?,
+    var modelExpectedHomeGoals: Double?,
+    var modelExpectedAwayGoals: Double?
 )

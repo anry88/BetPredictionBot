@@ -77,7 +77,13 @@ object ChatGPTService {
                 actualScore = null,
                 telegramMessageId = null,
                 elapsed = null,
-                strategyTelegramMessageId = null
+                strategyTelegramMessageId = null,
+                modelHomeWinProb = null,
+                modelDrawProb = null,
+                modelAwayWinProb = null,
+                modelExpectedHomeGoals = null,
+                modelExpectedAwayGoals = null
+
             )
         } else {
             logger.error("Failed to parse match info from text: $text")

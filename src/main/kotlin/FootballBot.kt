@@ -27,6 +27,7 @@ import service.initDatabase
 import java.io.File
 import java.time.LocalDate
 import java.time.YearMonth
+import kotlin.math.log
 import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
@@ -1126,7 +1127,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             when (config.outcomeType) {
                 "HomeWin" -> {
                     if ((match.modelHomeWinProb ?: 0.0) > config.homeWinModelProb &&
-                        oddsValue - 1.0 > 1 - config.homeWinModelProb
+                        oddsValue - 1.0 > 1 - match.modelHomeWinProb!!
                     ) return true
                 }
 
@@ -1140,7 +1141,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
                 "AwayWin" -> {
                     if ((match.modelAwayWinProb ?: 0.0) > config.awayWinModelProb &&
-                        oddsValue - 1.0 > 1 - config.awayWinModelProb
+                        oddsValue - 1.0 > 1 - match.modelAwayWinProb!!
                     ) return true
                 }
             }
