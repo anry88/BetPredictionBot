@@ -27,5 +27,8 @@
   {"leagueId": 197, "season": 2024, "description": "Greece Super League 1", "modelBased": true},
   {"leagueId": 144, "season": 2024, "description": "Belgium Jupiler Pro League", "modelBased": false},
   {"leagueId": 345, "season": 2024, "description": "Czech-Republic Czech Liga", "modelBased": false},
-  {"leagueId": 179, "season": 2024, "description": "Scotland Premiership", "modelBased": false}
+  {"leagueId": 179, "season": 2024, "description": "Scotland Premiership", "modelBased": false},
+  {"leagueId": 305, "season": 2024, "description": "Qatar Stars League", "modelBased": false},
+  {"leagueId": 301, "season": 2024, "description": "United-Arab-Emirates Pro League", "modelBased": false},
+  {"leagueId": 262, "season": 2024, "description": "Mexico Liga MX", "modelBased": false}
 ]

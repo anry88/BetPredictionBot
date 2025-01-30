@@ -22,8 +22,11 @@
     "Argentina Liga Profesional Argentina": "#LigaProfesional",
     "Brazil Serie A": "#BrazilSerieA",
     "Greece Super League 1": "#GreeceSuperLeague1",
-    "Belgium Jupiler Pro League": "#JupilerProLeague",
-    "Czech-Republic Czech Liga": "#CzechLiga"
+    "Belgium Jupiler Pro League": "#BelgiumJupilerProLeague",
+    "Czech-Republic Czech Liga": "#CzechLiga",
+    "Qatar Stars League": "#QatarStarsLeague",
+    "United-Arab-Emirates Pro League": "#UAEProLeague",
+    "Mexico Liga MX": "#MexicoLigaMX"
   },
   "teams": {
     "Kazakhstan": "#Kazakhstan",
