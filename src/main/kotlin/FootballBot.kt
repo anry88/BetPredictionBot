@@ -442,7 +442,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome} (Probability: $probabilityPredictedOutcome)
+            Predicted Outcome: ${matchInfo.predictedOutcome} (Probability: $probabilityPredictedOutcome%)
             Predicted Score: ${matchInfo.predictedScore}
             Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
         """.trimIndent()
@@ -480,7 +480,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome}$emoji (Probability: $probabilityPredictedOutcome)
+            Predicted Outcome: ${matchInfo.predictedOutcome}$emoji (Probability: $probabilityPredictedOutcome%)
             Actual Outcome: ${matchInfo.actualOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Actual Score: ${matchInfo.actualScore}
@@ -518,7 +518,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome} (Probability: $probabilityPredictedOutcome)
+            Predicted Outcome: ${matchInfo.predictedOutcome} (Probability: $probabilityPredictedOutcome%)
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
             Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
