@@ -417,11 +417,32 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
+        var probabilityPredictedOutcome = 0
+
+        val teams = matchInfo.teams.split(" vs. ")
+        if (teams.size == 2) {
+            val homeTeam = teams[0].trim()
+            val awayTeam = teams[1].trim()
+            probabilityPredictedOutcome =
+                when (matchInfo.predictedOutcome) {
+                    homeTeam -> {
+                        ((matchInfo.modelHomeWinProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    "Draw" -> {
+                        ((matchInfo.modelDrawProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    awayTeam -> {
+                        ((matchInfo.modelAwayWinProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    else -> 0
+                }
+        }
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome}
+            Predicted Outcome: ${matchInfo.predictedOutcome} (Probability: $probabilityPredictedOutcome)
             Predicted Score: ${matchInfo.predictedScore}
             Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
         """.trimIndent()
@@ -434,11 +455,32 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
+        var probabilityPredictedOutcome = 0
+
+        val teams = matchInfo.teams.split(" vs. ")
+        if (teams.size == 2) {
+            val homeTeam = teams[0].trim()
+            val awayTeam = teams[1].trim()
+            probabilityPredictedOutcome =
+                when (matchInfo.predictedOutcome) {
+                    homeTeam -> {
+                        ((matchInfo.modelHomeWinProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    "Draw" -> {
+                        ((matchInfo.modelDrawProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    awayTeam -> {
+                        ((matchInfo.modelAwayWinProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    else -> 0
+                }
+        }
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome}$emoji
+            Predicted Outcome: ${matchInfo.predictedOutcome}$emoji (Probability: $probabilityPredictedOutcome)
             Actual Outcome: ${matchInfo.actualOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Actual Score: ${matchInfo.actualScore}
@@ -451,11 +493,32 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
+        var probabilityPredictedOutcome = 0
+
+        val teams = matchInfo.teams.split(" vs. ")
+        if (teams.size == 2) {
+            val homeTeam = teams[0].trim()
+            val awayTeam = teams[1].trim()
+            probabilityPredictedOutcome =
+                when (matchInfo.predictedOutcome) {
+                    homeTeam -> {
+                        ((matchInfo.modelHomeWinProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    "Draw" -> {
+                        ((matchInfo.modelDrawProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    awayTeam -> {
+                        ((matchInfo.modelAwayWinProb ?: (0.0 * 100))).roundToInt()
+                    }
+                    else -> 0
+                }
+        }
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
-            Predicted Outcome: ${matchInfo.predictedOutcome}
+            Predicted Outcome: ${matchInfo.predictedOutcome} (Probability: $probabilityPredictedOutcome)
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
             Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
