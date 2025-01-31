@@ -1193,7 +1193,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             when (config.outcomeType) {
                 "HomeWin" -> {
                     if ((match.modelHomeWinProb ?: 0.0) > config.homeWinModelProb &&
-                        oddsValue - 1.0 > 0.3
+                        oddsValue > config.minOdds
                     ) return true
                 }
 
@@ -1201,13 +1201,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     if ((match.modelDrawProb ?: 0.0) > config.drawModelProb &&
 //                        match.modelHomeWinProb!! < config.homeAwayModelProb &&
 //                        match.modelAwayWinProb!! < config.homeAwayModelProb &&
-                        oddsValue - 3 > 0.33
+                        oddsValue > config.minOdds
                     ) return true
                 }
 
                 "AwayWin" -> {
                     if ((match.modelAwayWinProb ?: 0.0) > config.awayWinModelProb &&
-                        oddsValue - 1.0 > 0.4
+                        oddsValue > config.minOdds
                     ) return true
                 }
             }
