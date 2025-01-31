@@ -426,13 +426,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             probabilityPredictedOutcome =
                 when (matchInfo.predictedOutcome) {
                     homeTeam -> {
-                        (matchInfo.modelHomeWinProb ?: (0.0 * 100))
+                        (matchInfo.modelHomeWinProb!! * 100)
                     }
                     "Draw" -> {
-                        (matchInfo.modelDrawProb ?: (0.0 * 100))
+                        (matchInfo.modelDrawProb!! * 100)
                     }
                     awayTeam -> {
-                        (matchInfo.modelAwayWinProb ?: (0.0 * 100))
+                        ((matchInfo.modelAwayWinProb!! * 100))
                     }
                     else -> 0.0
                 }
@@ -443,7 +443,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
-            (Probability: ${"%.2f".format(probabilityPredictedOutcome)}%
+            (Probability: ${"%.2f".format(probabilityPredictedOutcome)}%)
             Predicted Score: ${matchInfo.predictedScore}
             Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
         """.trimIndent()
@@ -465,13 +465,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             probabilityPredictedOutcome =
                 when (matchInfo.predictedOutcome) {
                     homeTeam -> {
-                        (matchInfo.modelHomeWinProb ?: (0.0 * 100))
+                        (matchInfo.modelHomeWinProb!! * 100)
                     }
                     "Draw" -> {
-                        (matchInfo.modelDrawProb ?: (0.0 * 100))
+                        (matchInfo.modelDrawProb!! * 100)
                     }
                     awayTeam -> {
-                        (matchInfo.modelAwayWinProb ?: (0.0 * 100))
+                        ((matchInfo.modelAwayWinProb!! * 100))
                     }
                     else -> 0.0
                 }
@@ -482,7 +482,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}$emoji
-            (Probability: ${"%.2f".format(probabilityPredictedOutcome)}%
+            (Probability: ${"%.2f".format(probabilityPredictedOutcome)}%)
             Actual Outcome: ${matchInfo.actualOutcome}
             Predicted Score: ${matchInfo.predictedScore}
             Actual Score: ${matchInfo.actualScore}
@@ -504,13 +504,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             probabilityPredictedOutcome =
                 when (matchInfo.predictedOutcome) {
                     homeTeam -> {
-                        (matchInfo.modelHomeWinProb ?: (0.0 * 100))
+                        (matchInfo.modelHomeWinProb!! * 100)
                     }
                     "Draw" -> {
-                        (matchInfo.modelDrawProb ?: (0.0 * 100))
+                        (matchInfo.modelDrawProb!! * 100)
                     }
                     awayTeam -> {
-                        (matchInfo.modelAwayWinProb ?: (0.0 * 100))
+                        ((matchInfo.modelAwayWinProb!! * 100))
                     }
                     else -> 0.0
                 }
@@ -521,7 +521,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
-            (Probability: ${"%.2f".format(probabilityPredictedOutcome)}%
+            (Probability: ${"%.2f".format(probabilityPredictedOutcome)}%)
             Predicted Score: ${matchInfo.predictedScore}
             Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
             Odds for the Predicted Outcome: ${matchInfo.odds} (Bookmaker: ${matchInfo.bookmakerName ?: "Default"})
