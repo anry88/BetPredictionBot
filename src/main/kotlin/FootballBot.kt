@@ -1180,6 +1180,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 //        }
 //        return false
 
+        val teams = match.teams.split(" vs. ")
+
+        val homeTeam = teams[0].trim()
+        val awayTeam = teams[1].trim()
+        val predictedOutcome = match.predictedOutcome
+
         // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
         val isFromLocalModel = match.modelHomeWinProb != null
 
@@ -1192,13 +1198,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             // и т.п. — логику решаете вы
             when (config.outcomeType) {
                 "HomeWin" -> {
-                    if ((match.modelHomeWinProb ?: 0.0) > config.homeWinModelProb &&
+                    if (predictedOutcome == homeTeam &&
+                        (match.modelHomeWinProb ?: 0.0) > config.homeWinModelProb &&
                         oddsValue > config.minOdds
                     ) return true
                 }
 
                 "Draw" -> {
-                    if ((match.modelDrawProb ?: 0.0) > config.drawModelProb &&
+                    if (predictedOutcome == "Draw" &&
+                        (match.modelDrawProb ?: 0.0) > config.drawModelProb &&
 //                        match.modelHomeWinProb!! < config.homeAwayModelProb &&
 //                        match.modelAwayWinProb!! < config.homeAwayModelProb &&
                         oddsValue > config.minOdds
@@ -1206,7 +1214,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 "AwayWin" -> {
-                    if ((match.modelAwayWinProb ?: 0.0) > config.awayWinModelProb &&
+                    if (predictedOutcome == awayTeam &&
+                        (match.modelAwayWinProb ?: 0.0) > config.awayWinModelProb &&
                         oddsValue > config.minOdds
                     ) return true
                 }
