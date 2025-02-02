@@ -2,7 +2,6 @@ package service
 
 import dto.LeagueStats
 import dto.MatchInfo
-import dto.OutcomeStrategyConfig
 import dto.PeriodStats
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -11,7 +10,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
-import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -250,15 +248,6 @@ fun createLeagueTableIfNeeded(tableName: String) {
     // Если нужно «добавить» новые столбцы — проверяем, нет ли их.
     // Можно сделать helper: addColumnIfNotExists(tableName, "newColumn", "REAL")
 }
-
-fun <T : Any> execAndMap(sql: String, transform: (ResultSet) -> T): T? {
-    return transaction {
-        exec(sql) { rs ->
-            transform(rs)
-        }
-    }
-}
-
 
 /**
  * Проверяем, есть ли столбец columnName в таблице tableName.
@@ -731,13 +720,6 @@ object DatabaseService {
         var strategyTotalStakes = 0.0
         var strategyTotalReturns = 0.0
 
-        // Updated function call with correct parameter names and outcomeType
-        val predictableLeagues = getPredictableLeagues(
-            outcomeType = "HomeWin",
-            roiThreshold = 10.0,
-            accuracyThreshold = 60.0
-        )
-
         allMatches.forEach { match ->
             totalMatches += 1
             val oddsValue = match.odds?.toDoubleOrNull() ?: return@forEach
@@ -752,28 +734,18 @@ object DatabaseService {
                 totalReturns -= stake
             }
 
-            // Checking if the match fits the strategy
-            val teams = match.teams.split(" vs. ")
-            if (teams.size == 2) {
-                val homeTeam = teams[0].trim()
-                val predictedOutcome = match.predictedOutcome
-                val isHomeTeamPredicted = predictedOutcome == homeTeam
-                val isPredictableLeague = match.matchType in predictableLeagues
-                val hasStrategyTelegramMessageId = match.strategyTelegramMessageId != null
-                val isOddsInRange = oddsValue in 1.20..2.20
-                val isNotDraw = predictedOutcome != "Draw"
+            val hasStrategyTelegramMessageId = match.strategyTelegramMessageId != null
 
-                if (hasStrategyTelegramMessageId) {
-                    strategyTotalMatches += 1
-                    strategyTotalStakes += stake
+            if (hasStrategyTelegramMessageId) {
+                strategyTotalMatches += 1
+                strategyTotalStakes += stake
 
-                    if (match.predictedOutcome?.lowercase() == match.actualOutcome?.lowercase()) {
-                        strategyCorrectPredictions += 1
-                        val profit = (oddsValue * stake) - stake
-                        strategyTotalReturns += profit
-                    } else {
-                        strategyTotalReturns -= stake
-                    }
+                if (match.predictedOutcome?.lowercase() == match.actualOutcome?.lowercase()) {
+                    strategyCorrectPredictions += 1
+                    val profit = (oddsValue * stake) - stake
+                    strategyTotalReturns += profit
+                } else {
+                    strategyTotalReturns -= stake
                 }
             }
         }
@@ -904,49 +876,6 @@ object DatabaseService {
                     logger.info("Updated league predictability data for league: ${stats.leagueName}")
                 }
             }
-        }
-    }
-
-
-    // In DatabaseService.kt
-    fun getPredictableLeagues(
-        outcomeType: String,
-        roiThreshold: Double,
-        accuracyThreshold: Double
-    ): List<String> {
-        return transaction {
-//            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
-            when (outcomeType) {
-                "HomeWin" -> {
-                    LeaguePredictability.select {
-                        (LeaguePredictability.homeWinRoi greaterEq roiThreshold) and
-                                (LeaguePredictability.homeWinAccuracy greaterEq accuracyThreshold)
-                    }.map { it[LeaguePredictability.leagueName] }
-                }
-                "Draw" -> {
-                    LeaguePredictability.select {
-                        (LeaguePredictability.drawRoi greaterEq roiThreshold) and
-                                (LeaguePredictability.drawAccuracy greaterEq accuracyThreshold)
-                    }.map { it[LeaguePredictability.leagueName] }
-                }
-                "AwayWin" -> {
-                    LeaguePredictability.select {
-                        (LeaguePredictability.awayWinRoi greaterEq roiThreshold) and
-                                (LeaguePredictability.awayWinAccuracy greaterEq accuracyThreshold)
-                    }.map { it[LeaguePredictability.leagueName] }
-                }
-                else -> emptyList()
-            }
-        }
-    }
-
-    fun isLeagueFitsStrategy(strategyRoiThreshold: Double, strategyAccuracyThreshold: Double): List<String> {
-        return transaction {
-//            SchemaUtils.createMissingTablesAndColumns(LeaguePredictability)
-            LeaguePredictability.select {
-                (LeaguePredictability.strategyRoi greaterEq strategyRoiThreshold) and
-                        (LeaguePredictability.strategyAccuracy greaterEq strategyAccuracyThreshold)
-            }.map { it[LeaguePredictability.leagueName] }
         }
     }
 

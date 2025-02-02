@@ -19,7 +19,6 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import java.awt.print.Book
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -27,7 +26,6 @@ import java.time.format.DateTimeFormatter
 class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
-    private val channelId: String = Config.getProperty("channel.chat.id") ?: throw IllegalStateException("Channel ChatID not found")
 
     private val bookmakers = listOf(
         BookmakerInfo(16, "Unibet"),
@@ -63,10 +61,9 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     private fun loadLeaguesConfig(): List<LeagueConfig> {
         val leaguesJson = javaClass.getResource("/leagues.json")?.readText()
             ?: throw IllegalStateException("leagues.json not found")
-        return json.decodeFromString<List<LeagueConfig>>(leaguesJson)
+        return json.decodeFromString(leaguesJson)
     }
 
-    // В FootballBot или где удобно
     fun getModelBasedLeaguesFromConfig(): List<LeagueConfig> {
         return leaguesConfig.filter { it.modelBased }
     }
@@ -138,7 +135,6 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         finalPrediction = HttpLocalModelService.getModelPrediction(
                             homeTeam = homeTeam,
                             awayTeam = awayTeam,
-                            fixtureId = fixtureId,
                             matchInfo = matchInfo
                         )
                         // Если локальная модель вернула null, fallback на ChatGPT
@@ -374,16 +370,13 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val formatterMatchDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
                 val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
 
-                // Создаём обновлённый объект MatchInfo, обновляя только необходимые поля
-                val updatedMatchInfo = existingMatchInfo.copy(
+                // Возвращаем обновлённый объект
+                return existingMatchInfo.copy(
                     actualScore = actualScore,
                     actualOutcome = actualOutcome,
                     elapsed = elapsed,
                     datetime = datetime
                 )
-
-                // Возвращаем обновлённый объект
-                return updatedMatchInfo
             } else {
                 logger.warn("No match data found for fixtureId $fixtureId")
                 return null

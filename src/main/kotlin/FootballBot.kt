@@ -1,5 +1,4 @@
 import dto.JsonlMatch
-import dto.LeagueConfig
 import dto.LeagueStats
 import dto.MatchInfo
 import dto.OutcomeStrategyConfig
@@ -27,7 +26,6 @@ import service.initDatabase
 import java.io.File
 import java.time.LocalDate
 import java.time.YearMonth
-import kotlin.math.log
 import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
@@ -121,10 +119,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
                 chatId == adminChatId && messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
-                }
-
-                chatId == adminChatId && messageText == "/topmatch" -> {
-                    handleTopMatchCommand(chatId)
                 }
 
                 chatId == adminChatId && messageText.startsWith("/getAccuracy") -> {
@@ -231,7 +225,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
             /upcomingmatches - Get upcoming matches within the next 24 hours
-            /topmatch - Get the top match
             /getAccuracy n - Get prediction accuracy for 'n' period
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format
@@ -279,31 +272,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } else {
             sendMessage(chatId, "No upcoming matches within the next 24 hours.")
         }
-    }
-
-    private fun handleTopMatchCommand(chatId: String) {
-        val upcomingMatches = DatabaseService.getUpcomingMatches()
-        val topMatch = upcomingMatches
-            .filter {
-                val odds = it.odds?.toDoubleOrNull()
-                odds != null && odds in 1.5..2.5
-            }
-            .maxByOrNull { it.odds?.toDoubleOrNull() ?: Double.MIN_VALUE }
-
-        val responseText = if (topMatch != null) {
-            """
-        [Top Match]
-        Match Time: ${topMatch.datetime}
-        Match Type: ${topMatch.matchType}
-        Teams: ${topMatch.teams}
-        Predicted Outcome: ${topMatch.predictedOutcome}
-        """.trimIndent()
-        } else {
-            "No top match found."
-        }
-
-        val message = SendMessage(chatId, responseText)
-        execute(message)
     }
 
     private fun handleGetJsonlCommand(chatId: String) {
@@ -415,7 +383,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun formatPremiumMatchInfo(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
         val matchType = combineLeagueName(matchInfo)
-        val tags = getTags(matchType, matchInfo.teams)
 
         var probabilityPredictedOutcome = 0.0
 
@@ -454,7 +421,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val flag = getCountryFlag(matchInfo.matchType)
         val matchType = combineLeagueName(matchInfo)
-        val tags = getTags(matchType, matchInfo.teams)
 
         var probabilityPredictedOutcome = 0.0
 
@@ -493,7 +459,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun formatLivePremiumMatch(matchInfo: MatchInfo): String {
         val flag = getCountryFlag(matchInfo.matchType)
         val matchType = combineLeagueName(matchInfo)
-        val tags = getTags(matchType, matchInfo.teams)
 
         var probabilityPredictedOutcome = 0.0
 
@@ -659,13 +624,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     }
 
                     for (config in outcomeStrategyConfigs) {
-                        // Get predictable leagues for the current outcome type
-                        val predictableLeagues = DatabaseService.getPredictableLeagues(
-                            outcomeType = config.outcomeType,
-                            roiThreshold = config.roiThreshold,
-                            accuracyThreshold = config.accuracyThreshold
-                        )
-                        if (isMatchFitsStrategy(match, config, predictableLeagues)) {
+
+                        if (isMatchFitsStrategy(match, config)) {
                             // Статистика по стратегии
                             stats.strategyTotalMatches += 1
                             stats.strategyTotalStakes += stake
@@ -768,7 +728,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    // In FootballBot.kt
     suspend fun sendUpcomingMatchesToTelegram() {
         val matches = getMatchesWithoutMessageIdForNext5Hours()
 
@@ -795,7 +754,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 // Send match to main channel if not sent yet
-                val messageId = match.telegramMessageId ?: run {
+                match.telegramMessageId ?: run {
                     val messageText = formatMatchInfo(match)
                     val newMessageId = sendMessageAndGetId(channelId, messageText)
                     if (newMessageId != null) {
@@ -806,16 +765,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 for (config in outcomeStrategyConfigs) {
-                    // Get predictable leagues for the current outcome type
-                    val predictableLeagues = DatabaseService.getPredictableLeagues(
-                        outcomeType = config.outcomeType,
-                        roiThreshold = config.roiThreshold,
-                        accuracyThreshold = config.accuracyThreshold
-                    )
+
                     // Check if match fits the strategy
-                    if (isMatchFitsStrategy(match, config, predictableLeagues)) {
+                    if (isMatchFitsStrategy(match, config)) {
                         // Check if the match has already been sent to the premium channel
-                        val strategyMessageId = match.strategyTelegramMessageId ?: run {
+                        match.strategyTelegramMessageId ?: run {
                             // Send to premium channel
                             val strategyMessageText = formatPremiumMatchInfo(match)
                             val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
@@ -1066,8 +1020,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         }
 
-        // Если страна не найдена, возвращаем пустую строку или можно вернуть специальный символ, например, белый флаг
-        return "" // Или " " для белого флага по умолчанию
+        return ""
     }
 
     fun updateMatchMessages(matchInfo: MatchInfo) {
@@ -1153,32 +1106,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return messages
     }
 
-    // In FootballBot.kt
     private fun isMatchFitsStrategy(
         match: MatchInfo,
-        config: OutcomeStrategyConfig,
-        predictableLeagues: List<String>,
+        config: OutcomeStrategyConfig
     ): Boolean {
-//        val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
-//        val teams = match.teams.split(" vs. ")
-//        if (teams.size == 2) {
-//            val homeTeam = teams[0].trim()
-//            val awayTeam = teams[1].trim()
-//            val predictedOutcome = match.predictedOutcome
-//            val isOutcomePredicted = when (config.outcomeType) {
-//                "HomeWin" -> predictedOutcome == homeTeam
-//                "AwayWin" -> predictedOutcome == awayTeam
-//                "Draw" -> predictedOutcome == "Draw"
-//                else -> false
-//            }
-//
-//            val isPredictableLeague = match.matchType in predictableLeagues
-//            val isOddsInRange = oddsValue in config.minOdds..config.maxOdds
-//            val isNotDefaultBookmaker = match.bookmakerName != "Default" && match.bookmakerName != null
-//
-//            return isOutcomePredicted && isPredictableLeague && isOddsInRange && isNotDefaultBookmaker
-//        }
-//        return false
 
         val teams = match.teams.split(" vs. ")
 
@@ -1224,21 +1155,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return false
     }
 
+    private fun combineLeagueName(matchInfo: MatchInfo): String {
 
-    /**
-     * Пример того, как вы у себя формируете итоговое leagueName:
-     * возможно, вы писали: "${match.league.country} ${match.league.name}"
-     * или иначе. Нужно чтобы совпадало с matchInfo.matchType
-     */
-    fun combineLeagueName(matchInfo: MatchInfo): String {
-        // Пример: ищем в вашей кодовой базе, как именно вы формируете leagueName
-        // Иногда бывает "England Premier League"
-        // Иногда "World Champions League"
-        // Можно упростить, если вы храните где-то маппинг (id -> название).
-        // Для примера примем упрощённо:
-        // Возвращаем просто строку без "Страна":
-        // "League #${leagueConfig.leagueId}, season ${leagueConfig.season}"
-        // Но лучше, конечно, сделать один в один, как в fetchMatches().
         return if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
     }
 }

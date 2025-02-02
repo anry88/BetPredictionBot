@@ -12,6 +12,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 
+@Suppress("PLUGIN_IS_NOT_ENABLED")
 object HttpLocalModelService {
     private val logger = LoggerFactory.getLogger(HttpLocalModelService::class.java)
 
@@ -49,7 +50,6 @@ object HttpLocalModelService {
     suspend fun getModelPrediction(
         homeTeam: String,
         awayTeam: String,
-        fixtureId: String,
         matchInfo: MatchInfo
     ): MatchInfo? {
         val url = "http://localhost:7007/predict"
