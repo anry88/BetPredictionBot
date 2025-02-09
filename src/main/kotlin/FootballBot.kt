@@ -345,7 +345,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             DrawProbability: ${if (matchInfo.modelDrawProb != null) {"%.2f".format(matchInfo.modelDrawProb!! * 100) + "%"} else 0}
             AwayWinProbability: ${if (matchInfo.modelAwayWinProb != null) {"%.2f".format(matchInfo.modelAwayWinProb!! * 100) + "%"} else 0}
             ExpectedHomeGoals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.4f".format(matchInfo.modelExpectedHomeGoals)} else 0}
-            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}"""
+            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}
+            HomeWinOdds: ${if (matchInfo.homeWinOdds != null) {"%.4f".format(matchInfo.homeWinOdds)} else 0}
+            DrawOdds: ${if (matchInfo.drawOdds != null) {"%.2f".format(matchInfo.drawOdds)} else 0}
+            AwayWinOdds: ${if (matchInfo.awayWinOdds != null) {"%.2f".format(matchInfo.awayWinOdds)} else 0}"""
         }
 
         return """
@@ -374,7 +377,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             DrawProbability: ${if (matchInfo.modelDrawProb != null) {"%.2f".format(matchInfo.modelDrawProb!! * 100) + "%"} else 0}
             AwayWinProbability: ${if (matchInfo.modelAwayWinProb != null) {"%.2f".format(matchInfo.modelAwayWinProb!! * 100) + "%"} else 0}
             ExpectedHomeGoals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.4f".format(matchInfo.modelExpectedHomeGoals)} else 0}
-            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}"""
+            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}
+            HomeWinOdds: ${if (matchInfo.homeWinOdds != null) {"%.4f".format(matchInfo.homeWinOdds)} else 0}
+            DrawOdds: ${if (matchInfo.drawOdds != null) {"%.2f".format(matchInfo.drawOdds)} else 0}
+            AwayWinOdds: ${if (matchInfo.awayWinOdds != null) {"%.2f".format(matchInfo.awayWinOdds)} else 0}"""
         }
 
         return """
@@ -403,7 +409,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             DrawProbability: ${if (matchInfo.modelDrawProb != null) {"%.2f".format(matchInfo.modelDrawProb!! * 100) + "%"} else 0}
             AwayWinProbability: ${if (matchInfo.modelAwayWinProb != null) {"%.2f".format(matchInfo.modelAwayWinProb!! * 100) + "%"} else 0}
             ExpectedHomeGoals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.4f".format(matchInfo.modelExpectedHomeGoals)} else 0}
-            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}"""
+            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}
+            HomeWinOdds: ${if (matchInfo.homeWinOdds != null) {"%.4f".format(matchInfo.homeWinOdds)} else 0}
+            DrawOdds: ${if (matchInfo.drawOdds != null) {"%.2f".format(matchInfo.drawOdds)} else 0}
+            AwayWinOdds: ${if (matchInfo.awayWinOdds != null) {"%.2f".format(matchInfo.awayWinOdds)} else 0}"""
         }
 
         return """
