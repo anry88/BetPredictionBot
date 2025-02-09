@@ -37,6 +37,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val footballService = HttpAPIFootballService(this)
     private val strategyChannelId: String =
         Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
+    private val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
 
     private val leagueTags: Map<String, String>
     private val teamTags: Map<String, String>
@@ -335,12 +336,24 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
+        var testData = ""
+
+        if (isTest){
+            testData =
+                """
+            HomeWinProbability: ${if (matchInfo.modelHomeWinProb != null) {"%.2f".format(matchInfo.modelHomeWinProb!! * 100) + "%"} else 0}
+            DrawProbability: ${if (matchInfo.modelDrawProb != null) {"%.2f".format(matchInfo.modelDrawProb!! * 100) + "%"} else 0}
+            AwayWinProbability: ${if (matchInfo.modelAwayWinProb != null) {"%.2f".format(matchInfo.modelAwayWinProb!! * 100) + "%"} else 0}
+            ExpectedHomeGoals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.4f".format(matchInfo.modelExpectedHomeGoals)} else 0}
+            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}"""
+        }
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
-            Predicted Score: ${matchInfo.predictedScore}
+            Predicted Score: ${matchInfo.predictedScore}$testData
             $tags
         """.trimIndent()
     }
@@ -352,6 +365,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
+        var testData = ""
+
+        if (isTest){
+            testData =
+                """
+            HomeWinProbability: ${if (matchInfo.modelHomeWinProb != null) {"%.2f".format(matchInfo.modelHomeWinProb!! * 100) + "%"} else 0}
+            DrawProbability: ${if (matchInfo.modelDrawProb != null) {"%.2f".format(matchInfo.modelDrawProb!! * 100) + "%"} else 0}
+            AwayWinProbability: ${if (matchInfo.modelAwayWinProb != null) {"%.2f".format(matchInfo.modelAwayWinProb!! * 100) + "%"} else 0}
+            ExpectedHomeGoals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.4f".format(matchInfo.modelExpectedHomeGoals)} else 0}
+            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}"""
+        }
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
@@ -359,7 +384,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             Predicted Outcome: ${matchInfo.predictedOutcome}$emoji
             Actual Outcome: ${matchInfo.actualOutcome}
             Predicted Score: ${matchInfo.predictedScore}
-            Actual Score: ${matchInfo.actualScore}
+            Actual Score: ${matchInfo.actualScore}$testData
             $tags
         """.trimIndent()
     }
@@ -369,13 +394,25 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matchType = combineLeagueName(matchInfo)
         val tags = getTags(matchType, matchInfo.teams)
 
+        var testData = ""
+
+        if (isTest){
+            testData =
+                """
+            HomeWinProbability: ${if (matchInfo.modelHomeWinProb != null) {"%.2f".format(matchInfo.modelHomeWinProb!! * 100) + "%"} else 0}
+            DrawProbability: ${if (matchInfo.modelDrawProb != null) {"%.2f".format(matchInfo.modelDrawProb!! * 100) + "%"} else 0}
+            AwayWinProbability: ${if (matchInfo.modelAwayWinProb != null) {"%.2f".format(matchInfo.modelAwayWinProb!! * 100) + "%"} else 0}
+            ExpectedHomeGoals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.4f".format(matchInfo.modelExpectedHomeGoals)} else 0}
+            ExpectedAwayGoals: ${if (matchInfo.modelExpectedAwayGoals != null) {"%.4f".format(matchInfo.modelExpectedAwayGoals)} else 0}"""
+        }
+
         return """
             Match Time UTC: ${matchInfo.datetime}
             Match Type: $matchType$flag
             Teams: ${matchInfo.teams}
             Predicted Outcome: ${matchInfo.predictedOutcome}
             Predicted Score: ${matchInfo.predictedScore}
-            Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'
+            Current Score: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
             $tags #Live
         """.trimIndent()
     }
