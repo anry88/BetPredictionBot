@@ -1185,9 +1185,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     if (predictedOutcome == "Draw" &&
                         ((match.modelDrawProb ?: 0.0) > config.drawModelProb &&
                                 oddsValue > config.minOdds) ||
-                        ((match.modelHomeWinProb ?: 0.0) < 0.4 &&
-                                (match.modelDrawProb ?: 0.0) < 0.4 &&
-                                (match.modelAwayWinProb ?: 0.0) < 0.4)
+                        (
+                                (match.modelHomeWinProb ?: 0.0) < 0.4 &&
+                                (match.modelHomeWinProb ?: 0.0) > 0.0 &&
+                                (match.modelDrawProb    ?: 0.0) < 0.4 &&
+                                (match.modelDrawProb    ?: 0.0) > 0.0 &&
+                                (match.modelAwayWinProb ?: 0.0) < 0.4 &&
+                                (match.modelAwayWinProb ?: 0.0) > 0.0
+                                )
                     ) return true
                 }
 
