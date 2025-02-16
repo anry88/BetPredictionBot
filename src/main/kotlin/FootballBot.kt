@@ -1036,6 +1036,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "United-Arab-Emirates" to "🇦🇪",
             "Mexico" to "🇲🇽",
             "Qatar" to "🇶🇦",
+            "China" to "🇨🇳",
 //            "UEFA" to "🇪🇺",
             "UEFA" to "🌍",
             "CONMEBOL" to "🌎",
