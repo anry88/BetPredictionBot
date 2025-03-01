@@ -57,6 +57,7 @@ object HttpLocalModelService {
             val response: HttpResponse = client.get(url) {
                 parameter("home", homeTeam)
                 parameter("away", awayTeam)
+                parameter("league", matchInfo.matchType)
             }
             if (response.status == HttpStatusCode.OK) {
                 val data = response.body<LocalModelResponse>()

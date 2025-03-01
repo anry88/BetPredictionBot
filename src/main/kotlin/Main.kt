@@ -113,14 +113,8 @@ class UploadModelDataJob : Job {
         runBlocking {
             // 1. Выбираем матчи только из lиг, где modelBased = true,
             //    и только сыгранные (actualOutcome != null).
-            val modelBasedLeagues = footballService.getModelBasedLeaguesFromConfig()
-            val completedMatches = DatabaseService.getAllMatches().filter { match ->
-                modelBasedLeagues.any { leagueConfig ->
-                    leagueConfig.modelBased
-//                            &&
-//                            match.matchType == footballService.combineLeagueName(match)
-                } && match.actualOutcome != null
-            }
+//            val modelBasedLeagues = footballService.getModelBasedLeaguesFromConfig()
+            val completedMatches = DatabaseService.getAllMatches().filter { match -> match.actualOutcome != null }
 
             if (completedMatches.isEmpty()) {
                 logger.info("No completed matches found for model-based leagues")
@@ -319,6 +313,7 @@ fun main() {
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
     scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
+//    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled UpdateMatchesJob to run at every hour")

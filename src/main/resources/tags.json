@@ -28,8 +28,8 @@
     "United-Arab-Emirates Pro League": "#UAEProLeague",
     "Mexico Liga MX": "#MexicoLigaMX",
     "Scotland Premiership": "#ScotlandPremiership",
-    "World CONMEBOL Sudamericana": "#CopaSudamericana",
-    "World CONMEBOL Libertadores": "#CopaLibertadores",
+    "CONMEBOL Sudamericana": "#CopaSudamericana",
+    "CONMEBOL Libertadores": "#CopaLibertadores",
     "China Super League": "#ChinaSuperLeague"
   },
   "teams": {

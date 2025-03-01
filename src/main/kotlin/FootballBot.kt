@@ -133,7 +133,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText == "/getjsonl" -> {
                     handleGetJsonlCommand(chatId)
                 }
-
                 messageText == "/start" -> {
                     handleStartCommand(chatId)
                 }
