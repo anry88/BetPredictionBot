@@ -9,7 +9,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import service.DatabaseService.deleteLowFixtureIdsMigration
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -89,32 +88,6 @@ object LeaguePredictability : Table() {
 
     override val primaryKey = PrimaryKey(leagueName)
 }
-
-//fun initDatabase(dbPath: String) {
-//    val logger = LoggerFactory.getLogger("DatabaseService")
-//    val dbFile = File(dbPath)
-//
-//    logger.info("Database file path: $dbPath")
-//
-//    if (!dbFile.exists()) {
-//        try {
-//            dbFile.createNewFile()
-//            logger.info("Database file created at: $dbPath")
-//        } catch (e: IOException) {
-//            logger.error("Failed to create database file", e)
-//            throw e
-//        }
-//    } else {
-//        logger.info("Database file already exists at: $dbPath")
-//    }
-//
-//    Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
-//    transaction {
-//        SchemaUtils.createMissingTablesAndColumns(UserStats, Leagues, LeaguePredictability)
-//        logger.info("Database initialized and tables 'UserStats' ensured.")
-//    }
-//
-//}
 
 fun initDatabase(dbPath: String) {
     val logger = LoggerFactory.getLogger("DatabaseService")
@@ -213,7 +186,6 @@ private fun runManualMigration() {
 
     // createLeagueTableIfNeeded("england_premier_league") // пример
     // createLeagueTableIfNeeded("spain_la_liga") // пример
-    deleteLowFixtureIdsMigration()
 }
 
 /**
@@ -991,43 +963,6 @@ object DatabaseService {
                     awayWinAccuracy = it[LeaguePredictability.awayWinAccuracy],
                     awayWinRoi = it[LeaguePredictability.awayWinRoi]
                 )
-            }
-        }
-    }
-    /**
-     * Удаляет все записи из всех таблиц лиг,
-     * если fixtureId числовой и меньше 10000.
-     */
-    fun deleteLowFixtureIdsMigration() {
-        transaction {
-            // Получаем все лиги (их «логические» названия).
-            val allLeagues = getAllLeagues()
-
-            for (leagueName in allLeagues) {
-                // Определяем физическое имя таблицы,
-                // которое используем в SQLite:
-                val tableName = leagueName
-                    .replace(" ", "_")
-                    .replace("-", "_")
-                    .lowercase()
-
-                // Очищаем записи, где fixtureId - это число < 10000.
-                // В SQLite fixtureId у вас хранится в TEXT-колонке,
-                // поэтому делаем приведение CAST(fixtureId AS INTEGER).
-                // Вместе с тем, если там есть нечисловые значения, CAST() выбросит ошибку.
-                // Чтобы исключить нечисловые, можно прописать дополнительное условие GLOB '[0-9]*'.
-                val sql = """
-                DELETE FROM $tableName
-                WHERE fixtureId GLOB '[0-9]*'
-                  AND CAST(fixtureId AS INTEGER) < 10000
-            """.trimIndent()
-
-                try {
-                    exec(sql)
-                    logger.info("Deleted rows from table `$tableName` where fixtureId < 10000.")
-                } catch (e: Exception) {
-                    logger.error("Failed to delete rows in table `$tableName`: ${e.message}", e)
-                }
             }
         }
     }
