@@ -199,7 +199,7 @@ fun main() {
 
     val dailyTrigger = TriggerBuilder.newTrigger()
         .withIdentity("fetchMatchesDailyTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.cronSchedule("0 0 8,16 * * ?"))
+        .withSchedule(CronScheduleBuilder.cronSchedule("0 0 16 * * ?"))
         .build()
 
     val immediateTrigger = TriggerBuilder.newTrigger()
