@@ -255,7 +255,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
     }
 
-    private suspend fun getPastMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
+    suspend fun getPastMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
         val response: HttpResponse = client.get(url) {
             headers {
                 append("X-RapidAPI-Key", apiKey)

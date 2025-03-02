@@ -5,7 +5,10 @@ import dto.OutcomeStrategyConfig
 import dto.TagsData
 import dto.outcomeStrategyConfigs
 import `interface`.TelegramService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -25,7 +28,9 @@ import service.HttpAPIFootballService
 import service.initDatabase
 import java.io.File
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
@@ -133,6 +138,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 chatId == adminChatId && messageText == "/getjsonl" -> {
                     handleGetJsonlCommand(chatId)
                 }
+                chatId == adminChatId && messageText.startsWith("/addPastResults") -> {
+                    handleAddPastResultsCommand(chatId, messageText.removePrefix("/addPastResults ").trim())
+                }
                 messageText == "/start" -> {
                     handleStartCommand(chatId)
                 }
@@ -228,6 +236,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             /getAccuracy n - Get prediction accuracy for 'n' period
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format
+            /addPastResults league season startDate endDate - Add past results to database
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -1212,4 +1221,87 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         return if (matchInfo.matchType.split(" ")[0] != "World") matchInfo.matchType else matchInfo.matchType.replaceFirst("World", "").trimIndent()
     }
+
+    private fun handleAddPastResultsCommand(chatId: String, messageText: String) {
+        val parts = messageText.split(" ")
+        if (parts.size != 4) {
+            sendMessage(chatId, "Неверный формат команды. Используйте: <leagueId> <season> <start_date> <end_date>")
+            return
+        }
+
+        val leagueId = parts[0].toIntOrNull()
+        val season = parts[1].toIntOrNull()
+        val startDate = LocalDate.parse(parts[2])
+        val endDate = LocalDate.parse(parts[3])
+
+        if (leagueId == null || season == null) {
+            sendMessage(chatId, "Ошибка парсинга leagueId или season.")
+            return
+        }
+
+        sendMessage(chatId, "Начинаем загрузку матчей для лиги $leagueId, сезона $season с $startDate по $endDate...")
+        CoroutineScope(Dispatchers.IO).launch {
+            processMatchResults(leagueId, season, startDate, endDate, chatId)
+        }
+    }
+
+    private suspend fun processMatchResults(leagueId: Int, season: Int, startDate: LocalDate, endDate: LocalDate, chatId: String) {
+        var currentStart = startDate
+
+        while (currentStart.isBefore(endDate) || currentStart.isEqual(endDate)) {
+            val currentEnd = currentStart.plusDays(9).coerceAtMost(endDate)
+
+            sendMessage(chatId, "Запрашиваем матчи с $currentStart по $currentEnd...")
+
+            val matches = footballService.getPastMatches(leagueId, season, currentStart.toString(), currentEnd.toString())
+
+            val matchInfos = matches.map { match ->
+
+                val isoDateTime = match.fixture.date // Оригинальная дата и время в ISO формате
+                val parsedDateTime = OffsetDateTime.parse(isoDateTime) // Парсим ISO строку
+
+                // Приводим к нужному формату
+                val formatterMatchDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
+
+                MatchInfo(
+                    fixtureId = match.fixture.id.toString(),
+                    datetime = datetime,
+                    matchType = "${match.league.country} ${match.league.name}",
+                    teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
+                    predictedOutcome = null,
+                    actualOutcome = match.teams.home.winner?.let { if (it) match.teams.home.name else match.teams.away.name } ?: "Draw",
+                    predictedScore = null,
+                    actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}",
+                    odds = null,
+                    telegramMessageId = null,
+                    strategyTelegramMessageId = null,
+                    elapsed = null,
+                    bookmakerName = null,
+                    homeWinOdds = null,
+                    drawOdds = null,
+                    awayWinOdds = null,
+                    modelHomeWinProb = null,
+                    modelDrawProb = null,
+                    modelAwayWinProb = null,
+                    modelExpectedHomeGoals = null,
+                    modelExpectedAwayGoals = null
+                )
+            }.filter { match -> !DatabaseService.matchExists(match) }
+
+            if (matchInfos.isNotEmpty()) {
+                DatabaseService.appendRows(matchInfos)
+                sendMessage(chatId, "Добавлено ${matchInfos.size} новых матчей.")
+            } else {
+                sendMessage(chatId, "Нет новых матчей для этого диапазона.")
+            }
+
+            delay(1000) // Задержка между запросами
+            currentStart = currentEnd.plusDays(1)
+        }
+
+        sendMessage(chatId, "Сбор данных завершен.")
+    }
+
+
 }
