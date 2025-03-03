@@ -764,41 +764,50 @@ object DatabaseService {
         )
     }
 
-    fun getAllMatches(): List<MatchInfo> {
+    fun getAllMatchesForLastTwoYears(): List<MatchInfo> {
         val allMatches = mutableListOf<MatchInfo>()
+        val twoYearsAgo = LocalDateTime.now().minusYears(2) // Дата два года назад
+
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
 
-                leagueTable.selectAll().mapNotNullTo(allMatches) {
-                    MatchInfo(
-                        fixtureId = it[leagueTable.fixtureId],
-                        datetime = it[leagueTable.datetime],
-                        matchType = it[leagueTable.matchType],
-                        teams = it[leagueTable.teams],
-                        predictedOutcome = it[leagueTable.predictedOutcome],
-                        actualOutcome = it[leagueTable.actualOutcome],
-                        predictedScore = it[leagueTable.predictedScore],
-                        actualScore = it[leagueTable.actualScore],
-                        odds = it[leagueTable.odds],
-                        bookmakerName = it[leagueTable.bookmakerName],
-                        homeWinOdds = it[leagueTable.homeWinOdds],
-                        drawOdds = it[leagueTable.drawOdds],
-                        awayWinOdds = it[leagueTable.awayWinOdds],
-                        telegramMessageId = it[leagueTable.telegramMessageId],
-                        strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
-                        null,
-                        modelHomeWinProb = it[leagueTable.modelHomeWinProb],
-                        modelDrawProb = it[leagueTable.modelDrawProb],
-                        modelAwayWinProb = it[leagueTable.modelAwayWinProb],
-                        modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
-                        modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
-                    )
+                leagueTable.selectAll().mapNotNullTo(allMatches) { row ->
+                    val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
+
+                    if (matchDateTime.isAfter(twoYearsAgo)) { // Оставляем только матчи моложе двух лет
+                        MatchInfo(
+                            fixtureId = row[leagueTable.fixtureId],
+                            datetime = row[leagueTable.datetime],
+                            matchType = row[leagueTable.matchType],
+                            teams = row[leagueTable.teams],
+                            predictedOutcome = row[leagueTable.predictedOutcome],
+                            actualOutcome = row[leagueTable.actualOutcome],
+                            predictedScore = row[leagueTable.predictedScore],
+                            actualScore = row[leagueTable.actualScore],
+                            odds = row[leagueTable.odds],
+                            bookmakerName = row[leagueTable.bookmakerName],
+                            homeWinOdds = row[leagueTable.homeWinOdds],
+                            drawOdds = row[leagueTable.drawOdds],
+                            awayWinOdds = row[leagueTable.awayWinOdds],
+                            telegramMessageId = row[leagueTable.telegramMessageId],
+                            strategyTelegramMessageId = row[leagueTable.strategyTelegramMessageId],
+                            elapsed = null,
+                            modelHomeWinProb = row[leagueTable.modelHomeWinProb],
+                            modelDrawProb = row[leagueTable.modelDrawProb],
+                            modelAwayWinProb = row[leagueTable.modelAwayWinProb],
+                            modelExpectedHomeGoals = row[leagueTable.modelExpectedHomeGoals],
+                            modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals]
+                        )
+                    } else {
+                        null
+                    }
                 }
             }
         }
         return allMatches
     }
+
 
     fun updateLeaguePredictability(leagueStatsMap: Map<String, LeagueStats>) {
         transaction {

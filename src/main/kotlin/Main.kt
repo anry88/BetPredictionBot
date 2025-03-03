@@ -114,7 +114,7 @@ class UploadModelDataJob : Job {
             // 1. Выбираем матчи только из lиг, где modelBased = true,
             //    и только сыгранные (actualOutcome != null).
 //            val modelBasedLeagues = footballService.getModelBasedLeaguesFromConfig()
-            val completedMatches = DatabaseService.getAllMatches().filter { match -> match.actualOutcome != null }
+            val completedMatches = DatabaseService.getAllMatchesForLastTwoYears().filter { match -> match.actualOutcome != null }
 
             if (completedMatches.isEmpty()) {
                 logger.info("No completed matches found for model-based leagues")

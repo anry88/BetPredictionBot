@@ -284,7 +284,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     private fun handleGetJsonlCommand(chatId: String) {
-        val matches = DatabaseService.getAllMatches()
+        val matches = DatabaseService.getAllMatchesForLastTwoYears()
         if (matches.isNotEmpty()) {
             val jsonlFile = createJsonlFile(matches)
             if (jsonlFile != null && jsonlFile.exists()) {
