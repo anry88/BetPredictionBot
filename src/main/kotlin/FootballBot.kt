@@ -925,7 +925,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = adminChatId
+        message.chatId = channelId
         message.text = messageText
         message.enableMarkdown(true)
 
@@ -957,7 +957,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = adminChatId
+        message.chatId = channelId
         message.text = messageText
         message.enableMarkdown(true)
 
@@ -989,7 +989,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         val message = SendMessage()
-        message.chatId = adminChatId
+        message.chatId = channelId
         message.text = messageText
         message.enableMarkdown(true)
 
