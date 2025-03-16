@@ -1,4 +1,5 @@
 import dto.JsonlMatch
+import dto.LeagueConfig
 import dto.LeagueStats
 import dto.MatchInfo
 import dto.OutcomeStrategyConfig
@@ -47,6 +48,19 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val leagueTags: Map<String, String>
     private val teamTags: Map<String, String>
 
+    // Загружаем конфигурацию лиг из файла
+    private val leaguesConfig: List<LeagueConfig>
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
+
+    private fun loadLeaguesConfig(): List<LeagueConfig> {
+        val leaguesJson = javaClass.getResource("/leagues.json")?.readText()
+            ?: throw IllegalStateException("leagues.json not found")
+        return json.decodeFromString(leaguesJson)
+    }
+
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
         initDatabase("predictions.db") // Используем правильный путь к вашему файлу базы данных
@@ -54,6 +68,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val tags = loadTags()
         leagueTags = tags.first
         teamTags = tags.second
+        leaguesConfig = loadLeaguesConfig()
     }
 
     override fun getBotToken(): String {
@@ -761,7 +776,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
 
-        **Strategy Matches:**
+        **Selected Matches:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -901,7 +916,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
 
-        **Strategy Matches:**
+        **Selected Matches:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -933,7 +948,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
 
-        **Strategy Matches:**
+        **Selected Matches:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -965,7 +980,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
 
-        **Strategy Matches:**
+        **Selected Matches:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1000,7 +1015,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
                 - ROI: ${"%.2f".format(stats.roi)}%
 
-                **Strategy Matches:**
+                **Selected Matches:**
                 - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
                 - ROI: ${"%.2f".format(stats.strategyRoi)}%
                 """.trimIndent()
@@ -1173,13 +1188,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val predictedOutcome = match.predictedOutcome
 
         // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
-        val isFromLocalModel = match.modelHomeWinProb != null
+//        val isFromLocalModel = match.modelHomeWinProb != null
+        val isPremiumSelection = leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
 
         // Берём «привычные» odds (из поля match.odds)
         val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
 
         // Пример: если прогноз от модели, можем как-то учесть probability:
-        if (isFromLocalModel) {
+//        if (isFromLocalModel) {
+        if (isPremiumSelection) {
             // Например, если outcomeType=HomeWin, хотим, чтобы modelHomeWinProb >= 0.5
             // и т.п. — логику решаете вы
             when (config.outcomeType) {
