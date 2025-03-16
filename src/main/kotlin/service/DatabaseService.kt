@@ -914,13 +914,14 @@ object DatabaseService {
         return matchesToDelete
     }
 
-    fun getLastNMatchesForLeague(leagueName: String, n: Int): List<MatchInfo> {
+    fun getLastMatchesForLeague(leagueName: String, days: Int): List<MatchInfo> {
         val matches = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-            leagueTable.select { leagueTable.actualOutcome.isNotNull() }
+            val fromDate = LocalDateTime.now().minusDays(days.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
+            leagueTable.select { (leagueTable.actualOutcome.isNotNull()) and (leagueTable.datetime greaterEq fromDate) }
                 .orderBy(leagueTable.datetime, SortOrder.DESC)
-                .limit(n)
                 .mapNotNullTo(matches) {
                     MatchInfo(
                         fixtureId = it[leagueTable.fixtureId],

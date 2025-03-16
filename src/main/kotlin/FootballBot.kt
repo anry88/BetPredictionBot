@@ -589,7 +589,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         allLeagues.forEach { leagueName ->
             // Получаем последние 150 матчей для лиги
-            val matches = DatabaseService.getLastNMatchesForLeague(leagueName, 150)
+            val matches = DatabaseService.getLastMatchesForLeague(leagueName, 365)
 
             // Если матчей недостаточно, можно пропустить или всё равно посчитать статистику
             if (matches.isNotEmpty()) {
