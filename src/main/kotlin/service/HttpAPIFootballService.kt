@@ -65,7 +65,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     }
 
     fun getModelBasedLeaguesFromConfig(): List<LeagueConfig> {
-        return leaguesConfig.filter { it.modelBased }
+        return leaguesConfig.filter { it.premiumSelection }
     }
 
     suspend fun fetchMatches() {
@@ -131,7 +131,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     var finalPrediction: MatchInfo? = null
 
                     // Если лига modelBased -> пробуем вызвать локальную модель
-                    if (leagueConfig.modelBased) {
+                    if (leagueConfig.premiumSelection) {
                         finalPrediction = HttpLocalModelService.getModelPrediction(
                             homeTeam = homeTeam,
                             awayTeam = awayTeam,

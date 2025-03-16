@@ -9,6 +9,6 @@ data class LeagueConfig(
     val leagueId: Int,
     val season: Int,
     val description: String,
-    val modelBased: Boolean = false
+    val premiumSelection: Boolean = false
 )
 
