@@ -31,5 +31,6 @@
   {"leagueId": 305, "season": 2024, "description": "Qatar Stars League", "premiumSelection": true},
   {"leagueId": 301, "season": 2024, "description": "United-Arab-Emirates Pro League", "premiumSelection": true},
   {"leagueId": 262, "season": 2024, "description": "Mexico Liga MX", "premiumSelection": true},
-  {"leagueId": 169, "season": 2025, "description": "China Super League", "premiumSelection": true}
+  {"leagueId": 169, "season": 2025, "description": "China Super League", "premiumSelection": true},
+  {"leagueId": 29, "season": 2023, "description": "World World Cup - Qualification Africa", "premiumSelection": true}
 ]
