@@ -653,7 +653,8 @@ object DatabaseService {
                 leagueTable.selectAll().mapNotNullTo(allMatches) {
                     val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) && it[leagueTable.actualOutcome] != null) {
+                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now)
+                        && it[leagueTable.actualOutcome] != null && it[leagueTable.predictedOutcome] != null) {
                         MatchInfo(
                             fixtureId = it[leagueTable.fixtureId],
                             datetime = it[leagueTable.datetime],
