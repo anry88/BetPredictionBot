@@ -13,7 +13,7 @@
   {"leagueId": 3, "season": 2024, "description": "World UEFA Europa League", "premiumSelection": false},
   {"leagueId": 5, "season": 2024, "description": "World UEFA Nations League", "premiumSelection": true},
   {"leagueId": 30, "season": 2026, "description": "World World Cup - Qualification Asia", "premiumSelection": true},
-  {"leagueId": 32, "season": 2026, "description": "World World Cup - Qualification Europe", "premiumSelection": true},
+  {"leagueId": 32, "season": 2024, "description": "World World Cup - Qualification Europe", "premiumSelection": true},
   {"leagueId": 34, "season": 2026, "description": "World World Cup - Qualification South America", "premiumSelection": true},
   {"leagueId": 848, "season": 2024, "description": "World UEFA Europa Conference League", "premiumSelection": false},
   {"leagueId": 203, "season": 2024, "description": "Turkey Süper Lig", "premiumSelection": true},
