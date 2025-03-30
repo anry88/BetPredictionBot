@@ -241,16 +241,25 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                 val existingMatchInfo = DatabaseService.getMatchInfoByFixtureId(fixtureId)
                 if (existingMatchInfo != null) {
-                    // Update the actual outcome and actual score in the database
-                    val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
-                    val actualOutcome = when {
-                        match.teams.home.winner == true -> match.teams.home.name
-                        match.teams.away.winner == true -> match.teams.away.name
+                    val homeTeam = match.teams.home.name
+                    val awayTeam = match.teams.away.name
+
+                    val homeGoals = match.score?.fulltime?.home ?: 0
+                    val awayGoals = match.score?.fulltime?.away ?: 0
+
+                    // Определяем победителя
+                    val winner = when {
+                        homeGoals > awayGoals -> homeTeam
+                        awayGoals > homeGoals -> awayTeam
                         else -> "Draw"
                     }
 
+                    // Update the actual outcome and actual score in the database
+                    val actualScore = "$homeGoals:$awayGoals"
+//                    val actualOutcome = winner
+
                     val updatedMatchInfo = existingMatchInfo.copy(
-                        actualOutcome = actualOutcome,
+                        actualOutcome = winner,
                         actualScore = actualScore
                     )
 
@@ -295,15 +304,25 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             val result = response.body<ApiFootballResponse>()
             val match = result.response.firstOrNull()
             if (match != null) {
-                val actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
+                val homeTeam = match.teams.home.name
+                val awayTeam = match.teams.away.name
+
+                val homeGoals = match.score?.fulltime?.home ?: 0
+                val awayGoals = match.score?.fulltime?.away ?: 0
+
+                // Определяем победителя
+                val winner = when {
+                    homeGoals > awayGoals -> homeTeam
+                    awayGoals > homeGoals -> awayTeam
+                    else -> "Draw"
+                }
+
+                val actualScore = "$homeGoals:$awayGoals"
+
                 val elapsed = match.fixture.status?.elapsed ?: 0
                 val statusShort = match.fixture.status?.short
                 val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
-                    when {
-                        match.teams.home.winner == true -> match.teams.home.name
-                        match.teams.away.winner == true -> match.teams.away.name
-                        else -> "Draw"
-                    }
+                    winner
                 } else {
                     null
                 }
@@ -437,6 +456,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val league: League,
         val teams: Teams,
         val goals: Goals?,
+        val score: Score?,
         val odds: Odds? = null,
         val remainingRequests: String? = null
     )
@@ -502,6 +522,19 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val homeWin: Double?,
         val draw: Double?,
         val awayWin: Double?
+    )
+    @Serializable
+    data class Score(
+        val halftime: TimeScore? = null,
+        val fulltime: TimeScore? = null,
+        val extratime: TimeScore? = null,
+        val penalty: TimeScore? = null
+    )
+
+    @Serializable
+    data class TimeScore(
+        val home: Int? = null,
+        val away: Int? = null
     )
 
 }

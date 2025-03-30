@@ -1281,15 +1281,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 val formatterMatchDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
                 val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
 
+                val homeTeam = match.teams.home.name
+                val awayTeam = match.teams.away.name
+
+                val homeGoals = match.score?.fulltime?.home ?: 0
+                val awayGoals = match.score?.fulltime?.away ?: 0
+
+                // Определяем победителя
+                val winner = when {
+                    homeGoals > awayGoals -> homeTeam
+                    awayGoals > homeGoals -> awayTeam
+                    else -> "Draw"
+                }
+
                 MatchInfo(
                     fixtureId = match.fixture.id.toString(),
                     datetime = datetime,
                     matchType = "${match.league.country} ${match.league.name}",
-                    teams = "${match.teams.home.name} vs. ${match.teams.away.name}",
+                    teams = "$homeTeam vs. $awayTeam",
                     predictedOutcome = null,
-                    actualOutcome = match.teams.home.winner?.let { if (it) match.teams.home.name else match.teams.away.name } ?: "Draw",
+                    actualOutcome = winner,
                     predictedScore = null,
-                    actualScore = "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}",
+                    actualScore = "$homeGoals:$awayGoals",
                     odds = null,
                     telegramMessageId = null,
                     strategyTelegramMessageId = null,
