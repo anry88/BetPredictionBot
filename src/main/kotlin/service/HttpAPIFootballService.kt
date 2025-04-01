@@ -317,10 +317,14 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     else -> "Draw"
                 }
 
-                val actualScore = "$homeGoals:$awayGoals"
-
-                val elapsed = match.fixture.status?.elapsed ?: 0
                 val statusShort = match.fixture.status?.short
+                val elapsed = match.fixture.status?.elapsed ?: 0
+
+                val actualScore = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN"){
+                    "$homeGoals:$awayGoals"
+                } else {
+                    "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
+                }
                 val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
                     winner
                 } else {
