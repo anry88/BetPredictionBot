@@ -1190,7 +1190,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
         val isFromLocalModel = match.modelHomeWinProb != null
-        val isPremiumSelection = leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
+        val isPremiumSelection = if (isTest) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
 
         // Берём «привычные» odds (из поля match.odds)
         val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
