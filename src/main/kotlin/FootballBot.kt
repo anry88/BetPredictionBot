@@ -32,6 +32,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
@@ -1208,19 +1209,23 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 "Draw" -> {
-                    if (predictedOutcome == "Draw" &&
-                        ((match.modelDrawProb ?: 0.0) > config.drawModelProb &&
-                                oddsValue > config.minOdds) ||
-                        (
-                                (match.modelHomeWinProb ?: 0.0) < 0.4 &&
-                                (match.modelHomeWinProb ?: 0.0) > 0.0 &&
-                                (match.modelDrawProb    ?: 0.0) < 0.4 &&
-                                (match.modelDrawProb    ?: 0.0) > 0.0 &&
-                                (match.modelAwayWinProb ?: 0.0) < 0.4 &&
-                                (match.modelAwayWinProb ?: 0.0) > 0.0 &&
-                                        oddsValue > 3.1
-                                )
-                    ) return true
+                    if (predictedOutcome == "Draw" && oddsValue > config.minOdds) {
+                        // Проверяем основное условие - высокая вероятность ничьей
+                        if ((match.modelDrawProb ?: 0.0) > config.drawModelProb) return true
+                        
+                        // Проверяем альтернативное условие - равные шансы всех исходов
+                        val homeProb = match.modelHomeWinProb ?: 0.0
+                        val drawProb = match.modelDrawProb ?: 0.0
+                        val awayProb = match.modelAwayWinProb ?: 0.0
+                        val expectedHomeGoals = match.modelExpectedHomeGoals ?: 0.0
+                        val expectedAwayGoals = match.modelExpectedAwayGoals ?: 0.0
+                        
+                        return homeProb in 0.0..0.4 &&
+                               drawProb in 0.0..0.4 &&
+                               awayProb in 0.0..0.4 &&
+                               oddsValue > 3.1 &&
+                               kotlin.math.abs(expectedHomeGoals - expectedAwayGoals) <= 0.1
+                    }
                 }
 
                 "AwayWin" -> {
