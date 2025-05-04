@@ -207,14 +207,16 @@ fun main() {
         .startNow()
         .build()
 
-    val updateJob = JobBuilder.newJob(UpdateMatchesJob::class.java)
+    val updateMatchesJob = JobBuilder.newJob(UpdateMatchesJob::class.java)
         .withIdentity("updateMatchesJob", "group1")
         .usingJobData(jobDataMap)
         .build()
 
-    val dailyUpdateTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("updateMatchesDailyTrigger", "group1")
-        .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
+    val updateMatchesTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("updateMatchesTrigger", "group1")
+        .withSchedule(
+            CronScheduleBuilder.cronSchedule("0 5 * * * ?")  // На 5-й минуте каждого часа
+        )
         .build()
 
     val updateLeaguePredictabilityJob = JobBuilder.newJob(UpdateLeaguePredictabilityJob::class.java)
@@ -304,7 +306,7 @@ fun main() {
 
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
-    scheduler.scheduleJob(updateJob, dailyUpdateTrigger)
+    scheduler.scheduleJob(updateMatchesJob, updateMatchesTrigger)
     scheduler.scheduleJob(updatePastMatchesJob, updatePastMatchesTrigger)
 //    scheduler.scheduleJob(updatePastMatchesJob, setOf(updatePastMatchesTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateLeaguePredictabilityJob, updateLeaguePredictabilityTrigger)
