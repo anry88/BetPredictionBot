@@ -2,8 +2,24 @@ package service
 
 import dto.MatchInfo
 import dto.OutcomeStrategyConfig
+import dto.LeagueConfig
+import Config
+import kotlinx.serialization.json.Json
 
 object StrategyService {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
+
+    private val leaguesConfig: List<LeagueConfig> = loadLeaguesConfig()
+
+    private fun loadLeaguesConfig(): List<LeagueConfig> {
+        val leaguesJson = javaClass.getResource("/leagues.json")?.readText()
+            ?: throw IllegalStateException("leagues.json not found")
+        return json.decodeFromString(leaguesJson)
+    }
+
     fun isMatchFitsStrategy(match: MatchInfo, config: OutcomeStrategyConfig): Boolean {
         val teams = match.teams.split(" vs. ")
         if (teams.size != 2) return false
@@ -14,11 +30,12 @@ object StrategyService {
 
         // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
         val isFromLocalModel = match.modelHomeWinProb != null
+        val isPremiumSelection = if (Config.getProperty("test")?.toBoolean() == true) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
 
         // Берём «привычные» odds (из поля match.odds)
         val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
 
-        if (isFromLocalModel) {
+        if (isPremiumSelection && isFromLocalModel) {
             when (config.outcomeType) {
                 "HomeWin" -> {
                     if (predictedOutcome == homeTeam &&
