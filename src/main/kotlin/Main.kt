@@ -310,6 +310,7 @@ fun main() {
     scheduler.scheduleJob(updatePastMatchesJob, updatePastMatchesTrigger)
 //    scheduler.scheduleJob(updatePastMatchesJob, setOf(updatePastMatchesTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateLeaguePredictabilityJob, updateLeaguePredictabilityTrigger)
+//    scheduler.scheduleJob(updateLeaguePredictabilityJob, setOf(updateLeaguePredictabilityTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
