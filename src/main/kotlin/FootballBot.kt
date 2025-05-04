@@ -26,6 +26,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import service.DatabaseService
 import service.DatabaseService.getMatchesWithoutMessageIdForNext5Hours
 import service.HttpAPIFootballService
+import service.StrategyService
 import service.initDatabase
 import java.io.File
 import java.time.LocalDate
@@ -147,6 +148,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     handleGetAccuracyCommand(chatId, messageText)
                 }
 
+                chatId == adminChatId && messageText.startsWith("/getStrategyEfficiency") -> {
+                    handleGetStrategyEfficiencyCommand(chatId, messageText)
+                }
+
                 chatId == adminChatId && messageText == "/getLeaguePredictability" -> {
                     handleGetLeaguePredictabilityCommand(chatId)
                 }
@@ -250,6 +255,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             /activeusercount - Get the count of unique users active last day
             /upcomingmatches - Get upcoming matches within the next 24 hours
             /getAccuracy n - Get prediction accuracy for 'n' period
+            /getStrategyEfficiency n - Get strategy efficiency for 'n' period
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format
             /addPastResults league season startDate endDate - Add past results to database
@@ -1009,16 +1015,16 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 val stats = DatabaseService.getStatisticsForPeriod(days)
                 val resultMessageText = if (stats.totalMatches > 0) {
                     """
-                📊 **Prediction Statistics for Last $days Days**
+                    📊 **Prediction Statistics for Last $days Days**
 
-                **Overall:**
-                - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
-                - ROI: ${"%.2f".format(stats.roi)}%
+                    **Overall:**
+                    - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+                    - ROI: ${"%.2f".format(stats.roi)}%
 
-                **Selected Matches:**
-                - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-                - ROI: ${"%.2f".format(stats.strategyRoi)}%
-                """.trimIndent()
+                    **Selected Matches:**
+                    - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+                    - ROI: ${"%.2f".format(stats.strategyRoi)}%
+                    """.trimIndent()
                 } else {
                     "No matches were played in the last $days days."
                 }
@@ -1029,6 +1035,51 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         } else {
             sendMessage(chatId, "Usage: /getAccuracy <number_of_days>")
+        }
+    }
+
+    private fun handleGetStrategyEfficiencyCommand(chatId: String, messageText: String) {
+        val parts = messageText.split(" ")
+        if (parts.size == 2) {
+            val days = parts[1].toIntOrNull()
+            if (days != null && days > 0) {
+                val stats = DatabaseService.getDetailedStatisticsForPeriod(days)
+                val resultMessageText = if (stats.totalMatches > 0) {
+                    """
+                    📊 **Strategy Efficiency for Last $days Days**
+
+                    **Overall Statistics:**
+                    - Total Matches: ${stats.totalMatches}
+                    - Correct Predictions: ${stats.correctPredictions}
+                    - Accuracy: ${"%.2f".format(stats.accuracy)}%
+                    - ROI: ${"%.2f".format(stats.roi)}%
+
+                    **Strategy Statistics:**
+                    - Total Matches: ${stats.strategyTotalMatches}
+                    - Correct Predictions: ${stats.strategyCorrectPredictions}
+                    - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}%
+                    - ROI: ${"%.2f".format(stats.strategyRoi)}%
+
+                    **By Outcome Type:**
+                    - Home Win: ${"%.2f".format(stats.homeWinAccuracy)}% (${stats.homeWinSuccesses}/${stats.homeWinPredictions})
+                    - Draw: ${"%.2f".format(stats.drawAccuracy)}% (${stats.drawSuccesses}/${stats.drawPredictions})
+                    - Away Win: ${"%.2f".format(stats.awayWinAccuracy)}% (${stats.awayWinSuccesses}/${stats.awayWinPredictions})
+
+                    **ROI by Outcome Type:**
+                    - Home Win: ${"%.2f".format(stats.homeWinRoi)}%
+                    - Draw: ${"%.2f".format(stats.drawRoi)}%
+                    - Away Win: ${"%.2f".format(stats.awayWinRoi)}%
+                    """.trimIndent()
+                } else {
+                    "No matches were played in the last $days days."
+                }
+
+                sendMessage(chatId, resultMessageText)
+            } else {
+                sendMessage(chatId, "Please provide a valid number of days.")
+            }
+        } else {
+            sendMessage(chatId, "Usage: /getStrategyEfficiency <number_of_days>")
         }
     }
 
@@ -1176,66 +1227,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return messages
     }
 
-    private fun isMatchFitsStrategy(
-        match: MatchInfo,
-        config: OutcomeStrategyConfig
-    ): Boolean {
-
-        val teams = match.teams.split(" vs. ")
-
-        val homeTeam = teams[0].trim()
-        val awayTeam = teams[1].trim()
-        val predictedOutcome = match.predictedOutcome
-
-        // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
-        val isFromLocalModel = match.modelHomeWinProb != null
-        val isPremiumSelection = if (isTest) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
-
-        // Берём «привычные» odds (из поля match.odds)
-        val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
-
-        // Пример: если прогноз от модели, можем как-то учесть probability:
-//        if (isFromLocalModel) {
-        if (isPremiumSelection && isFromLocalModel) {
-            // Например, если outcomeType=HomeWin, хотим, чтобы modelHomeWinProb >= 0.5
-            // и т.п. — логику решаете вы
-            when (config.outcomeType) {
-                "HomeWin" -> {
-                    if (predictedOutcome == homeTeam &&
-                        (match.modelHomeWinProb ?: 0.0) > config.homeWinModelProb &&
-                        oddsValue > config.minOdds
-                    ) return true
-                }
-
-                "Draw" -> {
-                    if (predictedOutcome == "Draw" && oddsValue > config.minOdds) {
-                        // Проверяем основное условие - высокая вероятность ничьей
-                        if ((match.modelDrawProb ?: 0.0) > config.drawModelProb) return true
-                        
-                        // Проверяем альтернативное условие - равные шансы всех исходов
-                        val homeProb = match.modelHomeWinProb ?: 0.0
-                        val drawProb = match.modelDrawProb ?: 0.0
-                        val awayProb = match.modelAwayWinProb ?: 0.0
-                        val expectedHomeGoals = match.modelExpectedHomeGoals ?: 0.0
-                        val expectedAwayGoals = match.modelExpectedAwayGoals ?: 0.0
-                        
-                        return homeProb in 0.0..0.4 &&
-                               drawProb in 0.0..0.4 &&
-                               awayProb in 0.0..0.4 &&
-                               oddsValue > 3.1 &&
-                               kotlin.math.abs(expectedHomeGoals - expectedAwayGoals) <= 0.1
-                    }
-                }
-
-                "AwayWin" -> {
-                    if (predictedOutcome == awayTeam &&
-                        (match.modelAwayWinProb ?: 0.0) > config.awayWinModelProb &&
-                        oddsValue > config.minOdds
-                    ) return true
-                }
-            }
-        }
-        return false
+    private fun isMatchFitsStrategy(match: MatchInfo, config: OutcomeStrategyConfig): Boolean {
+        return StrategyService.isMatchFitsStrategy(match, config)
     }
 
     private fun combineLeagueName(matchInfo: MatchInfo): String {

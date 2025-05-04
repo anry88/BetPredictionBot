@@ -3,6 +3,7 @@ package service
 import dto.LeagueStats
 import dto.MatchInfo
 import dto.PeriodStats
+import dto.outcomeStrategyConfigs
 import io.ktor.utils.io.errors.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
@@ -14,6 +15,29 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+data class Statistics(
+    val totalMatches: Int,
+    val correctPredictions: Int,
+    val accuracy: Double,
+    val roi: Double,
+    val strategyTotalMatches: Int,
+    val strategyCorrectPredictions: Int,
+    val strategyAccuracy: Double,
+    val strategyRoi: Double,
+    val homeWinPredictions: Int,
+    val homeWinSuccesses: Int,
+    val homeWinAccuracy: Double,
+    val homeWinRoi: Double,
+    val drawPredictions: Int,
+    val drawSuccesses: Int,
+    val drawAccuracy: Double,
+    val drawRoi: Double,
+    val awayWinPredictions: Int,
+    val awayWinSuccesses: Int,
+    val awayWinAccuracy: Double,
+    val awayWinRoi: Double
+)
 
 private object UserStats : Table() {
     private val id = integer("id").autoIncrement()
@@ -672,7 +696,7 @@ object DatabaseService {
                             telegramMessageId = it[leagueTable.telegramMessageId],
                             strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
                             elapsed = null,
-                            modelHomeWinProb =  it[leagueTable.modelHomeWinProb],
+                            modelHomeWinProb = it[leagueTable.modelHomeWinProb],
                             modelDrawProb = it[leagueTable.modelDrawProb],
                             modelAwayWinProb = it[leagueTable.modelAwayWinProb],
                             modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
@@ -762,6 +786,197 @@ object DatabaseService {
             strategyTotalReturns = strategyTotalReturns,
             strategyAccuracy = strategyAccuracy,
             strategyRoi = strategyRoi
+        )
+    }
+
+    fun getDetailedStatisticsForPeriod(days: Int): Statistics {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val startDate = now.minusDays(days.toLong())
+        val allMatches = mutableListOf<MatchInfo>()
+
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+
+                leagueTable.selectAll().mapNotNullTo(allMatches) {
+                    val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+                        .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
+                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now)
+                        && it[leagueTable.actualOutcome] != null && it[leagueTable.predictedOutcome] != null) {
+                        MatchInfo(
+                            fixtureId = it[leagueTable.fixtureId],
+                            datetime = it[leagueTable.datetime],
+                            matchType = it[leagueTable.matchType],
+                            teams = it[leagueTable.teams],
+                            predictedOutcome = it[leagueTable.predictedOutcome],
+                            actualOutcome = it[leagueTable.actualOutcome],
+                            predictedScore = it[leagueTable.predictedScore],
+                            actualScore = it[leagueTable.actualScore],
+                            odds = it[leagueTable.odds],
+                            bookmakerName = it[leagueTable.bookmakerName],
+                            homeWinOdds = it[leagueTable.homeWinOdds],
+                            drawOdds = it[leagueTable.drawOdds],
+                            awayWinOdds = it[leagueTable.awayWinOdds],
+                            telegramMessageId = it[leagueTable.telegramMessageId],
+                            strategyTelegramMessageId = it[leagueTable.strategyTelegramMessageId],
+                            elapsed = null,
+                            modelHomeWinProb = it[leagueTable.modelHomeWinProb],
+                            modelDrawProb = it[leagueTable.modelDrawProb],
+                            modelAwayWinProb = it[leagueTable.modelAwayWinProb],
+                            modelExpectedHomeGoals = it[leagueTable.modelExpectedHomeGoals],
+                            modelExpectedAwayGoals = it[leagueTable.modelExpectedAwayGoals]
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
+
+        var totalMatches = 0
+        var correctPredictions = 0
+        var totalStakes = 0.0
+        var totalReturns = 0.0
+
+        var strategyTotalMatches = 0
+        var strategyCorrectPredictions = 0
+        var strategyTotalStakes = 0.0
+        var strategyTotalReturns = 0.0
+
+        var homeWinPredictions = 0
+        var homeWinSuccesses = 0
+        var homeWinStakes = 0.0
+        var homeWinReturns = 0.0
+
+        var drawPredictions = 0
+        var drawSuccesses = 0
+        var drawStakes = 0.0
+        var drawReturns = 0.0
+
+        var awayWinPredictions = 0
+        var awayWinSuccesses = 0
+        var awayWinStakes = 0.0
+        var awayWinReturns = 0.0
+
+        allMatches.forEach { match ->
+            val stake = 100.0
+            val teams = match.teams.split(" vs. ")
+            if (teams.size != 2) return@forEach
+
+            val homeTeam = teams[0].trim()
+            val awayTeam = teams[1].trim()
+            val predictedOutcome = match.predictedOutcome
+            val actualOutcome = match.actualOutcome
+
+            if (predictedOutcome == null || actualOutcome == null) return@forEach
+
+            // Общая статистика
+            totalMatches++
+            totalStakes += stake
+
+            if (predictedOutcome.lowercase() == actualOutcome.lowercase()) {
+                correctPredictions++
+                val oddsValue = when (predictedOutcome) {
+                    homeTeam -> match.homeWinOdds?.toDoubleOrNull()
+                    "Draw" -> match.drawOdds?.toDoubleOrNull()
+                    awayTeam -> match.awayWinOdds?.toDoubleOrNull()
+                    else -> null
+                } ?: return@forEach
+
+                val profit = (oddsValue * stake) - stake
+                totalReturns += profit
+            } else {
+                totalReturns -= stake
+            }
+
+            // Статистика по типам исходов
+            when (predictedOutcome) {
+                homeTeam -> {
+                    homeWinPredictions++
+                    homeWinStakes += stake
+                    if (predictedOutcome.lowercase() == actualOutcome.lowercase()) {
+                        homeWinSuccesses++
+                        val oddsValue = match.homeWinOdds?.toDoubleOrNull() ?: return@forEach
+                        val profit = (oddsValue * stake) - stake
+                        homeWinReturns += profit
+                    } else {
+                        homeWinReturns -= stake
+                    }
+                }
+                "Draw" -> {
+                    drawPredictions++
+                    drawStakes += stake
+                    if (predictedOutcome.lowercase() == actualOutcome.lowercase()) {
+                        drawSuccesses++
+                        val oddsValue = match.drawOdds?.toDoubleOrNull() ?: return@forEach
+                        val profit = (oddsValue * stake) - stake
+                        drawReturns += profit
+                    } else {
+                        drawReturns -= stake
+                    }
+                }
+                awayTeam -> {
+                    awayWinPredictions++
+                    awayWinStakes += stake
+                    if (predictedOutcome.lowercase() == actualOutcome.lowercase()) {
+                        awayWinSuccesses++
+                        val oddsValue = match.awayWinOdds?.toDoubleOrNull() ?: return@forEach
+                        val profit = (oddsValue * stake) - stake
+                        awayWinReturns += profit
+                    } else {
+                        awayWinReturns -= stake
+                    }
+                }
+            }
+
+            // Проверяем соответствие матча стратегии
+            val isStrategyMatch = outcomeStrategyConfigs.any { config ->
+                StrategyService.isMatchFitsStrategy(match, config)
+            }
+
+            // Статистика по стратегии
+            if (isStrategyMatch) {
+                strategyTotalMatches++
+                strategyTotalStakes += stake
+
+                if (predictedOutcome.lowercase() == actualOutcome.lowercase()) {
+                    strategyCorrectPredictions++
+                    val oddsValue = when (predictedOutcome) {
+                        homeTeam -> match.homeWinOdds?.toDoubleOrNull()
+                        "Draw" -> match.drawOdds?.toDoubleOrNull()
+                        awayTeam -> match.awayWinOdds?.toDoubleOrNull()
+                        else -> null
+                    } ?: return@forEach
+
+                    val profit = (oddsValue * stake) - stake
+                    strategyTotalReturns += profit
+                } else {
+                    strategyTotalReturns -= stake
+                }
+            }
+        }
+
+        return Statistics(
+            totalMatches = totalMatches,
+            correctPredictions = correctPredictions,
+            accuracy = if (totalMatches > 0) (correctPredictions.toDouble() / totalMatches) * 100 else 0.0,
+            roi = if (totalStakes > 0) (totalReturns / totalStakes) * 100 else 0.0,
+            strategyTotalMatches = strategyTotalMatches,
+            strategyCorrectPredictions = strategyCorrectPredictions,
+            strategyAccuracy = if (strategyTotalMatches > 0) (strategyCorrectPredictions.toDouble() / strategyTotalMatches) * 100 else 0.0,
+            strategyRoi = if (strategyTotalStakes > 0) (strategyTotalReturns / strategyTotalStakes) * 100 else 0.0,
+            homeWinPredictions = homeWinPredictions,
+            homeWinSuccesses = homeWinSuccesses,
+            homeWinAccuracy = if (homeWinPredictions > 0) (homeWinSuccesses.toDouble() / homeWinPredictions) * 100 else 0.0,
+            homeWinRoi = if (homeWinStakes > 0) (homeWinReturns / homeWinStakes) * 100 else 0.0,
+            drawPredictions = drawPredictions,
+            drawSuccesses = drawSuccesses,
+            drawAccuracy = if (drawPredictions > 0) (drawSuccesses.toDouble() / drawPredictions) * 100 else 0.0,
+            drawRoi = if (drawStakes > 0) (drawReturns / drawStakes) * 100 else 0.0,
+            awayWinPredictions = awayWinPredictions,
+            awayWinSuccesses = awayWinSuccesses,
+            awayWinAccuracy = if (awayWinPredictions > 0) (awayWinSuccesses.toDouble() / awayWinPredictions) * 100 else 0.0,
+            awayWinRoi = if (awayWinStakes > 0) (awayWinReturns / awayWinStakes) * 100 else 0.0
         )
     }
 
