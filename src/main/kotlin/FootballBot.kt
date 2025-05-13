@@ -34,6 +34,7 @@ import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
+import kotlin.math.log
 import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
