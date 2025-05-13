@@ -34,6 +34,7 @@ import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
+import kotlin.math.log
 import kotlin.math.roundToInt
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
@@ -187,6 +188,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return Pair(tagsData.leagues, tagsData.teams)
     }
 
+    private fun generateTag(teamName: String): String {
+        // Remove special characters and spaces, keep only alphanumeric
+        val cleanName = teamName.replace(Regex("[^a-zA-Z0-9]"), "")
+        return "#$cleanName"
+    }
+
     private fun getTags(matchType: String, teams: String): String {
         // Разделяем команды по " vs. "
         val splitTeams = teams.split(" vs. ")
@@ -205,11 +212,17 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         // 2. Пытаемся найти ровно один тег для домашней команды
         val homeTag = homeTeam?.let { ht ->
             teamTags.entries.firstOrNull { (teamName, _) ->
-                // при строгом сравнении:
                 ht.equals(teamName, ignoreCase = true)
-                // или при частичном:
-//                ht.contains(teamName, ignoreCase = true)
-            }?.value
+            }?.value ?: run {
+                val newTag = generateTag(ht)
+                // Add new tag to the map
+                (teamTags as MutableMap)[ht] = newTag
+                // Save updated tags to file
+                saveTags()
+                // Send notification about new tag
+                sendMessage(adminChatId, "New team tag generated: $ht -> $newTag")
+                newTag
+            }
         }
 
         // 3. Пытаемся найти ровно один тег для гостевой команды
@@ -217,9 +230,16 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             teamTags.entries.firstOrNull { (teamName, _) ->
                 // при строгом сравнении:
                 at.equals(teamName, ignoreCase = true)
-                // или при частичном:
-//                at.contains(teamName, ignoreCase = true)
-            }?.value
+            }?.value ?: run {
+                val newTag = generateTag(at)
+                // Add new tag to the map
+                (teamTags as MutableMap)[at] = newTag
+                // Save updated tags to file
+                saveTags()
+                // Send notification about new tag
+                sendMessage(adminChatId, "New team tag generated: $at -> $newTag")
+                newTag
+            }
         }
 
         // Собираем итоговые теги
@@ -229,6 +249,17 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return tags.joinToString(" ").ifBlank { "" }
     }
 
+    private fun saveTags() {
+        try {
+            val tagsData = TagsData(leagueTags, teamTags)
+            val json = Json { prettyPrint = true }
+            val jsonString = json.encodeToString(tagsData)
+            val file = File("src/main/resources/tags.json")
+            file.writeText(jsonString)
+        } catch (e: Exception) {
+            logger.error("Failed to save tags", e)
+        }
+    }
 
     private fun handleStartCommand(chatId: String) {
         val description = """
