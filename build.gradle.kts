@@ -21,7 +21,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     // Telegram Bot API
-    implementation("org.telegram:telegrambots:6.1.0")
+    implementation("org.telegram:telegrambots:6.7.0")
 
     // Coroutine support
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1") // Обновлено
