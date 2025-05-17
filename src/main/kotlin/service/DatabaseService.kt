@@ -11,6 +11,10 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.sql.Connection
+import java.sql.DriverManager
+import java.sql.PreparedStatement
+import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -37,6 +41,38 @@ data class Statistics(
     val awayWinSuccesses: Int,
     val awayWinAccuracy: Double,
     val awayWinRoi: Double
+)
+
+data class InviteLink(
+    val id: Int,
+    val inviteLink: String,
+    val maxSubscribers: Int,
+    val createdAt: Long,
+    val expiresAt: Long,
+    val isActive: Boolean
+)
+
+data class InviteSubscriber(
+    val id: Int,
+    val inviteLink: String,
+    val userId: String,
+    val username: String?,
+    val firstName: String?,
+    val lastName: String?,
+    val joinedAt: Long
+)
+
+data class JoinRequest(
+    val id: Long,
+    val inviteLinkId: Long,
+    val userId: String,
+    val username: String?,
+    val firstName: String?,
+    val lastName: String?,
+    val status: String,
+    val createdAt: Long,
+    val maxSubscribers: Int,
+    val expiresAt: Long
 )
 
 private object UserStats : Table() {
@@ -111,6 +147,29 @@ object LeaguePredictability : Table() {
     val awayWinRoi = double("awayWinRoi").default(0.0)
 
     override val primaryKey = PrimaryKey(leagueName)
+}
+
+object InviteLinks : Table("invite_links") {
+    val id = integer("id").autoIncrement()
+    val inviteLink = varchar("invite_link", 255).uniqueIndex()
+    val maxSubscribers = integer("max_subscribers")
+    val createdAt = long("created_at")
+    val expiresAt = long("expires_at")
+    val isActive = bool("is_active").default(true)
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object InviteSubscribers : Table("invite_subscribers") {
+    val id = integer("id").autoIncrement()
+    val inviteLinkId = reference("invite_link_id", InviteLinks.id)
+    val userId = varchar("user_id", 255)
+    val username = varchar("username", 255).nullable()
+    val firstName = varchar("first_name", 255).nullable()
+    val lastName = varchar("last_name", 255).nullable()
+    val joinedAt = long("joined_at")
+
+    override val primaryKey = PrimaryKey(id)
 }
 
 fun initDatabase(dbPath: String) {
@@ -196,6 +255,47 @@ private fun runManualMigration() {
             awayWinRoi REAL DEFAULT 0.0,
 
             PRIMARY KEY(leagueName)
+        );
+    """.trimIndent())
+
+    // InviteLinks table
+    execSql("""
+        CREATE TABLE IF NOT EXISTS invite_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invite_link TEXT NOT NULL UNIQUE,
+            max_subscribers INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            is_active BOOLEAN DEFAULT 1
+        );
+    """.trimIndent())
+
+    // InviteSubscribers table
+    execSql("""
+        CREATE TABLE IF NOT EXISTS invite_subscribers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invite_link_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            joined_at INTEGER NOT NULL,
+            FOREIGN KEY (invite_link_id) REFERENCES invite_links(id)
+        );
+    """.trimIndent())
+
+    // JoinRequests table
+    execSql("""
+        CREATE TABLE IF NOT EXISTS join_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invite_link_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY (invite_link_id) REFERENCES invite_links(id)
         );
     """.trimIndent())
 
@@ -1191,6 +1291,435 @@ object DatabaseService {
                 )
             }
         }
+    }
+
+    fun createInviteLink(inviteLink: String, maxSubscribers: Int, days: Int): Long {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val currentTime = System.currentTimeMillis() / 1000
+        val expiresAt = currentTime + (days * 24 * 60 * 60)
+
+        val sql = """
+            INSERT INTO invite_links (invite_link, max_subscribers, created_at, expires_at, is_active)
+            VALUES (?, ?, ?, ?, 1)
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setString(1, inviteLink)
+        statement.setInt(2, maxSubscribers)
+        statement.setLong(3, currentTime)
+        statement.setLong(4, expiresAt)
+
+        val result = statement.executeUpdate()
+        val generatedId = statement.generatedKeys.getLong(1)
+
+        statement.close()
+        connection.close()
+
+        return if (result > 0) generatedId else -1
+    }
+
+    fun addJoinRequest(inviteLinkId: Long, userId: String, username: String?, firstName: String?, lastName: String?): Boolean {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val currentTime = System.currentTimeMillis() / 1000
+
+        val sql = """
+            INSERT INTO join_requests (invite_link_id, user_id, username, first_name, last_name, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setLong(1, inviteLinkId)
+        statement.setString(2, userId)
+        statement.setString(3, username)
+        statement.setString(4, firstName)
+        statement.setString(5, lastName)
+        statement.setLong(6, currentTime)
+
+        val result = statement.executeUpdate() > 0
+
+        statement.close()
+        connection.close()
+
+        return result
+    }
+
+    fun approveJoinRequest(inviteLinkId: Long, userId: String): Boolean {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val currentTime = System.currentTimeMillis() / 1000
+
+        // Начинаем транзакцию
+        connection.autoCommit = false
+
+        try {
+            // Получаем время истечения ссылки
+            val getExpirySql = "SELECT expires_at FROM invite_links WHERE id = ?"
+            val getExpiryStmt = connection.prepareStatement(getExpirySql)
+            getExpiryStmt.setLong(1, inviteLinkId)
+            val expiryResult = getExpiryStmt.executeQuery()
+            
+            if (!expiryResult.next()) {
+                return false
+            }
+            
+            val expiresAt = expiryResult.getLong("expires_at")
+
+            // Обновляем статус заявки
+            val updateRequestSql = """
+                UPDATE join_requests 
+                SET status = 'approved' 
+                WHERE invite_link_id = ? AND user_id = ? AND status = 'pending'
+            """
+            val updateRequestStmt = connection.prepareStatement(updateRequestSql)
+            updateRequestStmt.setLong(1, inviteLinkId)
+            updateRequestStmt.setString(2, userId)
+            updateRequestStmt.executeUpdate()
+
+            // Добавляем пользователя в подписчики
+            val insertSubscriberSql = """
+                INSERT INTO invite_subscribers (invite_link_id, user_id, username, first_name, last_name, joined_at)
+                SELECT invite_link_id, user_id, username, first_name, last_name, ? 
+                FROM join_requests 
+                WHERE invite_link_id = ? AND user_id = ?
+            """
+            val insertSubscriberStmt = connection.prepareStatement(insertSubscriberSql)
+            insertSubscriberStmt.setLong(1, currentTime)
+            insertSubscriberStmt.setLong(2, inviteLinkId)
+            insertSubscriberStmt.setString(3, userId)
+            insertSubscriberStmt.executeUpdate()
+
+            // Подтверждаем транзакцию
+            connection.commit()
+            return true
+        } catch (e: Exception) {
+            // В случае ошибки откатываем транзакцию
+            connection.rollback()
+            throw e
+        } finally {
+            connection.autoCommit = true
+            connection.close()
+        }
+    }
+
+    fun cleanupExpiredSubscribers(): List<InviteSubscriber> {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val currentTime = System.currentTimeMillis() / 1000
+        val expiredSubscribers = mutableListOf<InviteSubscriber>()
+
+        try {
+            // Находим всех подписчиков, чьи ссылки истекли
+            val sql = """
+                SELECT s.*, l.invite_link
+                FROM invite_subscribers s
+                JOIN invite_links l ON s.invite_link_id = l.id
+                WHERE l.expires_at < ?
+            """
+            
+            val statement = connection.prepareStatement(sql)
+            statement.setLong(1, currentTime)
+            
+            val resultSet = statement.executeQuery()
+            while (resultSet.next()) {
+                expiredSubscribers.add(
+                    InviteSubscriber(
+                        id = resultSet.getInt("id"),
+                        inviteLink = resultSet.getString("invite_link"),
+                        userId = resultSet.getString("user_id"),
+                        username = resultSet.getString("username"),
+                        firstName = resultSet.getString("first_name"),
+                        lastName = resultSet.getString("last_name"),
+                        joinedAt = resultSet.getLong("joined_at")
+                    )
+                )
+            }
+
+            // Удаляем истекших подписчиков
+            if (expiredSubscribers.isNotEmpty()) {
+                val deleteSql = """
+                    DELETE FROM invite_subscribers 
+                    WHERE invite_link_id IN (
+                        SELECT id FROM invite_links WHERE expires_at < ?
+                    )
+                """
+                val deleteStmt = connection.prepareStatement(deleteSql)
+                deleteStmt.setLong(1, currentTime)
+                deleteStmt.executeUpdate()
+            }
+
+            return expiredSubscribers
+        } finally {
+            connection.close()
+        }
+    }
+
+    fun getPendingJoinRequests(): List<JoinRequest> {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val requests = mutableListOf<JoinRequest>()
+
+        val sql = """
+            SELECT jr.*, il.max_subscribers, il.expires_at
+            FROM join_requests jr
+            JOIN invite_links il ON jr.invite_link_id = il.id
+            WHERE jr.status = 'pending'
+            AND il.is_active = 1
+            AND il.expires_at > ?
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setLong(1, System.currentTimeMillis() / 1000)
+
+        val resultSet = statement.executeQuery()
+        while (resultSet.next()) {
+            requests.add(
+                JoinRequest(
+                    id = resultSet.getLong("id"),
+                    inviteLinkId = resultSet.getLong("invite_link_id"),
+                    userId = resultSet.getString("user_id"),
+                    username = resultSet.getString("username"),
+                    firstName = resultSet.getString("first_name"),
+                    lastName = resultSet.getString("last_name"),
+                    status = resultSet.getString("status"),
+                    createdAt = resultSet.getLong("created_at"),
+                    maxSubscribers = resultSet.getInt("max_subscribers"),
+                    expiresAt = resultSet.getLong("expires_at")
+                )
+            )
+        }
+
+        resultSet.close()
+        statement.close()
+        connection.close()
+
+        return requests
+    }
+
+    fun getSubscriberCount(inviteLinkId: Long): Int {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+
+        val sql = "SELECT COUNT(*) FROM invite_subscribers WHERE invite_link_id = ?"
+        val statement = connection.prepareStatement(sql)
+        statement.setLong(1, inviteLinkId)
+
+        val resultSet = statement.executeQuery()
+        val count = resultSet.getInt(1)
+
+        resultSet.close()
+        statement.close()
+        connection.close()
+
+        return count
+    }
+
+    fun getMaxSubscribersForLink(inviteLinkId: Long): Int {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+
+        val sql = "SELECT max_subscribers FROM invite_links WHERE id = ?"
+        val statement = connection.prepareStatement(sql)
+        statement.setLong(1, inviteLinkId)
+
+        val resultSet = statement.executeQuery()
+        val maxSubscribers = if (resultSet.next()) resultSet.getInt(1) else 0
+
+        resultSet.close()
+        statement.close()
+        connection.close()
+
+        return maxSubscribers
+    }
+
+    fun getExpiredInviteLinks(): List<InviteLink> {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val currentTime = System.currentTimeMillis() / 1000
+        val links = mutableListOf<InviteLink>()
+
+        val sql = """
+            SELECT id, invite_link, max_subscribers, created_at, expires_at, is_active
+            FROM invite_links
+            WHERE expires_at < ? AND is_active = 1
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setLong(1, currentTime)
+
+        val resultSet = statement.executeQuery()
+        while (resultSet.next()) {
+            links.add(
+                InviteLink(
+                    id = resultSet.getInt("id"),
+                    inviteLink = resultSet.getString("invite_link"),
+                    maxSubscribers = resultSet.getInt("max_subscribers"),
+                    createdAt = resultSet.getLong("created_at"),
+                    expiresAt = resultSet.getLong("expires_at"),
+                    isActive = resultSet.getBoolean("is_active")
+                )
+            )
+        }
+
+        resultSet.close()
+        statement.close()
+        connection.close()
+
+        return links
+    }
+
+    fun getSubscribersForInviteLink(inviteLink: String): List<InviteSubscriber> {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+        val subscribers = mutableListOf<InviteSubscriber>()
+
+        val sql = """
+            SELECT s.id, s.user_id, s.username, s.first_name, s.last_name, s.joined_at
+            FROM invite_subscribers s
+            JOIN invite_links l ON s.invite_link_id = l.id
+            WHERE l.invite_link = ?
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setString(1, inviteLink)
+
+        val resultSet = statement.executeQuery()
+        while (resultSet.next()) {
+            subscribers.add(
+                InviteSubscriber(
+                    id = resultSet.getInt("id"),
+                    inviteLink = inviteLink,
+                    userId = resultSet.getString("user_id"),
+                    username = resultSet.getString("username"),
+                    firstName = resultSet.getString("first_name"),
+                    lastName = resultSet.getString("last_name"),
+                    joinedAt = resultSet.getLong("joined_at")
+                )
+            )
+        }
+
+        resultSet.close()
+        statement.close()
+        connection.close()
+
+        return subscribers
+    }
+
+    fun removeInviteSubscriber(inviteLink: String, userId: String): Boolean {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+
+        val sql = """
+            DELETE FROM invite_subscribers
+            WHERE invite_link_id IN (SELECT id FROM invite_links WHERE invite_link = ?)
+            AND user_id = ?
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setString(1, inviteLink)
+        statement.setString(2, userId)
+
+        val result = statement.executeUpdate() > 0
+
+        statement.close()
+        connection.close()
+
+        return result
+    }
+
+    fun removeInviteLink(inviteLink: String): Boolean {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+
+        val sql = "DELETE FROM invite_links WHERE invite_link = ?"
+        val statement = connection.prepareStatement(sql)
+        statement.setString(1, inviteLink)
+
+        val result = statement.executeUpdate() > 0
+
+        statement.close()
+        connection.close()
+
+        return result
+    }
+
+    private fun getConnection(): Connection {
+        return DriverManager.getConnection("jdbc:sqlite:predictions.db")
+    }
+
+    private fun closeResources(connection: Connection?, statement: PreparedStatement?, resultSet: ResultSet?) {
+        try {
+            resultSet?.close()
+            statement?.close()
+            connection?.close()
+        } catch (e: Exception) {
+            logger.error("Error closing database resources", e)
+        }
+    }
+
+    fun getInviteLinkId(inviteLink: String): Long? {
+        var connection: Connection? = null
+        var statement: PreparedStatement? = null
+        var resultSet: ResultSet? = null
+
+        try {
+            connection = getConnection()
+            val query = "SELECT id FROM invite_links WHERE invite_link = ? AND is_active = 1"
+            statement = connection.prepareStatement(query)
+            statement.setString(1, inviteLink)
+            resultSet = statement.executeQuery()
+
+            return if (resultSet.next()) {
+                resultSet.getLong("id")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            logger.error("Error getting invite link ID", e)
+            return null
+        } finally {
+            closeResources(connection, statement, resultSet)
+        }
+    }
+
+    fun removeUserFromChannel(userId: Long, channelId: Long) {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+
+        val sql = """
+            DELETE FROM invite_subscribers 
+            WHERE user_id = ? AND invite_link_id IN (
+                SELECT id FROM invite_links WHERE chat_id = ?
+            )
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setString(1, userId.toString())
+        statement.setString(2, channelId.toString())
+
+        statement.executeUpdate()
+
+        statement.close()
+        connection.close()
+    }
+
+    fun deactivateInviteLink(linkId: Int) {
+        val url = "jdbc:sqlite:predictions.db"
+        val connection = DriverManager.getConnection(url)
+
+        val sql = """
+            UPDATE invite_links 
+            SET is_active = 0 
+            WHERE id = ?
+        """
+
+        val statement = connection.prepareStatement(sql)
+        statement.setInt(1, linkId)
+        statement.executeUpdate()
+
+        statement.close()
+        connection.close()
     }
 
 }
