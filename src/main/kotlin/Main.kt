@@ -12,6 +12,7 @@ import org.quartz.*
 import org.quartz.impl.StdSchedulerFactory
 import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.TelegramBotsApi
+import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 import service.DatabaseService
 import service.HttpAPIFootballService
@@ -174,12 +175,31 @@ class UploadModelDataJob : Job {
 
 }
 
+class InviteLinkCleanupJob : Job {
+    private val logger = LoggerFactory.getLogger(InviteLinkCleanupJob::class.java)
+
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        val channelId = context!!.mergedJobDataMap["channelChatId"] as String
+        runBlocking {
+            try {
+                footballBot.cleanupInviteLinks(channelId)
+            } catch (e: Exception) {
+                logger.error("Error in InviteLinkCleanupJob", e)
+            }
+        }
+    }
+}
+
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
     val botsApi = TelegramBotsApi(DefaultBotSession::class.java)
 
     val telegramBotToken: String =
         Config.getProperty("telegram.bot.token") ?: throw IllegalStateException("Telegram Token not found")
+    
+    val channelId: String =
+        Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Channel ID not found")
 
     val footballBot = FootballBot(telegramBotToken)
     botsApi.registerBot(footballBot)
@@ -304,6 +324,22 @@ fun main() {
         .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 1, 0))
         .build()
 
+    // Настройка задачи очистки истекших пригласительных ссылок
+    val inviteLinkCleanupJob = JobBuilder.newJob(InviteLinkCleanupJob::class.java)
+        .withIdentity("inviteLinkCleanupJob", "inviteLinkGroup")
+        .usingJobData(JobDataMap().apply {
+            put("footballBot", footballBot)
+            put("channelChatId", channelId)
+        })
+        .build()
+
+    val inviteLinkCleanupTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("inviteLinkCleanupTrigger", "inviteLinkGroup")
+        .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+            .withIntervalInHours(1)
+            .repeatForever())
+        .build()
+
     // Schedule the jobs
     scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateMatchesJob, updateMatchesTrigger)
@@ -318,6 +354,7 @@ fun main() {
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
     scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
 //    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
+    scheduler.scheduleJob(inviteLinkCleanupJob, inviteLinkCleanupTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled UpdateMatchesJob to run at every hour")
@@ -329,4 +366,5 @@ fun main() {
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
     logger.info("Executed UploadModelDataJob every monday at 1:00")
+    logger.info("Scheduled InviteLinkCleanupJob to run every hour")
 }

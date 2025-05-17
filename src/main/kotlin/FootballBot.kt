@@ -36,6 +36,12 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.log
 import kotlin.math.roundToInt
+import org.telegram.telegrambots.meta.api.methods.groupadministration.CreateChatInviteLink
+import org.telegram.telegrambots.meta.api.methods.groupadministration.ApproveChatJoinRequest
+import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember
+import org.telegram.telegrambots.meta.api.methods.groupadministration.UnbanChatMember
+import org.telegram.telegrambots.meta.api.objects.ChatJoinRequest
+import org.telegram.telegrambots.meta.api.objects.Message
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
@@ -117,6 +123,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     override fun onUpdateReceived(update: Update) {
+        logger.info("Received update: ${update.updateId}")
+        
         if (update.hasMessage() && update.message.hasText()) {
             val messageText = update.message.text
             val chatId = update.message.chatId.toString()
@@ -171,12 +179,23 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     handleHelpCommand(chatId, chatId == adminChatId)
                 }
 
+                messageText.startsWith("/createInviteLink") -> {
+                    handleCreateInviteLink(update.message)
+                }
+
                 else -> {
                     val responseText = processMessage(messageText)
                     val message = SendMessage(chatId, responseText)
                     execute(message)
                 }
             }
+        } else if (update.hasChatJoinRequest()) {
+            logger.info("Received chat join request: ${update.chatJoinRequest}")
+            handleChatJoinRequest(update.chatJoinRequest)
+        } else if (update.hasMyChatMember()) {
+            logger.info("Received chat member update: ${update.myChatMember}")
+        } else if (update.hasChatMember()) {
+            logger.info("Received chat member update: ${update.chatMember}")
         }
     }
 
@@ -290,6 +309,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format
             /addPastResults league season startDate endDate - Add past results to database
+            /createInviteLink subscribers days - Create an invite link for the premium channel
         """.trimIndent()
 
         val responseText = if (isAdmin) {
@@ -1361,5 +1381,203 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         sendMessage(chatId, "Сбор данных завершен.")
     }
 
+    private fun handleCreateInviteLink(message: Message) {
+        if (message.chatId != adminChatId.toLong()) {
+            sendMessage(message.chatId.toString(), "This command is only available in the admin chat")
+            return
+        }
 
+        val args = message.text.split(" ")
+        if (args.size != 3) {
+            val usageMessage = """
+                Usage: /createInviteLink <subscribers_count> <days>
+                
+                Example: /createInviteLink 10 7
+                
+                Parameters:
+                - subscribers_count: maximum number of users who can join using this link
+                - days: link validity period in days
+            """.trimIndent()
+            sendMessage(message.chatId.toString(), usageMessage)
+            return
+        }
+
+        try {
+            val maxSubscribers = args[1].toInt()
+            val days = args[2].toInt()
+
+            if (maxSubscribers <= 0 || days <= 0) {
+                sendMessage(message.chatId.toString(), "Subscribers count and days must be positive numbers")
+                return
+            }
+
+            // Create invite link through Telegram API
+            val createChatInviteLink = CreateChatInviteLink()
+            createChatInviteLink.chatId = strategyChannelId
+            createChatInviteLink.expireDate = (System.currentTimeMillis() / 1000 + days * 24 * 60 * 60).toInt()
+            createChatInviteLink.createsJoinRequest = true
+
+            val inviteLink = execute(createChatInviteLink)
+
+            // Create database record
+            val inviteLinkId = DatabaseService.createInviteLink(inviteLink.inviteLink, maxSubscribers, days)
+            if (inviteLinkId > 0) {
+                val response = """
+                    <b>New premium channel invite link created</b>
+                    <b>Link ID:</b> $inviteLinkId
+                    <b>Link:</b> ${inviteLink.inviteLink}
+                    <b>Valid for:</b> $days days
+                    <b>Max subscribers:</b> $maxSubscribers
+                    
+                    <i>Users must send a join request and specify the link ID.</i>
+                """.trimIndent()
+                
+                sendMessage(message.chatId.toString(), response, "HTML")
+            } else {
+                sendMessage(message.chatId.toString(), "Error creating link in database")
+            }
+        } catch (e: NumberFormatException) {
+            sendMessage(message.chatId.toString(), "Invalid number format. Please use positive integers.")
+        } catch (e: Exception) {
+            logger.error("Error creating invite link", e)
+            sendMessage(message.chatId.toString(), "An error occurred while creating the link")
+        }
+    }
+
+    private fun handleChatJoinRequest(chatJoinRequest: ChatJoinRequest) {
+        try {
+            val chatId = chatJoinRequest.chat.id.toString()
+            if (chatId == strategyChannelId) {
+                logger.info("Processing join request for strategy channel")
+                
+                // Get link from request
+                val inviteLink = chatJoinRequest.inviteLink?.inviteLink
+                
+                if (inviteLink != null) {
+                    // Get link ID from database
+                    val inviteLinkId = DatabaseService.getInviteLinkId(inviteLink)
+                    
+                    if (inviteLinkId != null) {
+                        // Check if subscriber limit is reached
+                        val subscriberCount = DatabaseService.getSubscriberCount(inviteLinkId)
+                        val maxSubscribers = DatabaseService.getMaxSubscribersForLink(inviteLinkId)
+                        
+                        if (subscriberCount >= maxSubscribers) {
+                            sendMessage(chatJoinRequest.user.id.toString(), "Sorry, the subscriber limit for this link has been reached.")
+                            return
+                        }
+                        
+                        // Save join request
+                        val success = DatabaseService.addJoinRequest(
+                            inviteLinkId,
+                            chatJoinRequest.user.id.toString(),
+                            chatJoinRequest.user.userName,
+                            chatJoinRequest.user.firstName,
+                            chatJoinRequest.user.lastName
+                        )
+
+                        if (success) {
+                            // Automatically approve request
+                            val approved = DatabaseService.approveJoinRequest(inviteLinkId, chatJoinRequest.user.id.toString())
+                            
+                            if (approved) {
+                                // Approve join request through Telegram API
+                                val approveChatJoinRequest = ApproveChatJoinRequest()
+                                approveChatJoinRequest.chatId = strategyChannelId
+                                approveChatJoinRequest.userId = chatJoinRequest.user.id
+                                execute(approveChatJoinRequest)
+
+                                // Send notification to admin chat
+                                val notification = """
+                                    <b>New user joined the premium channel</b>
+                                    <b>User:</b> ${chatJoinRequest.user.firstName} ${chatJoinRequest.user.lastName ?: ""} (@${chatJoinRequest.user.userName ?: "no username"})
+                                    <b>ID:</b> ${chatJoinRequest.user.id}
+                                    <b>Link ID:</b> $inviteLinkId
+                                    <b>Current subscribers:</b> ${subscriberCount + 1}/$maxSubscribers
+                                """.trimIndent()
+                                sendMessage(adminChatId, notification, "HTML")
+                                
+                                // Send message to user
+                                sendMessage(chatJoinRequest.user.id.toString(), "Your request to join the premium channel has been approved!")
+                            } else {
+                                sendMessage(chatJoinRequest.user.id.toString(), "An error occurred while processing your request. Please try again later.")
+                            }
+                        }
+                    } else {
+                        sendMessage(adminChatId, "Someone's trying to join with link that created by not my bot.")
+                    }
+                } else {
+                    sendMessage(chatJoinRequest.user.id.toString(), "Invalid invite link.")
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Error handling chat join request", e)
+        }
+    }
+
+    fun cleanupInviteLinks(channelId: String) {
+        try {
+            // Get list of expired subscribers
+            val expiredSubscribers = DatabaseService.cleanupExpiredSubscribers()
+            
+            for (subscriber in expiredSubscribers) {
+                try {
+                    // Remove user from channel
+                    CoroutineScope(Dispatchers.IO).launch {
+                        removeUserFromChannel(subscriber.userId.toLong(), channelId.toLong())
+                    }
+                    
+                    // Send notification to admin chat
+                    val notification = """
+                        <b>User removed from premium channel</b>
+                        <b>Reason:</b> Invite link expired
+                        <b>User:</b> ${subscriber.firstName} ${subscriber.lastName ?: ""} (@${subscriber.username ?: "no username"})
+                        <b>ID:</b> ${subscriber.userId}
+                        <b>Link:</b> ${subscriber.inviteLink}
+                    """.trimIndent()
+                    sendMessage(adminChatId, notification, "HTML")
+                    
+                    // Send message to user
+                    sendMessage(subscriber.userId, "Your access to the premium channel has expired. Thank you for using our service!")
+                } catch (e: Exception) {
+                    logger.error("Error removing user ${subscriber.userId} from channel", e)
+                }
+            }
+
+            // Update status of expired links in database
+            val expiredLinks = DatabaseService.getExpiredInviteLinks()
+            for (link in expiredLinks) {
+                DatabaseService.deactivateInviteLink(link.id)
+                logger.info("Deactivated expired invite link ID: ${link.id}")
+            }
+        } catch (e: Exception) {
+            logger.error("Error in cleanupInviteLinks", e)
+        }
+    }
+
+    private suspend fun removeUserFromChannel(userId: Long, channelId: Long) {
+        try {
+            // Remove user from channel by banning
+            val banChatMember = BanChatMember()
+            banChatMember.chatId = channelId.toString()
+            banChatMember.userId = userId
+            execute(banChatMember)
+            
+            // Add delay to ensure user is removed from channel
+            delay(2000) // 2 seconds delay
+            
+            // Unban user
+            val unbanChatMember = UnbanChatMember()
+            unbanChatMember.chatId = channelId.toString()
+            unbanChatMember.userId = userId
+            execute(unbanChatMember)
+            
+            // Update database
+            DatabaseService.removeUserFromChannel(userId, channelId)
+            
+            logger.info("Successfully removed user $userId from channel $channelId")
+        } catch (e: Exception) {
+            logger.error("Failed to remove user $userId from channel $channelId", e)
+        }
+    }
 }
