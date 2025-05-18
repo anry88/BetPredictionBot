@@ -4,7 +4,7 @@
   {"leagueId": 135, "season": 2024, "description": "Italy Serie A", "premiumSelection": false},
   {"leagueId": 78, "season": 2024, "description": "Germany Bundesliga", "premiumSelection": true},
   {"leagueId": 61, "season": 2024, "description": "France Ligue 1", "premiumSelection": true},
-  {"leagueId": 88, "season": 2024, "description": "Netherlands Eredivisie", "premiumSelection": true},
+  {"leagueId": 88, "season": 2024, "description": "Netherlands Eredivisie", "premiumSelection": false},
   {"leagueId": 333, "season": 2024, "description": "Ukraine Premier League", "premiumSelection": true},
   {"leagueId": 94, "season": 2024, "description": "Portugal Primeira Liga", "premiumSelection": false},
   {"leagueId": 235, "season": 2024, "description": "Russia Premier League", "premiumSelection": true},
