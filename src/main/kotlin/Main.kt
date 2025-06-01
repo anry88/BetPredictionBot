@@ -112,24 +112,28 @@ class UploadModelDataJob : Job {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-            // 1. Выбираем матчи только из lиг, где modelBased = true,
-            //    и только сыгранные (actualOutcome != null).
+            val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
+
+            if (!isTest){
+                // 1. Выбираем матчи только из lиг, где modelBased = true,
+                //    и только сыгранные (actualOutcome != null).
 //            val modelBasedLeagues = footballService.getModelBasedLeaguesFromConfig()
-            val completedMatches = DatabaseService.getAllMatchesForLastTwoYears().filter { match -> match.actualOutcome != null }
+                val completedMatches = DatabaseService.getAllMatchesForLastTwoYears().filter { match -> match.actualOutcome != null }
 
-            if (completedMatches.isEmpty()) {
-                logger.info("No completed matches found for model-based leagues")
-                return@runBlocking
+                if (completedMatches.isEmpty()) {
+                    logger.info("No completed matches found for model-based leagues")
+                    return@runBlocking
+                }
+
+                // 2. Формируем .jsonl
+                val file = createJsonlFileForModel(completedMatches)
+                // 3. Отправляем файл на http://localhost:7007/uploadLines
+                val responseStatus = uploadJsonlToLocalModel(file)
+                logger.info("Upload to local model finished with status: $responseStatus")
+
+                // При необходимости можно удалить временный файл:
+                file.delete()
             }
-
-            // 2. Формируем .jsonl
-            val file = createJsonlFileForModel(completedMatches)
-            // 3. Отправляем файл на http://localhost:7007/uploadLines
-            val responseStatus = uploadJsonlToLocalModel(file)
-            logger.info("Upload to local model finished with status: $responseStatus")
-
-            // При необходимости можно удалить временный файл:
-            file.delete()
         }
     }
 
