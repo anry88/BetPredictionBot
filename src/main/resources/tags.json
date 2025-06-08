@@ -34,6 +34,7 @@
         "Japan J1 League": "#J1League",
         "South-Korea K League 1": "#KLeague1",
         "Uruguay Primera División - Aperture": "#UruguayPrimeraDivisión",
+        "Uruguay Primera División - Clausura": "#UruguayPrimeraDivisión",
         "Chile Primera División": "#ChilePrimeraDivisión",
         "Bolivia Primera División": "#BoliviaPrimeraDivisión"
     },
@@ -704,6 +705,8 @@
         "USA": "#USA",
         "Mexico": "#Mexico",
         "Turkey U21": "#TurkeyU21",
-        "Albania U21": "#AlbaniaU21"
+        "Albania U21": "#AlbaniaU21",
+        "Juventud": "#Juventud",
+        "Oriente Petrolero": "#OrientePetrolero"
     }
 }
