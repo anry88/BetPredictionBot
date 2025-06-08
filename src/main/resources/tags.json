@@ -30,7 +30,12 @@
         "Scotland Premiership": "#ScotlandPremiership",
         "CONMEBOL Sudamericana": "#CopaSudamericana",
         "CONMEBOL Libertadores": "#CopaLibertadores",
-        "China Super League": "#ChinaSuperLeague"
+        "China Super League": "#ChinaSuperLeague",
+        "Japan J1 League": "#J1League",
+        "South-Korea K League 1": "#KLeague1",
+        "Uruguay Primera División - Aperture": "#UruguayPrimeraDivisión",
+        "Chile Primera División": "#ChilePrimeraDivisión",
+        "Bolivia Primera División": "#BoliviaPrimeraDivisión"
     },
     "teams": {
         "Kazakhstan": "#Kazakhstan",
@@ -683,6 +688,22 @@
         "Metalist 1925 Kharkiv": "#Metalist1925Kharkiv",
         "Vizela": "#Vizela",
         "Puerto Rico": "#PuertoRico",
-        "Nicaragua": "#Nicaragua"
+        "Nicaragua": "#Nicaragua",
+        "Burkina Faso": "#BurkinaFaso",
+        "Thailand": "#Thailand",
+        "India": "#India",
+        "Bangladesh": "#Bangladesh",
+        "Bhutan": "#Bhutan",
+        "Burundi": "#Burundi",
+        "Brunei": "#Brunei",
+        "Singapore": "#Singapore",
+        "Maldives": "#Maldives",
+        "Tajikistan": "#Tajikistan",
+        "Nepal": "#Nepal",
+        "Russia": "#Russia",
+        "USA": "#USA",
+        "Mexico": "#Mexico",
+        "Turkey U21": "#TurkeyU21",
+        "Albania U21": "#AlbaniaU21"
     }
 }
