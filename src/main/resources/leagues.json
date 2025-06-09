@@ -36,8 +36,9 @@
   {"leagueId": 15, "season": 2025, "description": "FIFA Club World Cup", "premiumSelection": false},
   {"leagueId": 98, "season": 2025, "description": "Japan J1 League", "premiumSelection": false},
   {"leagueId": 292, "season": 2025, "description": "South-Korea K League 1", "premiumSelection": false},
-  {"leagueId": 268, "season": 2025, "description": "Uruguay Primera División - Aperture", "premiumSelection": false},
+  {"leagueId": 268, "season": 2025, "description": "Uruguay Primera División - Apertura", "premiumSelection": false},
   {"leagueId": 270, "season": 2025, "description": "Uruguay Primera División - Clausura", "premiumSelection": false},
   {"leagueId": 265, "season": 2025, "description": "Chile Primera División", "premiumSelection": false},
-  {"leagueId": 344, "season": 2025, "description": "Bolivia Primera División", "premiumSelection": false}
+  {"leagueId": 344, "season": 2025, "description": "Bolivia Primera División", "premiumSelection": false},
+  {"leagueId": 35, "season": 2024, "description": "World Asian Cup - Qualification", "premiumSelection": true}
 ]
