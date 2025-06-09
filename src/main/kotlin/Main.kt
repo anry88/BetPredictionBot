@@ -356,8 +356,8 @@ fun main() {
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
-    scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
-//    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
+//    scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
+    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(inviteLinkCleanupJob, inviteLinkCleanupTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
