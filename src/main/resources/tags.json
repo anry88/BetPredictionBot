@@ -36,7 +36,8 @@
         "Uruguay Primera División - Aperture": "#UruguayPrimeraDivisión",
         "Uruguay Primera División - Clausura": "#UruguayPrimeraDivisión",
         "Chile Primera División": "#ChilePrimeraDivisión",
-        "Bolivia Primera División": "#BoliviaPrimeraDivisión"
+        "Bolivia Primera División": "#BoliviaPrimeraDivisión",
+        "World Asian Cup - Qualification": "#AsianCup"
     },
     "teams": {
         "Kazakhstan": "#Kazakhstan",
@@ -707,6 +708,12 @@
         "Turkey U21": "#TurkeyU21",
         "Albania U21": "#AlbaniaU21",
         "Juventud": "#Juventud",
-        "Oriente Petrolero": "#OrientePetrolero"
+        "Oriente Petrolero": "#OrientePetrolero",
+        "Timor-Leste": "#TimorLeste",
+        "Chinese Taipei": "#ChineseTaipei",
+        "Pakistan": "#Pakistan",
+        "Philippines": "#Philippines",
+        "Laos": "#Laos",
+        "Vietnam": "#Vietnam"
     }
 }

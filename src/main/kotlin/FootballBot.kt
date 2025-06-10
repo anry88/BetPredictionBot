@@ -1173,7 +1173,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "South America" to "🌎",
             "Australia" to "🌏",
             "Oceania" to "🌏",
-            "Friendlies" to "\uD83C\uDFF3" //белый флаг
+            "Friendlies" to "\uD83C\uDFF3", //белый флаг
+            "Asian" to "🌏",
+            "Uruguay" to "🇺🇾",
+            "Chile" to "🇨🇱",
+            "Bolivia" to "🇧🇴",
+            "South Korea" to "🇰🇷",
+            "Japan" to "🇯🇵"
         )
 
         // Приводим текст к нижнему регистру для нечувствительного поиска
