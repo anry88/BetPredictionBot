@@ -33,7 +33,7 @@
         "China Super League": "#ChinaSuperLeague",
         "Japan J1 League": "#J1League",
         "South-Korea K League 1": "#KLeague1",
-        "Uruguay Primera División - Aperture": "#UruguayPrimeraDivisión",
+        "Uruguay Primera División - Apertura": "#UruguayPrimeraDivisión",
         "Uruguay Primera División - Clausura": "#UruguayPrimeraDivisión",
         "Chile Primera División": "#ChilePrimeraDivisión",
         "Bolivia Primera División": "#BoliviaPrimeraDivisión",
@@ -714,6 +714,15 @@
         "Pakistan": "#Pakistan",
         "Philippines": "#Philippines",
         "Laos": "#Laos",
-        "Vietnam": "#Vietnam"
+        "Vietnam": "#Vietnam",
+        "Turkmenistan": "#Turkmenistan",
+        "Afghanistan": "#Afghanistan",
+        "Syria": "#Syria",
+        "Yemen": "#Yemen",
+        "Kyrgyzstan U20": "#KyrgyzstanU20",
+        "Afghanistan U20": "#AfghanistanU20",
+        "Uzbekistan U20": "#UzbekistanU20",
+        "Turkmenistan U20": "#TurkmenistanU20",
+        "Wanderers": "#Wanderers"
     }
 }
