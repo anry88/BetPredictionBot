@@ -33,7 +33,7 @@
   {"leagueId": 262, "season": 2024, "description": "Mexico Liga MX", "premiumSelection": true},
   {"leagueId": 169, "season": 2025, "description": "China Super League", "premiumSelection": true},
   {"leagueId": 29, "season": 2023, "description": "World World Cup - Qualification Africa", "premiumSelection": false},
-  {"leagueId": 15, "season": 2025, "description": "FIFA Club World Cup", "premiumSelection": false},
+  {"leagueId": 15, "season": 2025, "description": "World FIFA Club World Cup", "premiumSelection": false},
   {"leagueId": 98, "season": 2025, "description": "Japan J1 League", "premiumSelection": false},
   {"leagueId": 292, "season": 2025, "description": "South-Korea K League 1", "premiumSelection": false},
   {"leagueId": 268, "season": 2025, "description": "Uruguay Primera División - Apertura", "premiumSelection": false},

@@ -1178,8 +1178,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "Uruguay" to "🇺🇾",
             "Chile" to "🇨🇱",
             "Bolivia" to "🇧🇴",
-            "South Korea" to "🇰🇷",
-            "Japan" to "🇯🇵"
+            "South-Korea" to "🇰🇷",
+            "Japan" to "🇯🇵",
+            "FIFA" to "🌎"
         )
 
         // Приводим текст к нижнему регистру для нечувствительного поиска

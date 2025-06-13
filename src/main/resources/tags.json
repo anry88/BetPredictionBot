@@ -37,7 +37,8 @@
         "Uruguay Primera División - Clausura": "#UruguayPrimeraDivisión",
         "Chile Primera División": "#ChilePrimeraDivisión",
         "Bolivia Primera División": "#BoliviaPrimeraDivisión",
-        "Asian Cup - Qualification": "#AsianCup"
+        "Asian Cup - Qualification": "#AsianCup",
+        "World FIFA Club World Cup": "#ClubWorldCup"
     },
     "teams": {
         "Kazakhstan": "#Kazakhstan",
@@ -723,6 +724,10 @@
         "Afghanistan U20": "#AfghanistanU20",
         "Uzbekistan U20": "#UzbekistanU20",
         "Turkmenistan U20": "#TurkmenistanU20",
-        "Wanderers": "#Wanderers"
+        "Wanderers": "#Wanderers",
+        "Gangwon FC": "#GangwonFC",
+        "Jeonbuk Motors": "#JeonbukMotors",
+        "Gwangju FC": "#GwangjuFC",
+        "FC Seoul": "#FCSeoul"
     }
 }
