@@ -721,9 +721,9 @@ object DatabaseService {
         }
     }
 
-    fun getMatchesWithoutMessageIdForNext5Hours(): List<MatchInfo> {
+    fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val fiveHoursLater = now.plusHours(2)
+        val eightHoursLater = now.plusHours(5)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -733,7 +733,7 @@ object DatabaseService {
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.select {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq fiveHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq eightHoursLater.format(dateTimeFormatter)) and
                             (leagueTable.telegramMessageId.isNull())
                 }.mapNotNullTo(matchesToSend) {
                     MatchInfo(

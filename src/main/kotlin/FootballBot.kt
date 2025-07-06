@@ -24,7 +24,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import service.DatabaseService
-import service.DatabaseService.getMatchesWithoutMessageIdForNext5Hours
+import service.DatabaseService.getMatchesWithoutMessageIdForNext8Hours
 import service.HttpAPIFootballService
 import service.StrategyService
 import service.initDatabase
@@ -33,8 +33,6 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import kotlin.math.abs
-import kotlin.math.log
 import kotlin.math.roundToInt
 import org.telegram.telegrambots.meta.api.methods.groupadministration.CreateChatInviteLink
 import org.telegram.telegrambots.meta.api.methods.groupadministration.ApproveChatJoinRequest
@@ -855,7 +853,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
-        val matches = getMatchesWithoutMessageIdForNext5Hours()
+        val matches = getMatchesWithoutMessageIdForNext8Hours()
 
         if (matches.isNotEmpty()) {
             // Process each match
