@@ -43,7 +43,6 @@
         "Venezuela Primera División": "#VenezuelaPrimeraDivisión",
         "Ecuador Liga Pro": "#EcuadorLigaPro",
         "Paraguay Division Profesional - Apertura": "#ParaguayDivisionProfesional",
-        "Paraguay Division Intermedia": "#ParaguayDivisionProfesional",
         "Paraguay Division Profesional - Clausura": "#ParaguayDivisionProfesional",
         "Peru Primera División": "#PeruPrimeraDivisión",
         "Iran Persian Gulf Pro League": "#IranPersianGulfProLeague",
@@ -823,6 +822,8 @@
         "Mexico W U17": "#MexicoWU17",
         "Latvia U17": "#LatviaU17",
         "Costa Rica U17": "#CostaRicaU17",
-        "Colombia U17": "#ColombiaU17"
+        "Colombia U17": "#ColombiaU17",
+        "Deportivo Capiata": "#DeportivoCapiata",
+        "Guairena FC": "#GuairenaFC"
     }
 }
