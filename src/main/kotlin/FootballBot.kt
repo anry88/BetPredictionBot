@@ -1180,8 +1180,16 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "Bolivia" to "🇧🇴",
             "South-Korea" to "🇰🇷",
             "Japan" to "🇯🇵",
-            "FIFA" to "🌎"
-        )
+            "FIFA" to "🌎",
+            "Colombia" to "🇨🇴",
+            "Venezuela" to "🇻🇪",
+            "Ecuador" to "🇪🇨",
+            "Peru" to "🇵🇪",
+            "Paraguay" to "🇵🇾",
+            "Iran" to "🇮🇷",
+            "India" to "🇮🇳",
+            "Indonesia" to "🇮🇩",
+            )
 
         // Приводим текст к нижнему регистру для нечувствительного поиска
         val lowerCaseText = text.lowercase()

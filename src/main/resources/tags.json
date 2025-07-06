@@ -9,6 +9,7 @@
         "Friendlies": "#Friendlies",
         "Nations League": "#NationsLeague",
         "Africa Cup of Nations": "#AfricaCupofNations",
+        "World FIFA Club World Cup": "#ClubWorldCup",
         "World Cup": "#WorldCup",
         "UEFA Champions League": "#ChampionsLeague",
         "UEFA Europa League": "#EuropaLeague",
@@ -38,7 +39,16 @@
         "Chile Primera División": "#ChilePrimeraDivisión",
         "Bolivia Primera División": "#BoliviaPrimeraDivisión",
         "Asian Cup - Qualification": "#AsianCup",
-        "World FIFA Club World Cup": "#ClubWorldCup"
+        "Colombia Primera A": "#ColombiaPrimeraA",
+        "Venezuela Primera División": "#VenezuelaPrimeraDivisión",
+        "Ecuador Liga Pro": "#EcuadorLigaPro",
+        "Paraguay Division Profesional - Apertura": "#ParaguayDivisionProfesional",
+        "Paraguay Division Intermedia": "#ParaguayDivisionProfesional",
+        "Paraguay Division Profesional - Clausura": "#ParaguayDivisionProfesional",
+        "Peru Primera División": "#PeruPrimeraDivisión",
+        "Iran Persian Gulf Pro League": "#IranPersianGulfProLeague",
+        "India Indian Super League": "#IndianSuperLeague",
+        "Indonesia Liga 1": "#IndonesiaLiga1"
     },
     "teams": {
         "Kazakhstan": "#Kazakhstan",

@@ -40,5 +40,15 @@
   {"leagueId": 270, "season": 2025, "description": "Uruguay Primera División - Clausura", "premiumSelection": false},
   {"leagueId": 265, "season": 2025, "description": "Chile Primera División", "premiumSelection": false},
   {"leagueId": 344, "season": 2025, "description": "Bolivia Primera División", "premiumSelection": false},
-  {"leagueId": 35, "season": 2024, "description": "World Asian Cup - Qualification", "premiumSelection": true}
+  {"leagueId": 35, "season": 2024, "description": "World Asian Cup - Qualification", "premiumSelection": true},
+  {"leagueId": 239, "season": 2025, "description": "Colombia Primera A", "premiumSelection": false},
+  {"leagueId": 299, "season": 2025, "description": "Venezuela Primera División", "premiumSelection": false},
+  {"leagueId": 242, "season": 2025, "description": "Ecuador Liga Pro", "premiumSelection": false},
+  {"leagueId": 281, "season": 2025, "description": "Peru Primera División", "premiumSelection": false},
+  {"leagueId": 250, "season": 2025, "description": "Paraguay Division Profesional - Apertura", "premiumSelection": false},
+  {"leagueId": 251, "season": 2025, "description": "Paraguay Division Intermedia", "premiumSelection": false},
+  {"leagueId": 252, "season": 2025, "description": "Paraguay Division Profesional - Clausura", "premiumSelection": false},
+  {"leagueId": 290, "season": 2025, "description": "Iran Persian Gulf Pro League", "premiumSelection": false},
+  {"leagueId": 323, "season": 2025, "description": "India Indian Super League", "premiumSelection": false},
+  {"leagueId": 274, "season": 2025, "description": "Indonesia Liga 1", "premiumSelection": false}
 ]
