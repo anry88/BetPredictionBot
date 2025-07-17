@@ -590,7 +590,7 @@ object DatabaseService {
 
     fun getOngoingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val threeHoursAgo = now.minusHours(6)
+        val threeHoursAgo = now.minusHours(7)
         val actualNow = now.minusHours(3)
         val matchesToUpdate = mutableListOf<MatchInfo>()
 
