@@ -1187,6 +1187,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "Iran" to "🇮🇷",
             "India" to "🇮🇳",
             "Indonesia" to "🇮🇩",
+            "Poland" to "🇵🇱"
             )
 
         // Приводим текст к нижнему регистру для нечувствительного поиска

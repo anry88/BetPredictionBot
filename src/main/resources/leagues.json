@@ -49,5 +49,6 @@
   {"leagueId": 252, "season": 2025, "description": "Paraguay Division Profesional - Clausura", "premiumSelection": false},
   {"leagueId": 290, "season": 2025, "description": "Iran Persian Gulf Pro League", "premiumSelection": false},
   {"leagueId": 323, "season": 2025, "description": "India Indian Super League", "premiumSelection": false},
-  {"leagueId": 274, "season": 2025, "description": "Indonesia Liga 1", "premiumSelection": false}
+  {"leagueId": 274, "season": 2025, "description": "Indonesia Liga 1", "premiumSelection": false},
+  {"leagueId": 106, "season": 2025, "description": "Poland Ekstraklasa", "premiumSelection": false}
 ]
