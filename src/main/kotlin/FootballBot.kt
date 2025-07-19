@@ -972,6 +972,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         for ((messageId, list) in updatedByMessageId) {
             val league = list.first().matchType
             val matches = DatabaseService.getMatchesByLeagueAndTelegramMessageId(league, messageId)
+                .map { dbMatch ->
+                    list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
+                }
             val messageText = formatMatchesBatchForUpdate(matches)
             updateMessage(channelId, messageId, messageText)
             delay(1000)
@@ -980,6 +983,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         for ((messageId, list) in updatedByStrategyId) {
             val league = list.first().matchType
             val matches = DatabaseService.getMatchesByLeagueAndStrategyMessageId(league, messageId)
+                .map { dbMatch ->
+                    list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
+                }
             val messageText = formatPremiumMatchesBatchForUpdate(matches)
             updateMessage(strategyChannelId, messageId, messageText)
             delay(1000)

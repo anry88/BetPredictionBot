@@ -723,7 +723,7 @@ object DatabaseService {
 
     fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val eightHoursLater = now.plusHours(8)
+        val eightHoursLater = now.plusHours(5)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -768,7 +768,7 @@ object DatabaseService {
 
     fun getLeagueMatchesWithoutMessageIdForNext20Hours(leagueName: String): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val twentyHoursLater = now.plusHours(20)
+        val twentyHoursLater = now.plusHours(17)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -830,7 +830,7 @@ object DatabaseService {
                     it[leagueTable.awayWinOdds],
                     it[leagueTable.telegramMessageId],
                     it[leagueTable.strategyTelegramMessageId],
-                    it[leagueTable.elapsed],
+                    null,
                     it[leagueTable.modelHomeWinProb],
                     it[leagueTable.modelDrawProb],
                     it[leagueTable.modelAwayWinProb],
@@ -864,7 +864,7 @@ object DatabaseService {
                     it[leagueTable.awayWinOdds],
                     it[leagueTable.telegramMessageId],
                     it[leagueTable.strategyTelegramMessageId],
-                    it[leagueTable.elapsed],
+                    null,
                     it[leagueTable.modelHomeWinProb],
                     it[leagueTable.modelDrawProb],
                     it[leagueTable.modelAwayWinProb],
