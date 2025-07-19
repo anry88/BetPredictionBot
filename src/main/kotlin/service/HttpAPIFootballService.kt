@@ -283,7 +283,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         for ((_, info) in messagesToUpdate) {
             footballBot.updateMatchMessages(info)
-            delay(1000)
+            delay(10000)
         }
 
         // Delete matches older than one day with no actual result

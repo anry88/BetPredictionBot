@@ -1027,7 +1027,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
             val messageText = formatMatchesBatchForUpdate(matches)
             updateMessage(channelId, messageId, messageText)
-            delay(1000)
+            delay(10000)
         }
 
         for ((messageId, list) in updatedByStrategyId) {
@@ -1038,7 +1038,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
             val messageText = formatPremiumMatchesBatchForUpdate(matches)
             updateMessage(strategyChannelId, messageId, messageText)
-            delay(1000)
+            delay(10000)
         }
     }
 
