@@ -723,7 +723,7 @@ object DatabaseService {
 
     fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val eightHoursLater = now.plusHours(5)
+        val eightHoursLater = now.plusHours(8)
         val matchesToSend = mutableListOf<MatchInfo>()
 
         transaction {
@@ -764,6 +764,116 @@ object DatabaseService {
         }
 
         return matchesToSend
+    }
+
+    fun getLeagueMatchesWithoutMessageIdForNext20Hours(leagueName: String): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val twentyHoursLater = now.plusHours(20)
+        val matchesToSend = mutableListOf<MatchInfo>()
+
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            addMissingColumnsForLeague(leagueName)
+            leagueTable.select {
+                (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                        (leagueTable.datetime lessEq twentyHoursLater.format(dateTimeFormatter)) and
+                        (leagueTable.telegramMessageId.isNull())
+            }.mapNotNullTo(matchesToSend) {
+                MatchInfo(
+                    it[leagueTable.fixtureId],
+                    it[leagueTable.datetime],
+                    it[leagueTable.matchType],
+                    it[leagueTable.teams],
+                    it[leagueTable.predictedOutcome],
+                    it[leagueTable.actualOutcome],
+                    it[leagueTable.predictedScore],
+                    it[leagueTable.actualScore],
+                    it[leagueTable.odds],
+                    it[leagueTable.bookmakerName],
+                    it[leagueTable.homeWinOdds],
+                    it[leagueTable.drawOdds],
+                    it[leagueTable.awayWinOdds],
+                    it[leagueTable.telegramMessageId],
+                    it[leagueTable.strategyTelegramMessageId],
+                    null,
+                    it[leagueTable.modelHomeWinProb],
+                    it[leagueTable.modelDrawProb],
+                    it[leagueTable.modelAwayWinProb],
+                    it[leagueTable.modelExpectedHomeGoals],
+                    it[leagueTable.modelExpectedAwayGoals]
+                )
+            }
+        }
+
+        return matchesToSend
+    }
+
+    fun getMatchesByLeagueAndTelegramMessageId(leagueName: String, messageId: String): List<MatchInfo> {
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            addMissingColumnsForLeague(leagueName)
+            leagueTable.select { leagueTable.telegramMessageId eq messageId }.mapNotNullTo(matches) {
+                MatchInfo(
+                    it[leagueTable.fixtureId],
+                    it[leagueTable.datetime],
+                    it[leagueTable.matchType],
+                    it[leagueTable.teams],
+                    it[leagueTable.predictedOutcome],
+                    it[leagueTable.actualOutcome],
+                    it[leagueTable.predictedScore],
+                    it[leagueTable.actualScore],
+                    it[leagueTable.odds],
+                    it[leagueTable.bookmakerName],
+                    it[leagueTable.homeWinOdds],
+                    it[leagueTable.drawOdds],
+                    it[leagueTable.awayWinOdds],
+                    it[leagueTable.telegramMessageId],
+                    it[leagueTable.strategyTelegramMessageId],
+                    it[leagueTable.elapsed],
+                    it[leagueTable.modelHomeWinProb],
+                    it[leagueTable.modelDrawProb],
+                    it[leagueTable.modelAwayWinProb],
+                    it[leagueTable.modelExpectedHomeGoals],
+                    it[leagueTable.modelExpectedAwayGoals]
+                )
+            }
+        }
+        return matches
+    }
+
+    fun getMatchesByLeagueAndStrategyMessageId(leagueName: String, messageId: String): List<MatchInfo> {
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            addMissingColumnsForLeague(leagueName)
+            leagueTable.select { leagueTable.strategyTelegramMessageId eq messageId }.mapNotNullTo(matches) {
+                MatchInfo(
+                    it[leagueTable.fixtureId],
+                    it[leagueTable.datetime],
+                    it[leagueTable.matchType],
+                    it[leagueTable.teams],
+                    it[leagueTable.predictedOutcome],
+                    it[leagueTable.actualOutcome],
+                    it[leagueTable.predictedScore],
+                    it[leagueTable.actualScore],
+                    it[leagueTable.odds],
+                    it[leagueTable.bookmakerName],
+                    it[leagueTable.homeWinOdds],
+                    it[leagueTable.drawOdds],
+                    it[leagueTable.awayWinOdds],
+                    it[leagueTable.telegramMessageId],
+                    it[leagueTable.strategyTelegramMessageId],
+                    it[leagueTable.elapsed],
+                    it[leagueTable.modelHomeWinProb],
+                    it[leagueTable.modelDrawProb],
+                    it[leagueTable.modelAwayWinProb],
+                    it[leagueTable.modelExpectedHomeGoals],
+                    it[leagueTable.modelExpectedAwayGoals]
+                )
+            }
+        }
+        return matches
     }
     fun getStatisticsForPeriod(days: Int): PeriodStats {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
