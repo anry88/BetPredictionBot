@@ -616,7 +616,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val body = matches.sortedBy { it.datetime }.joinToString("\n\n") { formatter(it) }
         val leagueTag = leagueTags.entries.firstOrNull { matchType.contains(it.key, ignoreCase = true) }?.value
         val footer = listOfNotNull("#Football", leagueTag).joinToString(" ")
-        return "$header\n\n$body\n\n$footer"
+        return "$header\n\n$body\n$footer"
     }
 
     private fun buildMatchMessages(
@@ -644,7 +644,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val potentialLength = builder.length + 2 + formatted.length
 
             if (potentialLength > limit && current.isNotEmpty()) {
-                builder.append("\n\n").append(footer)
+                builder.append("\n").append(footer)
                 result.add(builder.toString() to current.toList())
                 builder = StringBuilder(header)
                 current = mutableListOf()
@@ -656,7 +656,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         if (current.isNotEmpty()) {
-            builder.append("\n\n").append(footer)
+            builder.append("\n").append(footer)
             result.add(builder.toString() to current.toList())
         }
 
