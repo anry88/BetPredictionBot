@@ -234,8 +234,15 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val formattedTwoDaysAgo = twoDaysAgo.format(formatter)
         val formattedCurrentDate = currentDate.format(formatter)
 
+        val messagesToUpdate = mutableMapOf<Pair<String?, String?>, MatchInfo>()
+
         leaguesConfig.forEach { leagueConfig ->
-            val matches = getPastMatches(leagueConfig.leagueId, leagueConfig.season, formattedTwoDaysAgo, formattedCurrentDate)
+            val matches = getPastMatches(
+                leagueConfig.leagueId,
+                leagueConfig.season,
+                formattedTwoDaysAgo,
+                formattedCurrentDate
+            )
             matches.forEach { match ->
                 val fixtureId = match.fixture.id.toString()
 
@@ -256,21 +263,27 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                     // Update the actual outcome and actual score in the database
                     val actualScore = "$homeGoals:$awayGoals"
-//                    val actualOutcome = winner
 
                     val updatedMatchInfo = existingMatchInfo.copy(
                         actualOutcome = winner,
                         actualScore = actualScore
                     )
 
-                    // Update match result in database
                     DatabaseService.updateMatchResult(updatedMatchInfo)
 
-                    // Update messages in the channels if necessary
-                    footballBot.updateMatchMessages(updatedMatchInfo)
-                    delay(10000)
+                    val key = updatedMatchInfo.telegramMessageId to updatedMatchInfo.strategyTelegramMessageId
+                    if (key.first != null || key.second != null) {
+                        messagesToUpdate.putIfAbsent(key, updatedMatchInfo)
+                    }
+
+                    delay(1000)
                 }
             }
+        }
+
+        for ((_, info) in messagesToUpdate) {
+            footballBot.updateMatchMessages(info)
+            delay(10000)
         }
 
         // Delete matches older than one day with no actual result

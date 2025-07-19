@@ -619,6 +619,84 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         """.trimIndent()
     }
 
+    private fun formatMatchesBatch(matches: List<MatchInfo>, formatter: (MatchInfo) -> String): String {
+        if (matches.isEmpty()) return ""
+        val matchType = combineLeagueName(matches.first())
+        val flag = getCountryFlag(matches.first().matchType)
+        val header = "$matchType$flag"
+        val body = matches.sortedBy { it.datetime }.joinToString("\n\n") { formatter(it) }
+        return "$header\n\n$body"
+    }
+
+    private fun buildMatchMessages(
+        matches: List<MatchInfo>,
+        formatter: (MatchInfo) -> String,
+        limit: Int = 4000
+    ): List<Pair<String, List<MatchInfo>>> {
+        if (matches.isEmpty()) return emptyList()
+
+        val sorted = matches.sortedBy { it.datetime }
+        val header = run {
+            val matchType = combineLeagueName(sorted.first())
+            val flag = getCountryFlag(sorted.first().matchType)
+            "$matchType$flag"
+        }
+
+        val result = mutableListOf<Pair<String, List<MatchInfo>>>()
+        var builder = StringBuilder(header)
+        var current = mutableListOf<MatchInfo>()
+
+        for (match in sorted) {
+            val formatted = formatter(match)
+            val potentialLength = builder.length + 2 + formatted.length
+
+            if (potentialLength > limit && current.isNotEmpty()) {
+                result.add(builder.toString() to current.toList())
+                builder = StringBuilder(header)
+                current = mutableListOf()
+            }
+
+            builder.append("\n\n")
+            builder.append(formatted)
+            current.add(match)
+        }
+
+        if (current.isNotEmpty()) {
+            result.add(builder.toString() to current.toList())
+        }
+
+        return result
+    }
+
+    private fun formatMatchesBatchForUpdate(matches: List<MatchInfo>): String {
+        return formatMatchesBatch(matches) { match ->
+            when {
+                match.actualOutcome != null -> formatMatchInfoWithResult(match)
+                match.elapsed != null -> formatLiveMatch(match)
+                else -> formatMatchInfo(match)
+            }
+        }
+    }
+
+    private fun formatPremiumMatchesBatch(matches: List<MatchInfo>, formatter: (MatchInfo) -> String): String {
+        if (matches.isEmpty()) return ""
+        val matchType = combineLeagueName(matches.first())
+        val flag = getCountryFlag(matches.first().matchType)
+        val header = "$matchType$flag"
+        val body = matches.sortedBy { it.datetime }.joinToString("\n\n") { formatter(it) }
+        return "$header\n\n$body"
+    }
+
+    private fun formatPremiumMatchesBatchForUpdate(matches: List<MatchInfo>): String {
+        return formatPremiumMatchesBatch(matches) { match ->
+            when {
+                match.actualOutcome != null -> formatPremiumMatchInfoWithResult(match)
+                match.elapsed != null -> formatLivePremiumMatch(match)
+                else -> formatPremiumMatchInfo(match)
+            }
+        }
+    }
+
     private fun processMessage(messageText: String): String {
         return "This is a response to: $messageText"
     }
@@ -856,57 +934,65 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val matches = getMatchesWithoutMessageIdForNext8Hours()
 
         if (matches.isNotEmpty()) {
-            // Process each match
-            for (match in matches) {
-                // Update odds if necessary
-                val teamsForOdds = match.teams.split(" vs. ")
-                if (teamsForOdds.size == 2) {
-                    val homeTeam = teamsForOdds[0].trim()
-                    val awayTeam = teamsForOdds[1].trim()
-                    val oddsInfo = footballService.getOddsForFixture(
-                        match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam
-                    )
-                    if (oddsInfo != null) {
-                        match.odds = oddsInfo.odds.toString()
-                        match.bookmakerName = oddsInfo.bookmakerName
-                        match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
-                        match.drawOdds = oddsInfo.drawOdds?.toString()
-                        match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
+            val matchesByLeague = matches.groupBy { it.matchType }
+            for ((league, leagueMatches) in matchesByLeague) {
+                val leagueBatch = DatabaseService.getLeagueMatchesWithoutMessageIdForNext20Hours(league)
+                if (leagueBatch.isEmpty()) continue
 
-                        DatabaseService.updateMatchOdds(match)
-                    }
-                }
+                for (match in leagueBatch) {
+                    val teamsForOdds = match.teams.split(" vs. ")
+                    if (teamsForOdds.size == 2) {
+                        val homeTeam = teamsForOdds[0].trim()
+                        val awayTeam = teamsForOdds[1].trim()
+                        val oddsInfo = footballService.getOddsForFixture(
+                            match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam
+                        )
+                        if (oddsInfo != null) {
+                            match.odds = oddsInfo.odds.toString()
+                            match.bookmakerName = oddsInfo.bookmakerName
+                            match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
+                            match.drawOdds = oddsInfo.drawOdds?.toString()
+                            match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
 
-                // Send match to main channel if not sent yet
-                match.telegramMessageId ?: run {
-                    val messageText = formatMatchInfo(match)
-                    val newMessageId = sendMessageAndGetId(channelId, messageText)
-                    if (newMessageId != null) {
-                        val updatedMatchInfo = match.copy(telegramMessageId = newMessageId.toString())
-                        DatabaseService.updateMatchMessageId(updatedMatchInfo)
-                    }
-                    newMessageId
-                }
-
-                for (config in outcomeStrategyConfigs) {
-
-                    // Check if match fits the strategy
-                    if (isMatchFitsStrategy(match, config)) {
-                        // Check if the match has already been sent to the premium channel
-                        match.strategyTelegramMessageId ?: run {
-                            // Send to premium channel
-                            val strategyMessageText = formatPremiumMatchInfo(match)
-                            val newStrategyMessageId = sendMessageAndGetId(strategyChannelId, strategyMessageText)
-                            if (newStrategyMessageId != null) {
-                                val updatedMatchInfo =
-                                    match.copy(strategyTelegramMessageId = newStrategyMessageId.toString())
-                                DatabaseService.updateMatchStrategyMessageId(updatedMatchInfo)
-                            }
-                            newStrategyMessageId
+                            DatabaseService.updateMatchOdds(match)
                         }
                     }
                 }
-                // Delay between messages to avoid API rate limits
+
+                val leagueMessages = buildMatchMessages(
+                    leagueBatch,
+                    formatter = { formatMatchInfo(it) }
+                )
+                for ((text, batch) in leagueMessages) {
+                    val msgId = sendMessageAndGetId(channelId, text)
+                    if (msgId != null) {
+                        batch.forEach { match ->
+                            val updated = match.copy(telegramMessageId = msgId.toString())
+                            DatabaseService.updateMatchMessageId(updated)
+                        }
+                    }
+                }
+
+                val premiumMatches = leagueBatch.filter { match ->
+                    outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
+                }
+
+                if (premiumMatches.isNotEmpty()) {
+                    val strategyMessages = buildMatchMessages(
+                        premiumMatches,
+                        formatter = { formatPremiumMatchInfo(it) }
+                    )
+                    for ((text, batch) in strategyMessages) {
+                        val msgId = sendMessageAndGetId(strategyChannelId, text)
+                        if (msgId != null) {
+                            batch.forEach { match ->
+                                val updated = match.copy(strategyTelegramMessageId = msgId.toString())
+                                DatabaseService.updateMatchStrategyMessageId(updated)
+                            }
+                        }
+                    }
+                }
+
                 delay(10000)
             }
         }
@@ -914,40 +1000,44 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     suspend fun updateLiveMatches() {
         val matchesToUpdate = DatabaseService.getOngoingMatches()
+        val updatedByMessageId = mutableMapOf<String, MutableList<MatchInfo>>()
+        val updatedByStrategyId = mutableMapOf<String, MutableList<MatchInfo>>()
+
         for (match in matchesToUpdate) {
             val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null) {
-                // Обновляем базу данных с новыми actualScore и actualOutcome
                 DatabaseService.updateMatchResult(updatedMatchInfo)
-                // Выбираем форматирование в зависимости от статуса матча
-                val messageText = if (updatedMatchInfo.actualOutcome != null) {
-                    // Матч завершён, используем финальное форматирование
-                    formatMatchInfoWithResult(updatedMatchInfo)
-                } else {
-                    // Матч ещё идёт, используем форматирование для текущих матчей
-                    formatLiveMatch(updatedMatchInfo)
-                }
-                // Обновляем сообщение в основном канале
-                val messageId = updatedMatchInfo.telegramMessageId
-                if (messageId != null) {
-                    updateMessage(channelId, messageId, messageText)
+
+                updatedMatchInfo.telegramMessageId?.let { id ->
+                    updatedByMessageId.getOrPut(id) { mutableListOf() }.add(updatedMatchInfo)
                 }
 
-                // Обновляем сообщение в канале стратегии
-                val strategyMessageId = updatedMatchInfo.strategyTelegramMessageId
-                if (strategyMessageId != null) {
-                    // Выбираем форматирование в зависимости от статуса матча
-                    val strategyMessageText = if (updatedMatchInfo.actualOutcome != null) {
-                        // Матч завершён, используем финальное форматирование
-                        formatPremiumMatchInfoWithResult(updatedMatchInfo)
-                    } else {
-                        // Матч ещё идёт, используем форматирование для текущих матчей
-                        formatLivePremiumMatch(updatedMatchInfo)
-                    }
-                    updateMessage(strategyChannelId, strategyMessageId, strategyMessageText)
+                updatedMatchInfo.strategyTelegramMessageId?.let { id ->
+                    updatedByStrategyId.getOrPut(id) { mutableListOf() }.add(updatedMatchInfo)
                 }
             }
-            // Добавьте задержку, чтобы не превышать лимиты API
+            delay(1000)
+        }
+
+        for ((messageId, list) in updatedByMessageId) {
+            val league = list.first().matchType
+            val matches = DatabaseService.getMatchesByLeagueAndTelegramMessageId(league, messageId)
+                .map { dbMatch ->
+                    list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
+                }
+            val messageText = formatMatchesBatchForUpdate(matches)
+            updateMessage(channelId, messageId, messageText)
+            delay(10000)
+        }
+
+        for ((messageId, list) in updatedByStrategyId) {
+            val league = list.first().matchType
+            val matches = DatabaseService.getMatchesByLeagueAndStrategyMessageId(league, messageId)
+                .map { dbMatch ->
+                    list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
+                }
+            val messageText = formatPremiumMatchesBatchForUpdate(matches)
+            updateMessage(strategyChannelId, messageId, messageText)
             delay(10000)
         }
     }
@@ -1212,12 +1302,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     fun updateMatchMessages(matchInfo: MatchInfo) {
         // Update message in the main channel
         if (matchInfo.telegramMessageId != null) {
-            val messageText = formatMatchInfoWithResult(matchInfo)
+            val matches = DatabaseService.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
+            val messageText = formatMatchesBatchForUpdate(matches)
             updateMessage(channelId, matchInfo.telegramMessageId!!, messageText)
         }
         // Update message in the strategy channel
         if (matchInfo.strategyTelegramMessageId != null) {
-            val strategyMessageText = formatPremiumMatchInfoWithResult(matchInfo)
+            val matches = DatabaseService.getMatchesByLeagueAndStrategyMessageId(matchInfo.matchType, matchInfo.strategyTelegramMessageId!!)
+            val strategyMessageText = formatPremiumMatchesBatchForUpdate(matches)
             updateMessage(strategyChannelId, matchInfo.strategyTelegramMessageId!!, strategyMessageText)
         }
     }
