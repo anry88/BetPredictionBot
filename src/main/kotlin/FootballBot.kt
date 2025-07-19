@@ -959,7 +959,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     }
                 }
 
-                val leagueMessages = buildMatchMessages(leagueBatch) { formatMatchInfo(it) }
+                val leagueMessages = buildMatchMessages(
+                    leagueBatch,
+                    formatter = { formatMatchInfo(it) }
+                )
                 for ((text, batch) in leagueMessages) {
                     val msgId = sendMessageAndGetId(channelId, text)
                     if (msgId != null) {
@@ -975,7 +978,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 if (premiumMatches.isNotEmpty()) {
-                    val strategyMessages = buildMatchMessages(premiumMatches) { formatPremiumMatchInfo(it) }
+                    val strategyMessages = buildMatchMessages(
+                        premiumMatches,
+                        formatter = { formatPremiumMatchInfo(it) }
+                    )
                     for ((text, batch) in strategyMessages) {
                         val msgId = sendMessageAndGetId(strategyChannelId, text)
                         if (msgId != null) {
