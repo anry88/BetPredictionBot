@@ -908,7 +908,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun formatLeagueStats(leagueStatsList: List<LeagueStats>): String {
         if (leagueStatsList.isEmpty()) return ""
 
-        val builder = StringBuilder("\n")
+        val builder = StringBuilder("\n\n")
         leagueStatsList.sortedBy { it.leagueName }.forEachIndexed { index, stats ->
             val flag = getCountryFlag(stats.leagueName)
             builder.append("$flag **${stats.leagueName}**\n")
@@ -932,7 +932,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - ROI: ${"%.2f".format(stats.roi)}%
         """.trimIndent() + leagueText + """
 
-        ✨ **Selected matches for Premium channel:**
+        ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1086,7 +1086,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - ROI: ${"%.2f".format(stats.roi)}%
         """.trimIndent() + leagueText + """
 
-        ✨ **Selected matches for Premium channel:**
+        ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1120,7 +1120,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - ROI: ${"%.2f".format(stats.roi)}%
         """.trimIndent() + leagueText + """
 
-        ✨ **Selected matches for Premium channel:**
+        ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1154,7 +1154,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         - ROI: ${"%.2f".format(stats.roi)}%
         """.trimIndent() + leagueText + """
 
-        ✨ **Selected matches for Premium channel:**
+        ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1191,7 +1191,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     - ROI: ${"%.2f".format(stats.roi)}%
                     """.trimIndent() + leagueText + """
 
-                    ✨ **Selected matches for Premium channel:**
+                    ✨ **Selected matches for the Premium channel:**
                     - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
                     - ROI: ${"%.2f".format(stats.strategyRoi)}%
                     """.trimIndent()
