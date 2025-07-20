@@ -622,7 +622,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun buildMatchMessages(
         matches: List<MatchInfo>,
         formatter: (MatchInfo) -> String,
-        limit: Int = 4000
+        limit: Int = 4000,
+        includeTags: Boolean = true
     ): List<Pair<String, List<MatchInfo>>> {
         if (matches.isEmpty()) return emptyList()
 
@@ -633,7 +634,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "$matchType$flag"
         }
         val leagueTag = leagueTags.entries.firstOrNull { combineLeagueName(sorted.first()).contains(it.key, ignoreCase = true) }?.value
-        val footer = listOfNotNull("#Football", leagueTag).joinToString(" ")
+        val footer = if (includeTags) listOfNotNull("#Football", leagueTag).joinToString(" ") else ""
 
         val result = mutableListOf<Pair<String, List<MatchInfo>>>()
         var builder = StringBuilder(header)
@@ -644,7 +645,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val potentialLength = builder.length + 2 + formatted.length
 
             if (potentialLength > limit && current.isNotEmpty()) {
-                builder.append("\n").append(footer)
+                if (includeTags) {
+                    builder.append("\n").append(footer)
+                }
                 result.add(builder.toString() to current.toList())
                 builder = StringBuilder(header)
                 current = mutableListOf()
@@ -656,7 +659,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         if (current.isNotEmpty()) {
-            builder.append("\n").append(footer)
+            if (includeTags) {
+                builder.append("\n").append(footer)
+            }
             result.add(builder.toString() to current.toList())
         }
 
@@ -1003,7 +1008,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 if (premiumMatches.isNotEmpty()) {
                     val strategyMessages = buildMatchMessages(
                         premiumMatches,
-                        formatter = { formatPremiumMatchInfo(it) }
+                        formatter = { formatPremiumMatchInfo(it) },
+                        includeTags = false
                     )
                     for ((text, batch) in strategyMessages) {
                         val msgId = sendMessageAndGetId(strategyChannelId, text)
