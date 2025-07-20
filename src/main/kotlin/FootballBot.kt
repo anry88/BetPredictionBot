@@ -893,8 +893,32 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return stats
     }
 
+    private fun getLeagueStatsForPeriod(days: Int): List<LeagueStats> {
+        val leagues = DatabaseService.getAllLeagues()
+        val result = mutableListOf<LeagueStats>()
+        leagues.forEach { league ->
+            val matches = DatabaseService.getLastMatchesForLeague(league, days)
+            if (matches.isNotEmpty()) {
+                result.add(calculateLeagueStatsForLeague(league, matches))
+            }
+        }
+        return result
+    }
+
+    private fun formatLeagueStats(leagueStatsList: List<LeagueStats>): String {
+        if (leagueStatsList.isEmpty()) return ""
+
+        val builder = StringBuilder()
+        builder.append("\n**By League:**\n")
+        leagueStatsList.sortedBy { it.leagueName }.forEach { stats ->
+            builder.append("- ${stats.leagueName}: ${"%.2f".format(stats.accuracy)}% (${stats.successfulPredictions}/${stats.totalMatches}), ROI: ${"%.2f".format(stats.roi)}%\n")
+        }
+        return builder.toString()
+    }
+
     fun sendPredictionAccuracyMessage() {
         val stats = DatabaseService.getStatisticsForPeriod(days = 1)
+        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(1))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -903,8 +927,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
+        """.trimIndent() + leagueText + """
 
-        **Selected matches for Premium channel:**
+        ✨ **Selected matches for Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1047,6 +1072,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     fun sendWeeklyPredictionAccuracyMessage() {
         val stats = DatabaseService.getStatisticsForPeriod(days = 7)
+        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(7))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -1055,8 +1081,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
+        """.trimIndent() + leagueText + """
 
-        **Selected matches for Premium channel:**
+        ✨ **Selected matches for Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1079,6 +1106,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     fun sendMonthlyPredictionAccuracyMessage() {
         val stats = DatabaseService.getStatisticsForPeriod(getDaysInLastMonth())
+        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(getDaysInLastMonth()))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -1087,8 +1115,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
+        """.trimIndent() + leagueText + """
 
-        **Selected matches for Premium channel:**
+        ✨ **Selected matches for Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1111,6 +1140,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     fun sendYearlyPredictionAccuracyMessage() {
         val stats = DatabaseService.getStatisticsForPeriod(days = 365)
+        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(365))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -1119,8 +1149,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
+        """.trimIndent() + leagueText + """
 
-        **Selected matches for Premium channel:**
+        ✨ **Selected matches for Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
         - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
@@ -1147,6 +1178,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val days = parts[1].toIntOrNull()
             if (days != null && days > 0) {
                 val stats = DatabaseService.getStatisticsForPeriod(days)
+                val leagueText = formatLeagueStats(getLeagueStatsForPeriod(days))
                 val resultMessageText = if (stats.totalMatches > 0) {
                     """
                     📊 **Prediction Statistics for Last $days Days**
@@ -1154,8 +1186,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     **Overall:**
                     - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
                     - ROI: ${"%.2f".format(stats.roi)}%
+                    """.trimIndent() + leagueText + """
 
-                    **Selected matches for Premium channel:**
+                    ✨ **Selected matches for Premium channel:**
                     - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
                     - ROI: ${"%.2f".format(stats.strategyRoi)}%
                     """.trimIndent()
