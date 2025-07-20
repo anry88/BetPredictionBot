@@ -908,10 +908,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun formatLeagueStats(leagueStatsList: List<LeagueStats>): String {
         if (leagueStatsList.isEmpty()) return ""
 
-        val builder = StringBuilder()
-        builder.append("\n**By League:**\n")
-        leagueStatsList.sortedBy { it.leagueName }.forEach { stats ->
-            builder.append("- ${stats.leagueName}: ${"%.2f".format(stats.accuracy)}% (${stats.successfulPredictions}/${stats.totalMatches}), ROI: ${"%.2f".format(stats.roi)}%\n")
+        val builder = StringBuilder("\n")
+        leagueStatsList.sortedBy { it.leagueName }.forEachIndexed { index, stats ->
+            val flag = getCountryFlag(stats.leagueName)
+            builder.append("$flag **${stats.leagueName}**\n")
+            builder.append("- Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.successfulPredictions}/${stats.totalMatches})\n")
+            builder.append("- ROI: ${"%.2f".format(stats.roi)}%\n")
+            if (index != leagueStatsList.lastIndex) builder.append("\n")
         }
         return builder.toString()
     }
