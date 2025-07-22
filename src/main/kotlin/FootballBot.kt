@@ -28,8 +28,11 @@ import service.DatabaseService.getMatchesWithoutMessageIdForNext8Hours
 import service.HttpAPIFootballService
 import service.StrategyService
 import service.initDatabase
+import service.HttpLocalModelService
+import service.ChatGPTService
 import java.io.File
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -51,6 +54,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val strategyChannelId: String =
         Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
     private val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
+
+    private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
     private val leagueTags: Map<String, String>
     private val teamTags: Map<String, String>
@@ -964,8 +969,67 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (matches.isNotEmpty()) {
             val matchesByLeague = matches.groupBy { it.matchType }
             for ((league, leagueMatches) in matchesByLeague) {
-                val leagueBatch = DatabaseService.getLeagueMatchesWithoutMessageIdForNext20Hours(league)
+                val leagueBatch = DatabaseService.getLeagueMatchesWithoutMessageIdForNext20Hours(league).toMutableList()
                 if (leagueBatch.isEmpty()) continue
+
+                val iterator = leagueBatch.iterator()
+                while (iterator.hasNext()) {
+                    val match = iterator.next()
+                    val info = footballService.getFixtureInfo(match.fixtureId)
+                    if (info != null) {
+                        when (info.statusShort) {
+                            "CANC" -> {
+                                DatabaseService.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                                iterator.remove()
+                                continue
+                            }
+                            "PST" -> {
+                                val oldDt = LocalDateTime.parse(match.datetime, dateTimeFormatter)
+                                val newDt = LocalDateTime.parse(info.datetime, dateTimeFormatter)
+                                val diff = kotlin.math.abs(java.time.Duration.between(oldDt, newDt).toDays())
+                                if (diff <= 2) {
+                                    match.datetime = info.datetime
+                                    DatabaseService.updateMatchDatetime(match)
+                                } else {
+                                    DatabaseService.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                                    iterator.remove()
+                                    continue
+                                }
+                            }
+                        }
+
+                        val teamsStored = match.teams.split(" vs. ")
+                        if (teamsStored.size == 2) {
+                            val storedHome = teamsStored[0].trim()
+                            val storedAway = teamsStored[1].trim()
+                            if (storedHome != info.homeTeam || storedAway != info.awayTeam) {
+                                match.teams = "${info.homeTeam} vs. ${info.awayTeam}"
+                                var prediction: MatchInfo? = HttpLocalModelService.getModelPrediction(info.homeTeam, info.awayTeam, match)
+                                var attempts = 0
+                                while (prediction == null && attempts < 10) {
+                                    attempts++
+                                    try {
+                                        prediction = ChatGPTService.getMatchPrediction(match)
+                                    } catch (e: Exception) {
+                                        logger.error("ChatGPT error on attempt #$attempts: ${'$'}{e.message}")
+                                    }
+                                }
+                                if (prediction != null) {
+                                    match.predictedOutcome = prediction.predictedOutcome
+                                    match.predictedScore = prediction.predictedScore
+                                    match.odds = prediction.odds
+                                    match.modelHomeWinProb = prediction.modelHomeWinProb
+                                    match.modelDrawProb = prediction.modelDrawProb
+                                    match.modelAwayWinProb = prediction.modelAwayWinProb
+                                    match.modelExpectedHomeGoals = prediction.modelExpectedHomeGoals
+                                    match.modelExpectedAwayGoals = prediction.modelExpectedAwayGoals
+                                    DatabaseService.updateMatchPredictions(match)
+                                }
+                                DatabaseService.updateMatchTeams(match)
+                            }
+                        }
+                    }
+                }
 
                 for (match in leagueBatch) {
                     val teamsForOdds = match.teams.split(" vs. ")
