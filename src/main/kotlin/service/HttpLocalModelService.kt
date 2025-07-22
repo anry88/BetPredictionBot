@@ -69,15 +69,48 @@ object HttpLocalModelService {
                 matchInfo.modelExpectedHomeGoals = data.expectedHomeGoals
                 matchInfo.modelExpectedAwayGoals = data.expectedAwayGoals
 
-                // Округляем ожидаемые голы:
-                val roundedHomeGoals = kotlin.math.round(data.expectedHomeGoals).toInt()
-                val roundedAwayGoals = kotlin.math.round(data.expectedAwayGoals).toInt()
+                // Округляем ожидаемые голы
+                var roundedHomeGoals = kotlin.math.round(data.expectedHomeGoals).toInt()
+                var roundedAwayGoals = kotlin.math.round(data.expectedAwayGoals).toInt()
 
-                val outcome = when {
-                    roundedHomeGoals > roundedAwayGoals -> homeTeam
-                    roundedHomeGoals < roundedAwayGoals -> awayTeam
-                    else -> "Draw"
+                val homeProb = data.homeWin
+                val drawProb = data.draw
+                val awayProb = data.awayWin
+
+                val homeGoalsDiff = data.expectedHomeGoals - data.expectedAwayGoals
+
+                val outcome: String
+
+                if (drawProb > homeProb && drawProb > awayProb) {
+                    // Наибольшая вероятность ничьей
+                    outcome = "Draw"
+                    if (roundedHomeGoals != roundedAwayGoals) {
+                        val maxGoals = maxOf(roundedHomeGoals, roundedAwayGoals)
+                        roundedHomeGoals = maxGoals
+                        roundedAwayGoals = maxGoals
+                    }
+                } else if (homeProb > drawProb && homeProb > awayProb && homeProb > 0.4 && homeGoalsDiff > 0.4) {
+                    // Победа домашней команды
+                    outcome = homeTeam
+                    if (roundedHomeGoals <= roundedAwayGoals) {
+                        if (roundedAwayGoals > 0) roundedAwayGoals -= 1 else roundedHomeGoals += 1
+                    }
+                } else if (awayProb > drawProb && awayProb > homeProb && awayProb > 0.4 && homeGoalsDiff < -0.4) {
+                    // Победа гостевой команды
+                    outcome = awayTeam
+                    if (roundedAwayGoals <= roundedHomeGoals) {
+                        if (roundedHomeGoals > 0) roundedHomeGoals -= 1 else roundedAwayGoals += 1
+                    }
+                } else {
+                    // Все остальные случаи трактуем как ничью
+                    outcome = "Draw"
+                    if (roundedHomeGoals != roundedAwayGoals) {
+                        val maxGoals = maxOf(roundedHomeGoals, roundedAwayGoals)
+                        roundedHomeGoals = maxGoals
+                        roundedAwayGoals = maxGoals
+                    }
                 }
+
                 val score = "$roundedHomeGoals:$roundedAwayGoals"
 
                 matchInfo.predictedOutcome = outcome
