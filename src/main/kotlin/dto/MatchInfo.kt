@@ -2,9 +2,9 @@ package dto
 
 data class MatchInfo(
     val fixtureId: String,
-    val datetime: String,
+    var datetime: String,
     val matchType: String,
-    val teams: String,
+    var teams: String,
     var predictedOutcome: String?,
     var actualOutcome: String?,
     var predictedScore: String?,
