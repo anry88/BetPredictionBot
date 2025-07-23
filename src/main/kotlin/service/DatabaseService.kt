@@ -504,6 +504,16 @@ object DatabaseService {
         }
     }
 
+    fun updateMatchTeams(matchInfo: MatchInfo) {
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+            leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
+                it[teams] = matchInfo.teams
+            }
+            logger.info("Teams updated for match ${matchInfo.fixtureId} in league ${matchInfo.matchType}")
+        }
+    }
+
     fun getUpcomingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val tomorrow = now.plusDays(1)
@@ -1344,7 +1354,7 @@ object DatabaseService {
         val matches = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-            val fromDate = LocalDateTime.now().minusDays(days.toLong()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            val fromDate = LocalDateTime.now(ZoneId.of("UTC+3")).minusDays(days.toLong()).format(dateTimeFormatter)
 
             leagueTable.select { (leagueTable.actualOutcome.isNotNull()) and (leagueTable.datetime greaterEq fromDate) }
                 .orderBy(leagueTable.datetime, SortOrder.DESC)

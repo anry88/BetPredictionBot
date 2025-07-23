@@ -55,6 +55,13 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         isLenient = true
     }
 
+    data class FixtureInfo(
+        val statusShort: String?,
+        val datetime: String,
+        val homeTeam: String,
+        val awayTeam: String
+    )
+
     // Загружаем конфигурацию лиг из файла
     private val leaguesConfig: List<LeagueConfig> = loadLeaguesConfig()
 
@@ -288,12 +295,79 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         // Delete matches older than one day with no actual result
         val matchesToDelete = DatabaseService.getMatchesOlderThanOneDayWithoutResult(oneDayAgo)
+        val messagesMap = mutableSetOf<Pair<String, String>>()
+        val strategyMap = mutableSetOf<Pair<String, String>>()
+
         matchesToDelete.forEach { matchInfo ->
-            // Delete messages from channels if any
-            footballBot.deleteMatchMessages(matchInfo)
-            // Delete match from database
             DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+
+            matchInfo.telegramMessageId?.let { id ->
+                messagesMap.add(matchInfo.matchType to id)
+            }
+            matchInfo.strategyTelegramMessageId?.let { id ->
+                strategyMap.add(matchInfo.matchType to id)
+            }
         }
+
+        for ((league, msgId) in messagesMap) {
+            val remaining = DatabaseService.getMatchesByLeagueAndTelegramMessageId(league, msgId)
+            if (remaining.isEmpty()) {
+                footballBot.deleteMatchMessages(MatchInfo(
+                    fixtureId = "", datetime = "", matchType = league, teams = "", predictedOutcome = null,
+                    actualOutcome = null, predictedScore = null, actualScore = null, odds = null,
+                    bookmakerName = null, homeWinOdds = null, drawOdds = null, awayWinOdds = null,
+                    telegramMessageId = msgId, strategyTelegramMessageId = null, elapsed = null,
+                    modelHomeWinProb = null, modelDrawProb = null, modelAwayWinProb = null,
+                    modelExpectedHomeGoals = null, modelExpectedAwayGoals = null
+                ))
+            } else {
+                footballBot.updateMatchMessages(remaining.first())
+            }
+        }
+
+        for ((league, msgId) in strategyMap) {
+            val remaining = DatabaseService.getMatchesByLeagueAndStrategyMessageId(league, msgId)
+            if (remaining.isEmpty()) {
+                footballBot.deleteMatchMessages(MatchInfo(
+                    fixtureId = "", datetime = "", matchType = league, teams = "", predictedOutcome = null,
+                    actualOutcome = null, predictedScore = null, actualScore = null, odds = null,
+                    bookmakerName = null, homeWinOdds = null, drawOdds = null, awayWinOdds = null,
+                    telegramMessageId = null, strategyTelegramMessageId = msgId, elapsed = null,
+                    modelHomeWinProb = null, modelDrawProb = null, modelAwayWinProb = null,
+                    modelExpectedHomeGoals = null, modelExpectedAwayGoals = null
+                ))
+            } else {
+                footballBot.updateMatchMessages(remaining.first())
+            }
+        }
+    }
+
+    suspend fun getFixtureInfo(fixtureId: String): FixtureInfo? {
+        val response: HttpResponse = client.get(url) {
+            headers {
+                append("X-RapidAPI-Key", apiKey)
+                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
+            }
+            parameter("id", fixtureId)
+        }
+
+        if (response.status == HttpStatusCode.OK) {
+            val result = response.body<ApiFootballResponse>()
+            val match = result.response.firstOrNull() ?: return null
+
+            val isoDateTime = match.fixture.date
+            val parsedDateTime = OffsetDateTime.parse(isoDateTime)
+            val formatted = parsedDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+
+            return FixtureInfo(
+                statusShort = match.fixture.status?.short,
+                datetime = formatted,
+                homeTeam = match.teams.home.name,
+                awayTeam = match.teams.away.name
+            )
+        }
+        logger.error("Failed to fetch fixture info for $fixtureId. HTTP status: ${'$'}{response.status}")
+        return null
     }
 
 
