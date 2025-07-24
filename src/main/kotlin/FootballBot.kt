@@ -464,7 +464,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return """
             ${matchInfo.datetime} UTC
             ${matchInfo.teams}
-            Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
+            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
             $tags
         """.trimIndent()
     }
@@ -487,11 +487,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return """
             ${matchInfo.datetime} UTC
             ${matchInfo.teams}
-            Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
-            Act: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
+            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
+            Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
+            $tags
         """.trimIndent()
     }
-//$tags
+
     private fun formatLiveMatch(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
 
@@ -508,11 +509,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return """
             ${matchInfo.datetime} UTC
             ${matchInfo.teams}
-            Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
-            Cur: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
+            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
+            Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
+            $tags #Live
         """.trimIndent()
     }
-    //$tags #Live
 
     private fun formatPremiumMatchInfo(matchInfo: MatchInfo): String {
 
