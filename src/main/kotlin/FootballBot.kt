@@ -489,10 +489,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             ${matchInfo.teams}
             Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
             Act: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
-            $tags
         """.trimIndent()
     }
-
+//$tags
     private fun formatLiveMatch(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
 
