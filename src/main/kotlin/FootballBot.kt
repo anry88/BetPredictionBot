@@ -464,7 +464,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return """
             ${matchInfo.datetime} UTC
             ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
+            Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
             $tags
         """.trimIndent()
     }
@@ -487,8 +487,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return """
             ${matchInfo.datetime} UTC
             ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
-            Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
+            Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
+            Act: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
             $tags
         """.trimIndent()
     }
@@ -509,11 +509,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return """
             ${matchInfo.datetime} UTC
             ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
-            Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
-            $tags #Live
+            Pred: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
+            Cur: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
         """.trimIndent()
     }
+    //$tags #Live
 
     private fun formatPremiumMatchInfo(matchInfo: MatchInfo): String {
 
@@ -627,7 +627,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun buildMatchMessages(
         matches: List<MatchInfo>,
         formatter: (MatchInfo) -> String,
-        limit: Int = 4000,
+        limit: Int = 3000,
         includeTags: Boolean = true
     ): List<Pair<String, List<MatchInfo>>> {
         if (matches.isEmpty()) return emptyList()
