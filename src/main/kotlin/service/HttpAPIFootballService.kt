@@ -198,6 +198,34 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 } else {
                     DatabaseService.updateMatchDatetime(matchInfo)
                     logger.info("Duplicate match found: $teams at $datetime")
+
+                    val existingMatch = DatabaseService.getMatchInfoByFixtureId(matchInfo.fixtureId)
+                    if (existingMatch != null) {
+                        val matchDateTime = LocalDateTime.parse(existingMatch.datetime, formatterMatchDate)
+                        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+                        val needsOdds = existingMatch.homeWinOdds == null ||
+                                existingMatch.drawOdds == null ||
+                                existingMatch.awayWinOdds == null
+
+                        if (matchDateTime.isBefore(now.plusDays(1)) && needsOdds) {
+                            val oddsInfo = getOddsForFixture(
+                                existingMatch.fixtureId,
+                                existingMatch.predictedOutcome ?: "",
+                                match.teams.home.name,
+                                match.teams.away.name
+                            )
+                            if (oddsInfo != null) {
+                                val updatedMatch = existingMatch.copy(
+                                    odds = oddsInfo.odds.toString(),
+                                    bookmakerName = oddsInfo.bookmakerName,
+                                    homeWinOdds = oddsInfo.homeWinOdds?.toString(),
+                                    drawOdds = oddsInfo.drawOdds?.toString(),
+                                    awayWinOdds = oddsInfo.awayWinOdds?.toString()
+                                )
+                                DatabaseService.updateMatchOdds(updatedMatch)
+                            }
+                        }
+                    }
                 }
                 if (match.fixture.status?.short == "CANC"){
                     DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
