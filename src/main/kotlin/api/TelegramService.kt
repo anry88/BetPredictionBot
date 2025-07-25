@@ -1,4 +1,4 @@
-package `interface`
+package api
 
 interface TelegramService {
     fun sendMessageAndGetId(chatId: String, text: String): Int?

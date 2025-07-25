@@ -1,4 +1,4 @@
-package `interface`
+package api
 
 import retrofit2.http.Body
 import retrofit2.http.Headers

@@ -1,8 +1,8 @@
 package service
 
-import `interface`.ChatGPTRequest
+import api.ChatGPTRequest
 import dto.MatchInfo
-import `interface`.Message
+import api.Message
 import org.slf4j.LoggerFactory
 
 object ChatGPTService {
