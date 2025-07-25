@@ -345,7 +345,7 @@ fun main() {
         .build()
 
     // Schedule the jobs
-    scheduler.scheduleJob(job, setOf(dailyTrigger, immediateTrigger).toMutableSet(), true)
+    scheduler.scheduleJob(job, dailyTrigger)
     scheduler.scheduleJob(updateMatchesJob, updateMatchesTrigger)
     scheduler.scheduleJob(updatePastMatchesJob, updatePastMatchesTrigger)
 //    scheduler.scheduleJob(updatePastMatchesJob, setOf(updatePastMatchesTrigger, immediateTrigger).toMutableSet(), true)
