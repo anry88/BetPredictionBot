@@ -160,7 +160,7 @@ fun addColumnIfNotExists(tableName: String, columnName: String, columnDefinition
                 rs.close()
             }
         } finally {
-            stmt.close()
+            stmt.closeIfPossible()
         }
     }
     if (!cols.contains(columnName)) {

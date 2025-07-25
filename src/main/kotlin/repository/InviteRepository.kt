@@ -5,6 +5,9 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import repository.InviteLink
+import repository.InviteSubscriber
+import repository.JoinRequest
 
 object InviteLinks {
     const val TABLE = "invite_links"
