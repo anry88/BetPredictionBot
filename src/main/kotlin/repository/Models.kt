@@ -1,0 +1,56 @@
+package repository
+
+data class Statistics(
+    val totalMatches: Int,
+    val correctPredictions: Int,
+    val accuracy: Double,
+    val roi: Double,
+    val strategyTotalMatches: Int,
+    val strategyCorrectPredictions: Int,
+    val strategyAccuracy: Double,
+    val strategyRoi: Double,
+    val homeWinPredictions: Int,
+    val homeWinSuccesses: Int,
+    val homeWinAccuracy: Double,
+    val homeWinRoi: Double,
+    val drawPredictions: Int,
+    val drawSuccesses: Int,
+    val drawAccuracy: Double,
+    val drawRoi: Double,
+    val awayWinPredictions: Int,
+    val awayWinSuccesses: Int,
+    val awayWinAccuracy: Double,
+    val awayWinRoi: Double
+)
+
+data class InviteLink(
+    val id: Int,
+    val inviteLink: String,
+    val maxSubscribers: Int,
+    val createdAt: Long,
+    val expiresAt: Long,
+    val isActive: Boolean
+)
+
+data class InviteSubscriber(
+    val id: Int,
+    val inviteLink: String,
+    val userId: String,
+    val username: String?,
+    val firstName: String?,
+    val lastName: String?,
+    val joinedAt: Long
+)
+
+data class JoinRequest(
+    val id: Long,
+    val inviteLinkId: Long,
+    val userId: String,
+    val username: String?,
+    val firstName: String?,
+    val lastName: String?,
+    val status: String,
+    val createdAt: Long,
+    val maxSubscribers: Int,
+    val expiresAt: Long
+)
