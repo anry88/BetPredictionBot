@@ -57,7 +57,7 @@ class InviteHandler(private val bot: FootballBot,
 
             val inviteLink = bot.execute(createChatInviteLink)
 
-            val inviteLinkId = DatabaseService.createInviteLink(inviteLink.inviteLink, maxSubscribers, days)
+            val inviteLinkId = DatabaseService.invites.createInviteLink(inviteLink.inviteLink, maxSubscribers, days)
             if (inviteLinkId > 0) {
                 val response = """
                     <b>New premium channel invite link created</b>
@@ -90,18 +90,18 @@ class InviteHandler(private val bot: FootballBot,
                 val inviteLink = chatJoinRequest.inviteLink?.inviteLink
 
                 if (inviteLink != null) {
-                    val inviteLinkId = DatabaseService.getInviteLinkId(inviteLink)
+                    val inviteLinkId = DatabaseService.invites.getInviteLinkId(inviteLink)
 
                     if (inviteLinkId != null) {
-                        val subscriberCount = DatabaseService.getSubscriberCount(inviteLinkId)
-                        val maxSubscribers = DatabaseService.getMaxSubscribersForLink(inviteLinkId)
+                        val subscriberCount = DatabaseService.invites.getSubscriberCount(inviteLinkId)
+                        val maxSubscribers = DatabaseService.invites.getMaxSubscribersForLink(inviteLinkId)
 
                         if (subscriberCount >= maxSubscribers) {
                             bot.sendMessage(chatJoinRequest.user.id.toString(), "Sorry, the subscriber limit for this link has been reached.")
                             return
                         }
 
-                        val success = DatabaseService.addJoinRequest(
+                        val success = DatabaseService.invites.addJoinRequest(
                             inviteLinkId,
                             chatJoinRequest.user.id.toString(),
                             chatJoinRequest.user.userName,
@@ -110,7 +110,7 @@ class InviteHandler(private val bot: FootballBot,
                         )
 
                         if (success) {
-                            val approved = DatabaseService.approveJoinRequest(inviteLinkId, chatJoinRequest.user.id.toString())
+                            val approved = DatabaseService.invites.approveJoinRequest(inviteLinkId, chatJoinRequest.user.id.toString())
 
                             if (approved) {
                                 val approveChatJoinRequest = ApproveChatJoinRequest()
@@ -146,7 +146,7 @@ class InviteHandler(private val bot: FootballBot,
 
     fun cleanupInviteLinks(channelId: String) {
         try {
-            val expiredSubscribers = DatabaseService.cleanupExpiredSubscribers()
+            val expiredSubscribers = DatabaseService.invites.cleanupExpiredSubscribers()
 
             for (subscriber in expiredSubscribers) {
                 try {
@@ -169,9 +169,9 @@ class InviteHandler(private val bot: FootballBot,
                 }
             }
 
-            val expiredLinks = DatabaseService.getExpiredInviteLinks()
+            val expiredLinks = DatabaseService.invites.getExpiredInviteLinks()
             for (link in expiredLinks) {
-                DatabaseService.deactivateInviteLink(link.id)
+                DatabaseService.invites.deactivateInviteLink(link.id)
                 logger.info("Deactivated expired invite link ID: ${link.id}")
             }
         } catch (e: Exception) {
@@ -193,7 +193,7 @@ class InviteHandler(private val bot: FootballBot,
             unbanChatMember.userId = userId
             bot.execute(unbanChatMember)
 
-            DatabaseService.removeUserFromChannel(userId, channelId)
+            DatabaseService.invites.removeUserFromChannel(userId, channelId)
 
             logger.info("Successfully removed user $userId from channel $channelId")
         } catch (e: Exception) {

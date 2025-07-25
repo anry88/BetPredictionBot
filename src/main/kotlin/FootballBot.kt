@@ -24,7 +24,6 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import service.DatabaseService
-import service.DatabaseService.getMatchesWithoutMessageIdForNext8Hours
 import service.HttpAPIFootballService
 import service.StrategyService
 import service.initDatabase
@@ -138,7 +137,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val username = update.message.from.userName
 
             // Записываем активность пользователя
-            DatabaseService.addUserActivity(userId, firstName, lastName, username)
+            DatabaseService.users.addUserActivity(userId, firstName, lastName, username)
 
             when {
                 chatId == adminChatId && messageText == "/getdatabase" -> {
@@ -321,7 +320,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
 
     private fun handleUpcomingMatchesCommand(chatId: String) {
-        val upcomingMatches = DatabaseService.getUpcomingMatches()
+        val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
             val matchesByLeague = upcomingMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
@@ -334,7 +333,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     private fun handleGetJsonlCommand(chatId: String) {
-        val matches = DatabaseService.getAllMatchesForLastTwoYears()
+        val matches = DatabaseService.matches.getAllMatchesForLastTwoYears()
         if (matches.isNotEmpty()) {
             val jsonlFile = createJsonlFile(matches)
             if (jsonlFile != null && jsonlFile.exists()) {
@@ -678,12 +677,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     fun updateLeaguePredictability() {
         // Получаем список всех лиг
-        val allLeagues = DatabaseService.getAllLeagues()
+        val allLeagues = DatabaseService.matches.getAllLeagues()
 
         val leagueStatsMap = mutableMapOf<String, LeagueStats>()
 
         allLeagues.forEach { leagueName ->
-            val matches = DatabaseService.getLastMatchesForLeague(leagueName, 365)
+            val matches = DatabaseService.matches.getLastMatchesForLeague(leagueName, 365)
 
             // Если матчей недостаточно, можно пропустить или всё равно посчитать статистику
             if (matches.isNotEmpty()) {
@@ -696,7 +695,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         // Сохраняем обновленные данные в базе данных
-        DatabaseService.updateLeaguePredictability(leagueStatsMap)
+        DatabaseService.matches.updateLeaguePredictability(leagueStatsMap)
 
         logger.info("League predictability updated successfully")
     }
@@ -845,10 +844,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     private fun getLeagueStatsForPeriod(days: Int): List<LeagueStats> {
-        val leagues = DatabaseService.getAllLeagues()
+        val leagues = DatabaseService.matches.getAllLeagues()
         val result = mutableListOf<LeagueStats>()
         leagues.forEach { league ->
-            val matches = DatabaseService.getLastMatchesForLeague(league, days)
+            val matches = DatabaseService.matches.getLastMatchesForLeague(league, days)
             if (matches.isNotEmpty()) {
                 result.add(calculateLeagueStatsForLeague(league, matches))
             }
@@ -871,7 +870,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendPredictionAccuracyMessage() {
-        val stats = DatabaseService.getStatisticsForPeriod(days = 1)
+        val stats = DatabaseService.matches.getStatisticsForPeriod(days = 1)
         val leagueText = formatLeagueStats(getLeagueStatsForPeriod(1))
 
         val messageText = if (stats.totalMatches > 0) {
@@ -905,12 +904,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
-        val matches = getMatchesWithoutMessageIdForNext8Hours()
+        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext8Hours()
 
         if (matches.isNotEmpty()) {
             val matchesByLeague = matches.groupBy { it.matchType }
             for ((league, leagueMatches) in matchesByLeague) {
-                val leagueBatch = DatabaseService.getLeagueMatchesWithoutMessageIdForNext20Hours(league).toMutableList()
+                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext20Hours(league).toMutableList()
                 if (leagueBatch.isEmpty()) continue
 
                 val iterator = leagueBatch.iterator()
@@ -920,7 +919,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     if (info != null) {
                         when (info.statusShort) {
                             "CANC" -> {
-                                DatabaseService.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
                                 iterator.remove()
                                 continue
                             }
@@ -930,9 +929,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                                 val diff = kotlin.math.abs(java.time.Duration.between(oldDt, newDt).toDays())
                                 if (diff <= 2) {
                                     match.datetime = info.datetime
-                                    DatabaseService.updateMatchDatetime(match)
+                                    DatabaseService.matches.updateMatchDatetime(match)
                                 } else {
-                                    DatabaseService.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                                    DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
                                     iterator.remove()
                                     continue
                                 }
@@ -964,9 +963,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                                     match.modelAwayWinProb = prediction.modelAwayWinProb
                                     match.modelExpectedHomeGoals = prediction.modelExpectedHomeGoals
                                     match.modelExpectedAwayGoals = prediction.modelExpectedAwayGoals
-                                    DatabaseService.updateMatchPredictions(match)
+                                    DatabaseService.matches.updateMatchPredictions(match)
                                 }
-                                DatabaseService.updateMatchTeams(match)
+                                DatabaseService.matches.updateMatchTeams(match)
                             }
                         }
                     }
@@ -983,7 +982,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     if (msgId != null) {
                         batch.forEach { match ->
                             val updated = match.copy(telegramMessageId = msgId.toString())
-                            DatabaseService.updateMatchMessageId(updated)
+                            DatabaseService.matches.updateMatchMessageId(updated)
                         }
                     }
                 }
@@ -1003,7 +1002,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                         if (msgId != null) {
                             batch.forEach { match ->
                                 val updated = match.copy(strategyTelegramMessageId = msgId.toString())
-                                DatabaseService.updateMatchStrategyMessageId(updated)
+                                DatabaseService.matches.updateMatchStrategyMessageId(updated)
                             }
                         }
                     }
@@ -1015,14 +1014,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     suspend fun updateLiveMatches() {
-        val matchesToUpdate = DatabaseService.getOngoingMatches()
+        val matchesToUpdate = DatabaseService.matches.getOngoingMatches()
         val updatedByMessageId = mutableMapOf<String, MutableList<MatchInfo>>()
         val updatedByStrategyId = mutableMapOf<String, MutableList<MatchInfo>>()
 
         for (match in matchesToUpdate) {
             val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null) {
-                DatabaseService.updateMatchResult(updatedMatchInfo)
+                DatabaseService.matches.updateMatchResult(updatedMatchInfo)
 
                 updatedMatchInfo.telegramMessageId?.let { id ->
                     updatedByMessageId.getOrPut(id) { mutableListOf() }.add(updatedMatchInfo)
@@ -1037,7 +1036,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         for ((messageId, list) in updatedByMessageId) {
             val league = list.first().matchType
-            val matches = DatabaseService.getMatchesByLeagueAndTelegramMessageId(league, messageId)
+            val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(league, messageId)
                 .map { dbMatch ->
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
@@ -1048,7 +1047,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         for ((messageId, list) in updatedByStrategyId) {
             val league = list.first().matchType
-            val matches = DatabaseService.getMatchesByLeagueAndStrategyMessageId(league, messageId)
+            val matches = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(league, messageId)
                 .map { dbMatch ->
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
@@ -1067,7 +1066,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendWeeklyPredictionAccuracyMessage() {
-        val stats = DatabaseService.getStatisticsForPeriod(days = 7)
+        val stats = DatabaseService.matches.getStatisticsForPeriod(days = 7)
         val leagueText = formatLeagueStats(getLeagueStatsForPeriod(7))
 
         val messageText = if (stats.totalMatches > 0) {
@@ -1101,7 +1100,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendMonthlyPredictionAccuracyMessage() {
-        val stats = DatabaseService.getStatisticsForPeriod(getDaysInLastMonth())
+        val stats = DatabaseService.matches.getStatisticsForPeriod(getDaysInLastMonth())
         val leagueText = formatLeagueStats(getLeagueStatsForPeriod(getDaysInLastMonth()))
 
         val messageText = if (stats.totalMatches > 0) {
@@ -1135,7 +1134,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendYearlyPredictionAccuracyMessage() {
-        val stats = DatabaseService.getStatisticsForPeriod(days = 365)
+        val stats = DatabaseService.matches.getStatisticsForPeriod(days = 365)
         val leagueText = formatLeagueStats(getLeagueStatsForPeriod(365))
 
         val messageText = if (stats.totalMatches > 0) {
@@ -1173,7 +1172,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (parts.size == 2) {
             val days = parts[1].toIntOrNull()
             if (days != null && days > 0) {
-                val stats = DatabaseService.getStatisticsForPeriod(days)
+                val stats = DatabaseService.matches.getStatisticsForPeriod(days)
                 val leagueText = formatLeagueStats(getLeagueStatsForPeriod(days))
                 val resultMessageText = if (stats.totalMatches > 0) {
                     """
@@ -1206,7 +1205,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (parts.size == 2) {
             val days = parts[1].toIntOrNull()
             if (days != null && days > 0) {
-                val stats = DatabaseService.getDetailedStatisticsForPeriod(days)
+                val stats = DatabaseService.matches.getDetailedStatisticsForPeriod(days)
                 val resultMessageText = if (stats.totalMatches > 0) {
                     """
                     📊 **Strategy Efficiency for Last $days Days**
@@ -1326,13 +1325,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     fun updateMatchMessages(matchInfo: MatchInfo) {
         // Update message in the main channel
         if (matchInfo.telegramMessageId != null) {
-            val matches = DatabaseService.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
+            val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
             val messageText = formatMatchesBatchForUpdate(matches)
             updateMessage(channelId, matchInfo.telegramMessageId!!, messageText)
         }
         // Update message in the strategy channel
         if (matchInfo.strategyTelegramMessageId != null) {
-            val matches = DatabaseService.getMatchesByLeagueAndStrategyMessageId(matchInfo.matchType, matchInfo.strategyTelegramMessageId!!)
+            val matches = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(matchInfo.matchType, matchInfo.strategyTelegramMessageId!!)
             val strategyMessageText = formatPremiumMatchesBatchForUpdate(matches)
             updateMessage(strategyChannelId, matchInfo.strategyTelegramMessageId!!, strategyMessageText)
         }
@@ -1362,7 +1361,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     private fun handleGetLeaguePredictabilityCommand(chatId: String) {
-        val leagueStatsList = DatabaseService.getLeaguePredictabilityData()
+        val leagueStatsList = DatabaseService.matches.getLeaguePredictabilityData()
         if (leagueStatsList.isNotEmpty()) {
             val messages = formatLeaguePredictabilityData(leagueStatsList)
             messages.forEach { messageText ->
@@ -1495,10 +1494,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     modelExpectedHomeGoals = null,
                     modelExpectedAwayGoals = null
                 )
-            }.filter { match -> !DatabaseService.matchExists(match) }
+            }.filter { match -> !DatabaseService.matches.matchExists(match) }
 
             if (matchInfos.isNotEmpty()) {
-                DatabaseService.appendRows(matchInfos)
+                DatabaseService.matches.appendRows(matchInfos)
                 sendMessage(chatId, "Добавлено ${matchInfos.size} новых матчей.")
             } else {
                 sendMessage(chatId, "Нет новых матчей для этого диапазона.")

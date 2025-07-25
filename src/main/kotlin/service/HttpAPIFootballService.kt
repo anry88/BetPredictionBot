@@ -129,9 +129,9 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 )
 
                 // Проверяем, существует ли матч в базе данных
-                if (!DatabaseService.matchExists(matchInfo)) {
+                if (!DatabaseService.matches.matchExists(matchInfo)) {
                     // Вставляем матч в базу данных
-                    DatabaseService.appendRows(listOf(matchInfo))
+                    DatabaseService.matches.appendRows(listOf(matchInfo))
 
                     // Получаем прогноз
                     val homeTeam = match.teams.home.name
@@ -162,7 +162,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                     // Если и ChatGPT не смог (finalPrediction = null), удаляем матч
                     if (finalPrediction == null) {
-                        DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+                        DatabaseService.matches.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
                         logger.error("Failed to get any prediction for $teams; match removed from DB.")
                     } else {
                         // Обновляем базу
@@ -174,7 +174,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         matchInfo.modelAwayWinProb = finalPrediction.modelAwayWinProb
                         matchInfo.modelExpectedHomeGoals = finalPrediction.modelExpectedHomeGoals
                         matchInfo.modelExpectedAwayGoals = finalPrediction.modelExpectedAwayGoals
-                        DatabaseService.updateMatchPredictions(matchInfo)
+                        DatabaseService.matches.updateMatchPredictions(matchInfo)
 
                         val matchDateTime = LocalDateTime.parse(matchInfo.datetime, formatterMatchDate)
                         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
@@ -191,15 +191,15 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                                 matchInfo.homeWinOdds = oddsInfo.homeWinOdds?.toString()
                                 matchInfo.drawOdds = oddsInfo.drawOdds?.toString()
                                 matchInfo.awayWinOdds = oddsInfo.awayWinOdds?.toString()
-                                DatabaseService.updateMatchOdds(matchInfo)
+                                DatabaseService.matches.updateMatchOdds(matchInfo)
                             }
                         }
                     }
                 } else {
-                    DatabaseService.updateMatchDatetime(matchInfo)
+                    DatabaseService.matches.updateMatchDatetime(matchInfo)
                     logger.info("Duplicate match found: $teams at $datetime")
 
-                    val existingMatch = DatabaseService.getMatchInfoByFixtureId(matchInfo.fixtureId)
+                    val existingMatch = DatabaseService.matches.getMatchInfoByFixtureId(matchInfo.fixtureId)
                     if (existingMatch != null) {
                         val matchDateTime = LocalDateTime.parse(existingMatch.datetime, formatterMatchDate)
                         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
@@ -222,13 +222,13 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                                     drawOdds = oddsInfo.drawOdds?.toString(),
                                     awayWinOdds = oddsInfo.awayWinOdds?.toString()
                                 )
-                                DatabaseService.updateMatchOdds(updatedMatch)
+                                DatabaseService.matches.updateMatchOdds(updatedMatch)
                             }
                         }
                     }
                 }
                 if (match.fixture.status?.short == "CANC"){
-                    DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+                    DatabaseService.matches.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
                 }
             }
         }
@@ -302,7 +302,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             matches.forEach { match ->
                 val fixtureId = match.fixture.id.toString()
 
-                val existingMatchInfo = DatabaseService.getMatchInfoByFixtureId(fixtureId)
+                val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
                 if (existingMatchInfo != null) {
                     val homeTeam = match.teams.home.name
                     val awayTeam = match.teams.away.name
@@ -325,7 +325,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         actualScore = actualScore
                     )
 
-                    DatabaseService.updateMatchResult(updatedMatchInfo)
+                    DatabaseService.matches.updateMatchResult(updatedMatchInfo)
 
                     val key = updatedMatchInfo.telegramMessageId to updatedMatchInfo.strategyTelegramMessageId
                     if (key.first != null || key.second != null) {
@@ -343,12 +343,12 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
 
         // Delete matches older than one day with no actual result
-        val matchesToDelete = DatabaseService.getMatchesOlderThanOneDayWithoutResult(oneDayAgo)
+        val matchesToDelete = DatabaseService.matches.getMatchesOlderThanOneDayWithoutResult(oneDayAgo)
         val messagesMap = mutableSetOf<Pair<String, String>>()
         val strategyMap = mutableSetOf<Pair<String, String>>()
 
         matchesToDelete.forEach { matchInfo ->
-            DatabaseService.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+            DatabaseService.matches.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
 
             matchInfo.telegramMessageId?.let { id ->
                 messagesMap.add(matchInfo.matchType to id)
@@ -359,7 +359,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
 
         for ((league, msgId) in messagesMap) {
-            val remaining = DatabaseService.getMatchesByLeagueAndTelegramMessageId(league, msgId)
+            val remaining = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(league, msgId)
             if (remaining.isEmpty()) {
                 footballBot.deleteMatchMessages(MatchInfo(
                     fixtureId = "", datetime = "", matchType = league, teams = "", predictedOutcome = null,
@@ -375,7 +375,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         }
 
         for ((league, msgId) in strategyMap) {
-            val remaining = DatabaseService.getMatchesByLeagueAndStrategyMessageId(league, msgId)
+            val remaining = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(league, msgId)
             if (remaining.isEmpty()) {
                 footballBot.deleteMatchMessages(MatchInfo(
                     fixtureId = "", datetime = "", matchType = league, teams = "", predictedOutcome = null,
@@ -422,7 +422,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
     suspend fun getLiveMatchInfo(fixtureId: String): MatchInfo? {
         // Сначала получаем текущую информацию о матче из базы данных
-        val existingMatchInfo = DatabaseService.getMatchInfoByFixtureId(fixtureId)
+        val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
         if (existingMatchInfo == null) {
             logger.warn("Match with fixtureId $fixtureId not found in the database")
             return null

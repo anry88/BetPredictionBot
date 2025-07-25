@@ -21,12 +21,12 @@ class AdminCommands(private val bot: FootballBot) {
     }
 
     fun handleUserCount(chatId: String) {
-        val userCount = DatabaseService.getUserCount()
+        val userCount = DatabaseService.users.getUserCount()
         bot.sendMessage(chatId, "Number of unique users: $userCount")
     }
 
     fun handleActiveUserCount(chatId: String) {
-        val userCount = DatabaseService.getActiveUserCountLast24Hours()
+        val userCount = DatabaseService.users.getActiveUserCountLast24Hours()
         bot.sendMessage(chatId, "Number of unique users for last day: $userCount")
     }
 }
