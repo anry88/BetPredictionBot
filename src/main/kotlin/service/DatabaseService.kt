@@ -1,6 +1,7 @@
 package service
 
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import repository.MatchRepository
@@ -29,7 +30,11 @@ fun initDatabase(dbPath: String) {
     logger.info("Database initialized (manual migration done).")
 }
 
-fun execSql(sql: String) { transaction { org.jetbrains.exposed.sql.SchemaUtils.executeStatements(listOf(sql)) } }
+fun execSql(sql: String) {
+    transaction {
+        exec(sql)
+    }
+}
 
 private fun runManualMigration() {
     execSql("""

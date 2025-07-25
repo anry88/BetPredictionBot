@@ -1,9 +1,6 @@
 package repository
 
 import org.slf4j.LoggerFactory
-import InviteLink
-import InviteSubscriber
-import JoinRequest
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.PreparedStatement

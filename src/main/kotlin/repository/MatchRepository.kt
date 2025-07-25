@@ -5,6 +5,9 @@ import dto.LeagueStats
 import dto.PeriodStats
 import dto.outcomeStrategyConfigs
 import repository.Statistics
+import service.createLeagueTableIfNeeded
+import service.addMissingColumnsForLeague
+import service.StrategyService
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -609,5 +612,4 @@ class MatchRepository {
             modelExpectedHomeGoals = row[leagueTable.modelExpectedHomeGoals],
             modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals]
         )
-}
 }
