@@ -5,7 +5,7 @@ import dto.MatchInfo
 import dto.OutcomeStrategyConfig
 import dto.TagsData
 import dto.outcomeStrategyConfigs
-import `interface`.TelegramService
+import api.TelegramService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
