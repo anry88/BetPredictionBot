@@ -386,7 +386,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (upcomingMatches.isNotEmpty()) {
             val matchesByLeague = upcomingMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches) { formatMatchInfo(it) }
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfo(it) })
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
