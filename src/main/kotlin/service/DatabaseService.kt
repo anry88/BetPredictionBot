@@ -150,9 +150,17 @@ fun addColumnIfNotExists(tableName: String, columnName: String, columnDefinition
     val cols = mutableListOf<String>()
     transaction {
         val stmt = this.connection.prepareStatement("PRAGMA table_info('$newTableName')", false)
-        stmt.use {
-            val rs = it.executeQuery()
-            while (rs.next()) { cols += rs.getString("name") }
+        try {
+            val rs = stmt.executeQuery()
+            try {
+                while (rs.next()) {
+                    cols += rs.getString("name")
+                }
+            } finally {
+                rs.close()
+            }
+        } finally {
+            stmt.close()
         }
     }
     if (!cols.contains(columnName)) {
