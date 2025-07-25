@@ -384,8 +384,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun handleUpcomingMatchesCommand(chatId: String) {
         val upcomingMatches = DatabaseService.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
-            upcomingMatches.forEach {
-                sendMessage(chatId, formatMatchInfo(it))
+            val matchesByLeague = upcomingMatches.groupBy { it.matchType }
+            for ((_, matches) in matchesByLeague) {
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfo(it) })
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
             sendMessage(chatId, "No upcoming matches within the next 24 hours.")
@@ -1031,25 +1033,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     }
                 }
 
-                for (match in leagueBatch) {
-                    val teamsForOdds = match.teams.split(" vs. ")
-                    if (teamsForOdds.size == 2) {
-                        val homeTeam = teamsForOdds[0].trim()
-                        val awayTeam = teamsForOdds[1].trim()
-                        val oddsInfo = footballService.getOddsForFixture(
-                            match.fixtureId, match.predictedOutcome ?: "", homeTeam, awayTeam
-                        )
-                        if (oddsInfo != null) {
-                            match.odds = oddsInfo.odds.toString()
-                            match.bookmakerName = oddsInfo.bookmakerName
-                            match.homeWinOdds = oddsInfo.homeWinOdds?.toString()
-                            match.drawOdds = oddsInfo.drawOdds?.toString()
-                            match.awayWinOdds = oddsInfo.awayWinOdds?.toString()
 
-                            DatabaseService.updateMatchOdds(match)
-                        }
-                    }
-                }
 
                 val leagueMessages = buildMatchMessages(
                     leagueBatch,

@@ -20,7 +20,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class HttpAPIFootballService(private val footballBot: FootballBot) {
@@ -77,11 +79,11 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
     suspend fun fetchMatches() {
         val currentDate = LocalDate.now()
-        val nextDay = currentDate.plusDays(1)
+        val twoDaysAhead = currentDate.plusDays(1)
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         val formattedCurrentDate = currentDate.format(formatter)
-        val formattedNextDay = nextDay.format(formatter)
+        val formattedNextDay = twoDaysAhead.format(formatter)
 
         val chatGptMaxAttempts = 10
 
@@ -173,6 +175,25 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         matchInfo.modelExpectedHomeGoals = finalPrediction.modelExpectedHomeGoals
                         matchInfo.modelExpectedAwayGoals = finalPrediction.modelExpectedAwayGoals
                         DatabaseService.updateMatchPredictions(matchInfo)
+
+                        val matchDateTime = LocalDateTime.parse(matchInfo.datetime, formatterMatchDate)
+                        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+                        if (matchDateTime.isBefore(now.plusDays(1))) {
+                            val oddsInfo = getOddsForFixture(
+                                matchInfo.fixtureId,
+                                matchInfo.predictedOutcome ?: "",
+                                homeTeam,
+                                awayTeam
+                            )
+                            if (oddsInfo != null) {
+                                matchInfo.odds = oddsInfo.odds.toString()
+                                matchInfo.bookmakerName = oddsInfo.bookmakerName
+                                matchInfo.homeWinOdds = oddsInfo.homeWinOdds?.toString()
+                                matchInfo.drawOdds = oddsInfo.drawOdds?.toString()
+                                matchInfo.awayWinOdds = oddsInfo.awayWinOdds?.toString()
+                                DatabaseService.updateMatchOdds(matchInfo)
+                            }
+                        }
                     }
                 } else {
                     DatabaseService.updateMatchDatetime(matchInfo)
