@@ -79,7 +79,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
     suspend fun fetchMatches() {
         val currentDate = LocalDate.now()
-        val twoDaysAhead = currentDate.plusDays(2)
+        val twoDaysAhead = currentDate.plusDays(1)
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         val formattedCurrentDate = currentDate.format(formatter)
