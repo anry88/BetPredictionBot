@@ -5,20 +5,28 @@ import dto.LeagueConfig
 import dto.outcomeStrategyConfigs
 
 object MessageFormatter {
-    private const val CONSTANT_TEST_DATA = """
-Probabilities: 60% - 25% - 15%
-Expected Goals: 1.5 : 1.0
-Odds: 1.8 - 3.4 - 4.5
-"""
+
+    private fun formatTestData(matchInfo: MatchInfo): String {
+        val homeProb = matchInfo.modelHomeWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
+        val drawProb = matchInfo.modelDrawProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
+        val awayProb = matchInfo.modelAwayWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
+
+        val homeXg = matchInfo.modelExpectedHomeGoals?.let { "%.2f".format(it) } ?: "0"
+        val awayXg = matchInfo.modelExpectedAwayGoals?.let { "%.2f".format(it) } ?: "0"
+
+        val homeOdds = matchInfo.homeWinOdds ?: "0"
+        val drawOdds = matchInfo.drawOdds ?: "0"
+        val awayOdds = matchInfo.awayWinOdds ?: "0"
+
+        return """
+Probabilities: $homeProb - $drawProb - $awayProb
+Expected Goals: $homeXg : $awayXg
+Odds: $homeOdds - $drawOdds - $awayOdds
+""".trimIndent()
+    }
 
     fun formatRegularMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
-        val testData = if (includeTestData) {
-            """
-Probabilities: ${matchInfo.modelHomeWinProb?.let { "%.2f%%".format(it * 100) } ?: "0%"} - ${matchInfo.modelDrawProb?.let { "%.2f%%".format(it * 100) } ?: "0%"} - ${matchInfo.modelAwayWinProb?.let { "%.2f%%".format(it * 100) } ?: "0%"}
-Expected Goals: ${matchInfo.modelExpectedHomeGoals?.let { "%.2f".format(it) } ?: 0} : ${matchInfo.modelExpectedAwayGoals?.let { "%.2f".format(it) } ?: 0}
-Odds: ${matchInfo.homeWinOdds ?: 0} - ${matchInfo.drawOdds ?: 0} - ${matchInfo.awayWinOdds ?: 0}
-""".trimIndent()
-        } else ""
+        val testData = if (includeTestData) formatTestData(matchInfo) else ""
 
         return """
 ${matchInfo.datetime} UTC
@@ -28,17 +36,18 @@ $tags""".trimIndent()
     }
 
     fun formatUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, tags: String): String {
-        val checklist = buildChecklist(matchInfo, league)
+        val analysis = buildMatchAnalysis(matchInfo, league)
+        val testData = formatTestData(matchInfo)
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
-$CONSTANT_TEST_DATA
-$checklist
+$testData
+$analysis
 $tags""".trimIndent()
     }
 
-    private fun buildChecklist(matchInfo: MatchInfo, league: LeagueConfig?): String {
+    private fun buildMatchAnalysis(matchInfo: MatchInfo, league: LeagueConfig?): String {
         val teams = matchInfo.teams.split(" vs. ")
         val homeTeam = teams.getOrNull(0)?.trim()
         val awayTeam = teams.getOrNull(1)?.trim()
@@ -61,18 +70,25 @@ $tags""".trimIndent()
             "AwayWin" -> config?.awayWinModelProb ?: 0.0
             else -> 1.0
         }
-        val probCheck = if (probability >= minProb) "✅" else "❌"
-        val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
         val odds = when (outcomeType) {
             "HomeWin" -> matchInfo.homeWinOdds?.toDoubleOrNull() ?: 0.0
             "Draw" -> matchInfo.drawOdds?.toDoubleOrNull() ?: 0.0
             "AwayWin" -> matchInfo.awayWinOdds?.toDoubleOrNull() ?: 0.0
             else -> matchInfo.odds?.toDoubleOrNull() ?: 0.0
         }
+        val drawAlt = if (outcomeType == "Draw") {
+            val homeProb = matchInfo.modelHomeWinProb ?: 0.0
+            val drawProb = matchInfo.modelDrawProb ?: 0.0
+            val awayProb = matchInfo.modelAwayWinProb ?: 0.0
+            val xgDiff = (matchInfo.modelExpectedHomeGoals ?: 0.0) - (matchInfo.modelExpectedAwayGoals ?: 0.0)
+            probability <= 0.4 && homeProb <= 0.4 && awayProb <= 0.4 && odds > 3.1 && kotlin.math.abs(xgDiff) <= 0.1
+        } else false
+        val probCheck = if (probability >= minProb || drawAlt) "✅" else "❌"
+        val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
         val minOdds = config?.minOdds ?: 0.0
         val profitCheck = if (odds >= minOdds) "✅" else "❌"
 
-        return """Checklist:
+        return """Match Analysis:
 - Probability >= ${(minProb * 100).toInt()}% $probCheck
 - League predictable $leagueCheck
 - Profitability $profitCheck""".trimIndent()
