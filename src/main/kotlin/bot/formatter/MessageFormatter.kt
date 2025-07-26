@@ -91,7 +91,7 @@ $tags""".trimIndent()
 
         val probabilityLine = when {
             probability == 0.0 -> "- Probability ❌ no data available"
-            drawAlt && probability < minProb -> "- Probability <40%, xG < 0.1 ✅"
+            drawAlt && probability < minProb -> "- Probability < 40%, diff xG < 0.1 ✅"
             probability >= minProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
             else -> "- Probability >= ${(minProb * 100).toInt()}% ❌"
         }
