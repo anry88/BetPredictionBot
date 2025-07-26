@@ -5,6 +5,7 @@ import dto.MatchInfo
 import dto.OutcomeStrategyConfig
 import dto.TagsData
 import dto.outcomeStrategyConfigs
+import bot.formatter.MessageFormatter
 import api.TelegramService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -182,6 +183,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     generalCommands.handleHelp(chatId, chatId == adminChatId)
                 }
 
+                messageText == "/premiumlinks" -> {
+                    generalCommands.handlePremiumLinks(chatId)
+                }
+
                 messageText.startsWith("/createInviteLink") -> {
                     inviteHandler.handleCreateInviteLink(update.message)
                 }
@@ -324,7 +329,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (upcomingMatches.isNotEmpty()) {
             val matchesByLeague = upcomingMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfo(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) })
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -390,23 +395,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
+        return MessageFormatter.formatRegularMatch(matchInfo, tags, isTest)
+    }
 
-        var testData = ""
-
-        if (isTest) {
-            testData =
-                """
-            Probabilities: ${if (matchInfo.modelHomeWinProb != null) "%.2f%%".format(matchInfo.modelHomeWinProb!! * 100) else "0%"} - ${if (matchInfo.modelDrawProb != null) "%.2f%%".format(matchInfo.modelDrawProb!! * 100) else "0%"} - ${if (matchInfo.modelAwayWinProb != null) "%.2f%%".format(matchInfo.modelAwayWinProb!! * 100) else "0%"}
-            Expected Goals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.2f".format(matchInfo.modelExpectedHomeGoals)} else 0} : ${if (matchInfo.modelExpectedAwayGoals != null) {"%.2f".format(matchInfo.modelExpectedAwayGoals)} else 0}
-            Odds: ${if (matchInfo.homeWinOdds != null) {matchInfo.homeWinOdds} else 0} - ${if (matchInfo.drawOdds != null) {matchInfo.drawOdds} else 0} - ${if (matchInfo.awayWinOdds != null) {matchInfo.awayWinOdds} else 0}"""
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
-            $tags
-        """.trimIndent()
+    private fun formatUpcomingMatchInfo(matchInfo: MatchInfo): String {
+        val tags = getTeamTags(matchInfo.teams)
+        val league = leaguesConfig.find { it.description == matchInfo.matchType }
+        return MessageFormatter.formatUpcomingMatch(matchInfo, league, tags)
     }
 
     private fun formatMatchInfoWithResult(matchInfo: MatchInfo): String {

@@ -300,4 +300,27 @@ class InviteRepository {
         statement.close()
         connection.close()
     }
+
+    fun getActiveInviteLinksWithRemainingSlots(): List<Pair<String, Int>> {
+        val connection = getConnection()
+        val sql = "SELECT id, invite_link, max_subscribers FROM invite_links WHERE is_active = 1 AND expires_at > ?"
+        val stmt = connection.prepareStatement(sql)
+        stmt.setLong(1, System.currentTimeMillis() / 1000)
+        val rs = stmt.executeQuery()
+        val result = mutableListOf<Pair<String, Int>>()
+        while (rs.next()) {
+            val id = rs.getLong("id")
+            val link = rs.getString("invite_link")
+            val maxSub = rs.getInt("max_subscribers")
+            val current = getSubscriberCount(id)
+            val remaining = maxSub - current
+            if (remaining > 0) {
+                result.add(link to remaining)
+            }
+        }
+        rs.close()
+        stmt.close()
+        connection.close()
+        return result
+    }
 }
