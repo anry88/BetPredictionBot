@@ -660,7 +660,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/start", "Start the bot and get information about it"))
         commands.add(BotCommand("/help", "Get the list of available commands"))
         commands.add(BotCommand("/premiumlinks", "Get available premium channel link"))
-        commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with extra analysis"))
+        commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with analysis"))
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
