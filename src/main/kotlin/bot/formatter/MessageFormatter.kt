@@ -85,19 +85,20 @@ $tags""".trimIndent()
                 kotlin.math.abs(xgDiff) <= 0.1
         } else false
 
-        val probNote = when {
-            probability == 0.0 -> "❌ отсутствуют данные"
-            drawAlt && probability < minProb -> "✅ (<40%, ΔxG < 0.1)"
-            probability >= minProb -> "✅"
-            else -> "❌"
-        }
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
         val minOdds = config?.minOdds ?: 0.0
         val profitCheck = if (odds >= minOdds) "✅" else "❌"
 
+        val probabilityLine = when {
+            probability == 0.0 -> "- Probability ❌ no data available"
+            drawAlt && probability < minProb -> "- Probability <40%, xG < 0.1 ✅"
+            probability >= minProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
+            else -> "- Probability >= ${(minProb * 100).toInt()}% ❌"
+        }
+
         return """
             Match Analysis:
-            - Probability >= ${(minProb * 100).toInt()}% $probNote
+            $probabilityLine
             - League predictable $leagueCheck
             - Profitability $profitCheck
         """.trimIndent()
