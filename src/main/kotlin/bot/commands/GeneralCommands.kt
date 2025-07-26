@@ -22,6 +22,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /start - Start the bot and get information about it
             /premiumlinks - Get available premium channel links
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
+            /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
         """.trimIndent()
 
         val adminCommands = """
