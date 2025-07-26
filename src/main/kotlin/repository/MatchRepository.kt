@@ -225,6 +225,23 @@ class MatchRepository {
         return allUpcomingMatches
     }
 
+    fun getUpcomingMatchesForLeague(leagueName: String): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val tomorrow = now.plusDays(1)
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            leagueTable.selectAll().mapNotNullTo(matches) {
+                val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
+                if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
+                    mapRowToMatchInfo(it, leagueTable)
+                } else null
+            }
+        }
+        return matches
+    }
+
     fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val eightHoursLater = now.plusHours(5)

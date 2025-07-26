@@ -157,7 +157,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     handleUpcomingMatchesCommand(chatId)
                 }
 
-                chatId == adminChatId && messageText.startsWith("/getAccuracy") -> {
+                messageText.startsWith("/leagueupcoming") -> {
+                    handleUpcomingMatchesByLeagueCommand(chatId, messageText)
+                }
+
+                messageText.startsWith("/getaccuracy") -> {
                     handleGetAccuracyCommand(chatId, messageText)
                 }
 
@@ -334,6 +338,34 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         } else {
             sendMessage(chatId, "No upcoming matches within the next 24 hours.")
+        }
+    }
+
+    private fun handleUpcomingMatchesByLeagueCommand(chatId: String, messageText: String) {
+        val filter = messageText.removePrefix("/leagueupcoming").trim()
+        if (filter.isBlank()) {
+            sendMessage(chatId, "Usage: /leagueupcoming <filter>")
+            return
+        }
+
+        val leagues = DatabaseService.matches.getAllLeagues().filter { it.contains(filter, ignoreCase = true) }
+        if (leagues.isEmpty()) {
+            sendMessage(chatId, "No leagues found for '$filter'.")
+            return
+        }
+
+        var found = false
+        leagues.forEach { league ->
+            val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
+            if (matches.isNotEmpty()) {
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) })
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
+                found = true
+            }
+        }
+
+        if (!found) {
+            sendMessage(chatId, "No upcoming matches within the next 24 hours for '$filter'.")
         }
     }
 
@@ -661,6 +693,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/help", "Get the list of available commands"))
         commands.add(BotCommand("/premiumlinks", "Get available premium channel link"))
         commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with analysis"))
+        commands.add(BotCommand("/leagueupcoming", "Get upcoming matches for leagues matching a filter"))
+        commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
@@ -1193,7 +1227,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 sendMessage(chatId, "Please provide a valid number of days.")
             }
         } else {
-            sendMessage(chatId, "Usage: /getAccuracy <number_of_days>")
+            sendMessage(chatId, "Usage: /getaccuracy <number_of_days>")
         }
     }
 
