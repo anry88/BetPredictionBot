@@ -23,13 +23,13 @@ class GeneralCommands(private val bot: FootballBot) {
             /premiumlinks - Get available premium channel links
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
+            /getaccuracy <days> - Get prediction accuracy for the last <days> days
         """.trimIndent()
 
         val adminCommands = """
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
-            /getAccuracy n - Get prediction accuracy for 'n' period
             /getStrategyEfficiency n - Get strategy efficiency for 'n' period
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format

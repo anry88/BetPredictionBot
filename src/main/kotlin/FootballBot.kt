@@ -161,7 +161,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     handleUpcomingMatchesByLeagueCommand(chatId, messageText)
                 }
 
-                chatId == adminChatId && messageText.startsWith("/getAccuracy") -> {
+                messageText.startsWith("/getaccuracy") -> {
                     handleGetAccuracyCommand(chatId, messageText)
                 }
 
@@ -694,6 +694,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/premiumlinks", "Get available premium channel link"))
         commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with analysis"))
         commands.add(BotCommand("/leagueupcoming", "Get upcoming matches for leagues matching a filter"))
+        commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
@@ -1226,7 +1227,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 sendMessage(chatId, "Please provide a valid number of days.")
             }
         } else {
-            sendMessage(chatId, "Usage: /getAccuracy <number_of_days>")
+            sendMessage(chatId, "Usage: /getaccuracy <number_of_days>")
         }
     }
 
