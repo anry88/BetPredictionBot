@@ -153,7 +153,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     adminCommands.handleActiveUserCount(chatId)
                 }
 
-                chatId == adminChatId && messageText == "/upcomingmatches" -> {
+                messageText == "/upcomingmatches" -> {
                     handleUpcomingMatchesCommand(chatId)
                 }
 

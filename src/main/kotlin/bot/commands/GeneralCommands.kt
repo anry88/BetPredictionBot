@@ -21,13 +21,13 @@ class GeneralCommands(private val bot: FootballBot) {
         val commonCommands = """
             /start - Start the bot and get information about it
             /premiumlinks - Get available premium channel links
+            /upcomingmatches - Get upcoming matches within the next 24 hours
         """.trimIndent()
 
         val adminCommands = """
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
-            /upcomingmatches - Get upcoming matches within the next 24 hours
             /getAccuracy n - Get prediction accuracy for 'n' period
             /getStrategyEfficiency n - Get strategy efficiency for 'n' period
             /getLeaguePredictability - Get League Predictability data
