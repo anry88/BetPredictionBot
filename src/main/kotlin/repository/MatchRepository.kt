@@ -329,12 +329,22 @@ class MatchRepository {
     }
 
     fun getLastMatchesForLeague(leagueName: String, days: Int): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val startDate = now.minusDays(days.toLong())
         val matches = mutableListOf<MatchInfo>()
-        val cutoffDate = LocalDate.now().minusDays(days.toLong())
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-            leagueTable.select { leagueTable.datetime greaterEq cutoffDate.format(dateFormatter) }
-                .mapNotNullTo(matches) { mapRowToMatchInfo(it, leagueTable) }
+            leagueTable.selectAll().mapNotNullTo(matches) { row ->
+                val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
+                    .atZone(ZoneId.of("UTC"))
+                    .withZoneSameInstant(ZoneId.of("UTC+3"))
+                    .toLocalDateTime()
+                if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) &&
+                    row[leagueTable.predictedOutcome] != null && row[leagueTable.actualOutcome] != null
+                ) {
+                    mapRowToMatchInfo(row, leagueTable)
+                } else null
+            }
         }
         return matches
     }
