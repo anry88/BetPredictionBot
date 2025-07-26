@@ -81,16 +81,25 @@ $tags""".trimIndent()
             val drawProb = matchInfo.modelDrawProb ?: 0.0
             val awayProb = matchInfo.modelAwayWinProb ?: 0.0
             val xgDiff = (matchInfo.modelExpectedHomeGoals ?: 0.0) - (matchInfo.modelExpectedAwayGoals ?: 0.0)
-            probability <= 0.4 && homeProb <= 0.4 && awayProb <= 0.4 && odds > 3.1 && kotlin.math.abs(xgDiff) <= 0.1
+            probability <= 0.4 && homeProb <= 0.4 && awayProb <= 0.4 && odds > 3.1 &&
+                kotlin.math.abs(xgDiff) <= 0.1
         } else false
-        val probCheck = if (probability >= minProb || drawAlt) "✅" else "❌"
+
+        val probNote = when {
+            probability == 0.0 -> "❌ отсутствуют данные"
+            drawAlt && probability < minProb -> "✅ (<40%, ΔxG < 0.1)"
+            probability >= minProb -> "✅"
+            else -> "❌"
+        }
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
         val minOdds = config?.minOdds ?: 0.0
         val profitCheck = if (odds >= minOdds) "✅" else "❌"
 
-        return """Match Analysis:
-- Probability >= ${(minProb * 100).toInt()}% $probCheck
-- League predictable $leagueCheck
-- Profitability $profitCheck""".trimIndent()
+        return """
+            Match Analysis:
+            - Probability >= ${(minProb * 100).toInt()}% $probNote
+            - League predictable $leagueCheck
+            - Profitability $profitCheck
+        """.trimIndent()
     }
 }
