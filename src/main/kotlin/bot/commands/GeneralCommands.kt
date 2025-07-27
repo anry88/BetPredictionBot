@@ -22,7 +22,7 @@ class GeneralCommands(private val bot: FootballBot) {
         val commonCommands = """
             /start - Start the bot and get information about it
             /freepremiumlinks - Get available premium channel links for free
-            /subscribe - Purchase bot or channel subscription
+            /subscribe - Purchase bot or Premium channel subscription
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
