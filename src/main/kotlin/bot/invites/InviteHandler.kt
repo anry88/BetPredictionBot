@@ -10,6 +10,9 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.ApproveCha
 import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember
 import org.telegram.telegrambots.meta.api.methods.groupadministration.CreateChatInviteLink
 import org.telegram.telegrambots.meta.api.methods.groupadministration.UnbanChatMember
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberLeft
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberBanned
 import org.telegram.telegrambots.meta.api.objects.ChatJoinRequest
 import org.telegram.telegrambots.meta.api.objects.Message
 import service.DatabaseService
@@ -36,6 +39,22 @@ class InviteHandler(private val bot: FootballBot,
         } catch (e: Exception) {
             logger.error("Error creating personal invite link", e)
             null
+        }
+    }
+
+    fun isUserInChannel(userId: Long): Boolean {
+        return try {
+            val getChatMember = GetChatMember()
+            getChatMember.chatId = strategyChannelId
+            getChatMember.userId = userId
+            val member = bot.execute(getChatMember)
+            when (member) {
+                is ChatMemberLeft, is ChatMemberBanned -> false
+                else -> true
+            }
+        } catch (e: Exception) {
+            logger.error("Error checking membership for user $userId", e)
+            false
         }
     }
 
