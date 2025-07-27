@@ -68,12 +68,16 @@ class GeneralCommands(private val bot: FootballBot) {
         val botSub = DatabaseService.subscriptions.getSubscription(userId, SubscriptionType.BOT)
         val channelSub = DatabaseService.subscriptions.getSubscription(userId, SubscriptionType.CHANNEL)
         val statusLines = mutableListOf<String>()
-        botSub?.takeIf { it.expiresAt > now }?.let {
-            val date = java.time.Instant.ofEpochSecond(it.expiresAt).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
+        botSub?.takeIf { it.expiresAt > now }?.let { sub ->
+            val date = java.time.Instant.ofEpochSecond(sub.expiresAt)
+                .atZone(java.time.ZoneId.of("UTC"))
+                .toLocalDate()
             statusLines += "Bot premium active until $date"
         }
-        channelSub?.takeIf { it.expiresAt > now }?.let {
-            val date = java.time.Instant.ofEpochSecond(it.expiresAt).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
+        channelSub?.takeIf { it.expiresAt > now }?.let { sub ->
+            val date = java.time.Instant.ofEpochSecond(sub.expiresAt)
+                .atZone(java.time.ZoneId.of("UTC"))
+                .toLocalDate()
             statusLines += "Channel access active until $date"
         }
         val statusText = if (statusLines.isEmpty()) {
