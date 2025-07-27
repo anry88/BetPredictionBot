@@ -12,7 +12,6 @@ class PremiumSubscriptionRepository {
     fun addOrUpdateSubscription(userId: String, type: SubscriptionType, months: Int): Long {
         val connection = getConnection()
         val currentTime = System.currentTimeMillis() / 1000
-        val additional = months * 30L * 24 * 60 * 60
         val select = connection.prepareStatement("SELECT expires_at FROM premium_subscriptions WHERE user_id = ? AND type = ?")
         select.setString(1, userId)
         select.setString(2, type.name)
@@ -20,11 +19,13 @@ class PremiumSubscriptionRepository {
         val existing = if (rs.next()) rs.getLong("expires_at") else null
         rs.close()
         select.close()
-        val newExpiry = if (existing != null && existing > currentTime) {
-            existing + additional
-        } else {
-            currentTime + additional
-        }
+
+        val baseInstant = if (existing != null && existing > currentTime) existing else currentTime
+        val baseDateTime = java.time.Instant.ofEpochSecond(baseInstant)
+            .atZone(java.time.ZoneOffset.UTC)
+            .toLocalDateTime()
+        val newExpiry = baseDateTime.plusMonths(months.toLong())
+            .toEpochSecond(java.time.ZoneOffset.UTC)
         val stmt = connection.prepareStatement(
             "INSERT INTO premium_subscriptions (user_id, type, expires_at) VALUES (?, ?, ?) " +
                 "ON CONFLICT(user_id, type) DO UPDATE SET expires_at = ?"
