@@ -8,6 +8,7 @@ import repository.MatchRepository
 import repository.InviteRepository
 import repository.UserStatsRepository
 import repository.PremiumSubscriptionRepository
+import repository.CommandUsageRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -126,6 +127,16 @@ private fun runManualMigration() {
         );
     """.trimIndent())
     addColumnIfNotExists("premium_subscriptions", "type", "TEXT NOT NULL DEFAULT 'BOT'")
+
+    execSql("""
+        CREATE TABLE IF NOT EXISTS command_usage (
+            user_id TEXT NOT NULL,
+            command TEXT NOT NULL,
+            month TEXT NOT NULL,
+            count INTEGER NOT NULL,
+            PRIMARY KEY (user_id, command, month)
+        );
+    """.trimIndent())
 }
 
 fun createLeagueTableIfNeeded(tableName: String) {
@@ -192,4 +203,5 @@ object DatabaseService {
     val invites = InviteRepository()
     val users = UserStatsRepository()
     val subscriptions = PremiumSubscriptionRepository()
+    val commandUsage = CommandUsageRepository()
 }

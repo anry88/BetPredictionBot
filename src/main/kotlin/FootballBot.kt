@@ -178,11 +178,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 messageText == "/upcomingmatches" -> {
-                    handleUpcomingMatchesCommand(chatId)
+                    handleUpcomingMatchesCommand(chatId, userId)
                 }
 
                 messageText.startsWith("/leagueupcoming") -> {
-                    handleUpcomingMatchesByLeagueCommand(chatId, messageText)
+                    handleUpcomingMatchesByLeagueCommand(chatId, userId, messageText)
                 }
 
                 messageText.startsWith("/getaccuracy") -> {
@@ -378,7 +378,21 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
 
 
-    private fun handleUpcomingMatchesCommand(chatId: String) {
+    private fun handleUpcomingMatchesCommand(chatId: String, userId: String) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        val isAdmin = userId == adminChatId || chatId == adminChatId
+        if (!isPremium && !isAdmin) {
+            val used = DatabaseService.commandUsage.getTotalUsage(userId)
+            if (used >= 10) {
+                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
+                return
+            } else {
+                val total = DatabaseService.commandUsage.incrementUsage(userId, "upcomingmatches")
+                val remaining = 10 - total
+                sendMessage(chatId, "You have $remaining uses left this month.")
+            }
+        }
+
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
             val matchesByLeague = upcomingMatches.groupBy { it.matchType }
@@ -391,7 +405,21 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    private fun handleUpcomingMatchesByLeagueCommand(chatId: String, messageText: String) {
+    private fun handleUpcomingMatchesByLeagueCommand(chatId: String, userId: String, messageText: String) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        val isAdmin = userId == adminChatId || chatId == adminChatId
+        if (!isPremium && !isAdmin) {
+            val used = DatabaseService.commandUsage.getTotalUsage(userId)
+            if (used >= 10) {
+                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
+                return
+            } else {
+                val total = DatabaseService.commandUsage.incrementUsage(userId, "leagueupcoming")
+                val remaining = 10 - total
+                sendMessage(chatId, "You have $remaining uses left this month.")
+            }
+        }
+
         val filter = messageText.removePrefix("/leagueupcoming").trim()
         if (filter.isBlank()) {
             sendMessage(chatId, "Usage: /leagueupcoming <filter>")
