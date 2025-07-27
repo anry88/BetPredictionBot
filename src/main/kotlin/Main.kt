@@ -1,12 +1,3 @@
-import dto.JsonlMatch
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.request.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.runBlocking
 import org.quartz.*
 import org.quartz.impl.StdSchedulerFactory
@@ -14,9 +5,8 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.TelegramBotsApi
 import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
-import service.DatabaseService
 import service.HttpAPIFootballService
-import java.io.File
+import service.ModelDataUploader
 
 class FetchMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
@@ -102,81 +92,17 @@ class SendYearlyAccuracyJob : Job {
 
 class UploadModelDataJob : Job {
     private val logger = LoggerFactory.getLogger(UploadModelDataJob::class.java)
-    private val client = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json()
-        }
-    }
 
     override fun execute(context: JobExecutionContext?) {
-        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
-        val footballService = HttpAPIFootballService(footballBot)
         runBlocking {
-            val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
-
-            if (!isTest){
-                // 1. Выбираем матчи только из lиг, где modelBased = true,
-                //    и только сыгранные (actualOutcome != null).
-//            val modelBasedLeagues = footballService.getModelBasedLeaguesFromConfig()
-                val completedMatches = DatabaseService.matches.getAllMatchesForLastTwoYears().filter { match -> match.actualOutcome != null }
-
-                if (completedMatches.isEmpty()) {
-                    logger.info("No completed matches found for model-based leagues")
-                    return@runBlocking
-                }
-
-                // 2. Формируем .jsonl
-                val file = createJsonlFileForModel(completedMatches)
-                // 3. Отправляем файл на http://localhost:7007/uploadLines
-                val responseStatus = uploadJsonlToLocalModel(file)
-                logger.info("Upload to local model finished with status: $responseStatus")
-
-                // При необходимости можно удалить временный файл:
-                file.delete()
+            val status = ModelDataUploader.uploadModelData()
+            if (status > 0) {
+                logger.info("Model data upload finished with status: $status")
+            } else {
+                logger.error("Model data upload failed")
             }
         }
     }
-
-    private fun createJsonlFileForModel(matches: List<dto.MatchInfo>): File {
-        val file = File("modelData.jsonl")
-        file.bufferedWriter().use { writer ->
-            matches.forEach { match ->
-                val jsonlMatch = JsonlMatch(
-                    date = match.datetime,
-                    matchType = match.matchType,
-                    teams = match.teams,
-                    predictedScore = match.predictedScore,
-                    actualScore = match.actualScore,
-                    predictedOutcome = match.predictedOutcome,
-                    actualOutcome = match.actualOutcome,
-                    odds = match.odds,
-                    bookmakerName = match.bookmakerName,
-                    homeWinOdds = match.homeWinOdds,
-                    drawOdds = match.drawOdds,
-                    awayWinOdds = match.awayWinOdds
-                )
-                val line = Json.encodeToString(jsonlMatch)
-                writer.write(line)
-                writer.newLine()
-            }
-        }
-        return file
-    }
-
-    private suspend fun uploadJsonlToLocalModel(jsonlFile: File): Int {
-        val url = "http://localhost:7007/uploadLines"
-        return try {
-            client.post(url) {
-                // Если сервер принимает как "application/json" c сырым текстом:
-                contentType(io.ktor.http.ContentType.Application.Json)
-                setBody(jsonlFile.readText())
-            }.status.value
-        } catch (e: Exception) {
-            logger.error("Error uploading to local model: ${e.message}")
-            -1
-        }
-    }
-
 }
 
 class InviteLinkCleanupJob : Job {
