@@ -22,15 +22,16 @@ class InviteRepository {
 
     private fun getConnection(): Connection = DriverManager.getConnection("jdbc:sqlite:predictions.db")
 
-    fun createInviteLink(inviteLink: String, maxSubscribers: Int, expiresAt: Long): Long {
+    fun createInviteLink(inviteLink: String, maxSubscribers: Int, expiresAt: Long, ownerId: String? = null): Long {
         val connection = getConnection()
         val currentTime = System.currentTimeMillis() / 1000
-        val sql = "INSERT INTO invite_links (invite_link, max_subscribers, created_at, expires_at, is_active) VALUES (?, ?, ?, ?, 1)"
+        val sql = "INSERT INTO invite_links (invite_link, max_subscribers, created_at, expires_at, is_active, owner_id) VALUES (?, ?, ?, ?, 1, ?)"
         val statement = connection.prepareStatement(sql)
         statement.setString(1, inviteLink)
         statement.setInt(2, maxSubscribers)
         statement.setLong(3, currentTime)
         statement.setLong(4, expiresAt)
+        statement.setString(5, ownerId)
         statement.executeUpdate()
         val id = statement.generatedKeys.getLong(1)
         statement.close()
@@ -321,5 +322,38 @@ class InviteRepository {
         stmt.close()
         connection.close()
         return result
+    }
+
+    fun getLatestLinkForUser(userId: String): InviteLink? {
+        val connection = getConnection()
+        val sql = "SELECT id, invite_link, max_subscribers, created_at, expires_at, is_active FROM invite_links WHERE owner_id = ? ORDER BY created_at DESC LIMIT 1"
+        val stmt = connection.prepareStatement(sql)
+        stmt.setString(1, userId)
+        val rs = stmt.executeQuery()
+        val link = if (rs.next()) {
+            InviteLink(
+                id = rs.getInt("id"),
+                inviteLink = rs.getString("invite_link"),
+                maxSubscribers = rs.getInt("max_subscribers"),
+                createdAt = rs.getLong("created_at"),
+                expiresAt = rs.getLong("expires_at"),
+                isActive = rs.getBoolean("is_active")
+            )
+        } else null
+        rs.close()
+        stmt.close()
+        connection.close()
+        return link
+    }
+
+    fun updateInviteLinkExpiry(id: Long, newExpiry: Long) {
+        val connection = getConnection()
+        val sql = "UPDATE invite_links SET expires_at = ? WHERE id = ?"
+        val stmt = connection.prepareStatement(sql)
+        stmt.setLong(1, newExpiry)
+        stmt.setLong(2, id)
+        stmt.executeUpdate()
+        stmt.close()
+        connection.close()
     }
 }

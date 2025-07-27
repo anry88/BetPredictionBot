@@ -23,22 +23,31 @@ class InviteHandler(private val bot: FootballBot,
 
     private val logger = LoggerFactory.getLogger(InviteHandler::class.java)
 
-    fun createPersonalInviteLink(months: Int): String? {
+    private fun createPersonalInviteLink(userId: Long, expiresAt: Long): String? {
         return try {
-            val now = java.time.Instant.now()
-            val expireInstant = now.atZone(java.time.ZoneOffset.UTC).plusMonths(months.toLong()).toInstant()
-
             val createChatInviteLink = CreateChatInviteLink()
             createChatInviteLink.chatId = strategyChannelId
-            createChatInviteLink.expireDate = expireInstant.epochSecond.toInt()
+            createChatInviteLink.expireDate = expiresAt.toInt()
             createChatInviteLink.createsJoinRequest = true
 
             val inviteLink = bot.execute(createChatInviteLink)
-            DatabaseService.invites.createInviteLink(inviteLink.inviteLink, 1, expireInstant.epochSecond)
+            DatabaseService.invites.createInviteLink(inviteLink.inviteLink, 1, expiresAt, userId.toString())
             inviteLink.inviteLink
         } catch (e: Exception) {
             logger.error("Error creating personal invite link", e)
             null
+        }
+    }
+
+    fun ensurePersonalInviteLink(userId: Long, expiresAt: Long): String? {
+        val existing = DatabaseService.invites.getLatestLinkForUser(userId.toString())
+        return if (existing != null) {
+            if (existing.expiresAt < expiresAt) {
+                DatabaseService.invites.updateInviteLinkExpiry(existing.id.toLong(), expiresAt)
+            }
+            existing.inviteLink
+        } else {
+            createPersonalInviteLink(userId, expiresAt)
         }
     }
 
@@ -98,7 +107,7 @@ class InviteHandler(private val bot: FootballBot,
 
             val inviteLink = bot.execute(createChatInviteLink)
 
-            val inviteLinkId = DatabaseService.invites.createInviteLink(inviteLink.inviteLink, maxSubscribers, expireInstant.epochSecond)
+            val inviteLinkId = DatabaseService.invites.createInviteLink(inviteLink.inviteLink, maxSubscribers, expireInstant.epochSecond, null)
             if (inviteLinkId > 0) {
                 val response = """
                     <b>New premium channel invite link created</b>
