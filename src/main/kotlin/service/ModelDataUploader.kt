@@ -3,6 +3,7 @@ package service
 import Config
 import dto.MatchInfo
 import dto.JsonlMatch
+import service.DatabaseService
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -11,6 +12,7 @@ import io.ktor.client.statement.*
 import io.ktor.client.engine.cio.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.io.File
