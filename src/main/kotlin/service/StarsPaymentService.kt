@@ -11,10 +11,10 @@ class StarsPaymentService(private val bot: FootballBot) {
         Config.getProperty("provider.token") ?: "stars"
 
     private val prices = mapOf(
-        SubscriptionPlan.BOT_1 to 1,
-        SubscriptionPlan.BOT_3 to 1,
-        SubscriptionPlan.CHANNEL_1 to 1,
-        SubscriptionPlan.CHANNEL_3 to 1
+        SubscriptionPlan.BOT_1 to 400,
+        SubscriptionPlan.BOT_3 to 1000,
+        SubscriptionPlan.CHANNEL_1 to 250,
+        SubscriptionPlan.CHANNEL_3 to 650
     )
 
     fun getPrice(plan: SubscriptionPlan): Int = prices.getValue(plan)
