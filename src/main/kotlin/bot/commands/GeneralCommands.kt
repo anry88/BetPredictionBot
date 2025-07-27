@@ -25,9 +25,10 @@ class GeneralCommands(private val bot: FootballBot) {
             /subscribe - Purchase bot or Premium channel subscription
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
+            /premiummatches - Get matches selected for the Premium channel
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
-            
-            Commands /upcomingmatches and /leagueupcoming together are limited to 10 uses per month for non-premium users. Premium subscribers and the admin have unlimited access.
+
+            Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers and the admin have unlimited access.
         """.trimIndent()
 
         val adminCommands = """
@@ -37,6 +38,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /getStrategyEfficiency n - Get strategy efficiency for 'n' period
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format
+            /uploadmodeldata - Upload matches data to the model
             /addPastResults league season startDate endDate - Add past results to database
             /createInviteLink subscribers days - Create an invite link for the premium channel
         """.trimIndent()
