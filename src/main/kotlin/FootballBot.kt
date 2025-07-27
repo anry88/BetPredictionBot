@@ -246,8 +246,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } else if (update.hasPreCheckoutQuery()) {
             val query = update.preCheckoutQuery
             val answer = AnswerPreCheckoutQuery()
-            answer.preCheckoutQueryId = query.id
-            answer.ok = true
+            answer.setPreCheckoutQueryId(query.id)
+            answer.setOk(true)
             execute(answer)
         } else if (update.hasCallbackQuery()) {
             val data = update.callbackQuery.data

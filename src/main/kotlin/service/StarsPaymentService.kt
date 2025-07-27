@@ -31,13 +31,13 @@ class StarsPaymentService(private val bot: FootballBot) {
             SubscriptionType.CHANNEL -> channelPrices.getValue(months)
         }
         val invoice = SendInvoice()
-        invoice.chatId = chatId
-        invoice.title = title
-        invoice.description = description
-        invoice.payload = payload
-        invoice.providerToken = providerToken
-        invoice.currency = "USD"
-        invoice.prices = listOf(LabeledPrice(title, price))
+        invoice.setChatId(chatId)
+        invoice.setTitle(title)
+        invoice.setDescription(description)
+        invoice.setPayload(payload)
+        invoice.setProviderToken(providerToken)
+        invoice.setCurrency("USD")
+        invoice.setPrices(listOf(LabeledPrice(title, price)))
         bot.execute(invoice)
     }
 }
