@@ -32,6 +32,7 @@ import service.initDatabase
 import service.HttpLocalModelService
 import service.ChatGPTService
 import service.StarsPaymentService
+import repository.SubscriptionPlan
 import repository.SubscriptionType
 import java.io.File
 import java.time.LocalDate
@@ -130,30 +131,19 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    fun sendPremiumInvoice(chatId: String, type: SubscriptionType, months: Int) {
-        paymentService.sendPremiumInvoice(chatId, type, months)
+    fun sendPremiumInvoice(chatId: String, plan: SubscriptionPlan) {
+        paymentService.sendPremiumInvoice(chatId, plan)
     }
 
     fun showSubscriptionOptions(chatId: String, text: String = "Choose subscription:") {
         val markup = org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup()
-        val rows = listOf(
-            listOf(
+        val rows = SubscriptionPlan.values().chunked(2).map { chunk ->
+            chunk.map { plan ->
                 org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
-                    "Bot 1M - ${paymentService.getPrice(SubscriptionType.BOT, 1)}⭐"
-                ).apply { callbackData = "buy_bot_1" },
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
-                    "Bot 3M - ${paymentService.getPrice(SubscriptionType.BOT, 3)}⭐"
-                ).apply { callbackData = "buy_bot_3" }
-            ),
-            listOf(
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
-                    "Channel 1M - ${paymentService.getPrice(SubscriptionType.CHANNEL, 1)}⭐"
-                ).apply { callbackData = "buy_channel_1" },
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
-                    "Channel 3M - ${paymentService.getPrice(SubscriptionType.CHANNEL, 3)}⭐"
-                ).apply { callbackData = "buy_channel_3" }
-            )
-        )
+                    "${plan.label} - ${paymentService.getPrice(plan)}⭐"
+                ).apply { callbackData = plan.callbackData }
+            }
+        }
         markup.keyboard = rows
         val message = SendMessage(chatId, text)
         message.replyMarkup = markup
@@ -252,17 +242,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } else if (update.hasCallbackQuery()) {
             val data = update.callbackQuery.data
             val chatId = update.callbackQuery.message.chatId.toString()
-            when (data) {
-                "buy_bot_1" -> sendPremiumInvoice(chatId, SubscriptionType.BOT, 1)
-                "buy_bot_3" -> sendPremiumInvoice(chatId, SubscriptionType.BOT, 3)
-                "buy_channel_1" -> sendPremiumInvoice(chatId, SubscriptionType.CHANNEL, 1)
-                "buy_channel_3" -> sendPremiumInvoice(chatId, SubscriptionType.CHANNEL, 3)
+            val plan = SubscriptionPlan.values().firstOrNull { it.callbackData == data }
+            if (plan != null) {
+                sendPremiumInvoice(chatId, plan)
             }
         } else if (update.hasMessage() && update.message.hasSuccessfulPayment()) {
             val payment = update.message.successfulPayment
             val parts = payment.invoicePayload.split("_")
             val type = if (parts[0] == "bot") SubscriptionType.BOT else SubscriptionType.CHANNEL
-            val months = if (parts.getOrNull(1) == "3m") 3 else 1
+            val months = parts.getOrNull(1)?.toIntOrNull() ?: 1
             val userId = update.message.from.id.toString()
             val newExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, type, months)
             val expiryDate = java.time.Instant.ofEpochSecond(newExpiry).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
