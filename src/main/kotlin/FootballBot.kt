@@ -211,7 +211,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     generalCommands.handleHelp(chatId, chatId == adminChatId)
                 }
 
-                messageText == "/premiumlinks" -> {
+                messageText == "/freepremiumlinks" -> {
                     generalCommands.handlePremiumLinks(chatId)
                 }
 
@@ -745,7 +745,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val commands = mutableListOf<BotCommand>()
         commands.add(BotCommand("/start", "Start the bot and get information about it"))
         commands.add(BotCommand("/help", "Get the list of available commands"))
-        commands.add(BotCommand("/premiumlinks", "Get available premium channel link"))
+        commands.add(BotCommand("/freepremiumlinks", "Get available premium channel links for free"))
         commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with analysis"))
         commands.add(BotCommand("/leagueupcoming", "Get upcoming matches for leagues matching a filter"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))

@@ -21,7 +21,7 @@ class GeneralCommands(private val bot: FootballBot) {
     fun handleHelp(chatId: String, isAdmin: Boolean) {
         val commonCommands = """
             /start - Start the bot and get information about it
-            /premiumlinks - Get available premium channel links
+            /freepremiumlinks - Get available premium channel links for free
             /subscribe - Purchase bot or channel subscription
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
@@ -51,10 +51,10 @@ class GeneralCommands(private val bot: FootballBot) {
     fun handlePremiumLinks(chatId: String) {
         val links = service.DatabaseService.invites.getActiveInviteLinksWithRemainingSlots()
         if (links.isEmpty()) {
-            bot.sendMessage(chatId, "No available premium links at the moment.")
+            bot.sendMessage(chatId, "No available free premium channel joining links at the moment.")
         } else {
             val text = buildString {
-                append("Available premium links:\n")
+                append("Available free premium channel joining links:\n")
                 links.forEach { (link, left) ->
                     append("$link - $left slots left\n")
                 }
