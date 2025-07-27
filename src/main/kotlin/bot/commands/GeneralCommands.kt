@@ -72,13 +72,13 @@ class GeneralCommands(private val bot: FootballBot) {
             val date = java.time.Instant.ofEpochSecond(sub.expiresAt)
                 .atZone(java.time.ZoneId.of("UTC"))
                 .toLocalDate()
-            statusLines += "Bot premium active until $date"
+            statusLines += "Bot premium access active until $date"
         }
         channelSub?.takeIf { it.expiresAt > now }?.let { sub ->
             val date = java.time.Instant.ofEpochSecond(sub.expiresAt)
                 .atZone(java.time.ZoneId.of("UTC"))
                 .toLocalDate()
-            statusLines += "Channel access active until $date"
+            statusLines += "Premium channel access active until $date"
         }
         val statusText = if (statusLines.isEmpty()) {
             "Choose a subscription plan:"
