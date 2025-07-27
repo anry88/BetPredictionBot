@@ -54,3 +54,11 @@ data class JoinRequest(
     val maxSubscribers: Int,
     val expiresAt: Long
 )
+
+enum class SubscriptionType { BOT, CHANNEL }
+
+data class PremiumSubscription(
+    val userId: String,
+    val type: SubscriptionType,
+    val expiresAt: Long
+)

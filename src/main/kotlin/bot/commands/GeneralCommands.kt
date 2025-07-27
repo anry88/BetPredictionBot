@@ -2,6 +2,7 @@ package bot.commands
 
 import FootballBot
 import service.DatabaseService
+import repository.SubscriptionType
 
 class GeneralCommands(private val bot: FootballBot) {
     fun handleStart(chatId: String) {
@@ -21,6 +22,7 @@ class GeneralCommands(private val bot: FootballBot) {
         val commonCommands = """
             /start - Start the bot and get information about it
             /premiumlinks - Get available premium channel links
+            /subscribe - Purchase bot or channel subscription
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
@@ -58,6 +60,18 @@ class GeneralCommands(private val bot: FootballBot) {
                 }
             }.trim()
             bot.sendMessage(chatId, text)
+        }
+    }
+
+    fun handleSubscriptionMenu(chatId: String) {
+        bot.showSubscriptionOptions(chatId)
+    }
+
+    fun handlePremiumCommand(chatId: String, userId: String) {
+        if (DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)) {
+            bot.sendMessage(chatId, "Premium command executed.")
+        } else {
+            bot.sendMessage(chatId, "You need an active premium subscription to use this command.")
         }
     }
 }

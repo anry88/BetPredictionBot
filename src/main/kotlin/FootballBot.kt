@@ -30,6 +30,8 @@ import service.StrategyService
 import service.initDatabase
 import service.HttpLocalModelService
 import service.ChatGPTService
+import service.StarsPaymentService
+import repository.SubscriptionType
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -55,6 +57,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val generalCommands = GeneralCommands(this)
     private val adminCommands = AdminCommands(this)
     private val inviteHandler = InviteHandler(this, strategyChannelId, adminChatId)
+    private val paymentService = StarsPaymentService(this)
 
     private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
@@ -126,6 +129,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
+    fun sendPremiumInvoice(chatId: String, type: SubscriptionType, months: Int) {
+        paymentService.sendPremiumInvoice(chatId, type, months)
+    }
+
+    fun showSubscriptionOptions(chatId: String) {
+        val markup = org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup()
+        val rows = listOf(
+            listOf(
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Bot 1M").apply { callbackData = "buy_bot_1" },
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Bot 3M").apply { callbackData = "buy_bot_3" }
+            ),
+            listOf(
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Channel 1M").apply { callbackData = "buy_channel_1" },
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Channel 3M").apply { callbackData = "buy_channel_3" }
+            )
+        )
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Choose subscription:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
     override fun onUpdateReceived(update: Update) {
         logger.info("Received update: ${update.updateId}")
         
@@ -191,6 +216,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     generalCommands.handlePremiumLinks(chatId)
                 }
 
+                messageText == "/subscribe" -> {
+                    generalCommands.handleSubscriptionMenu(chatId)
+                }
+
+                messageText == "/premiumcmd" -> {
+                    generalCommands.handlePremiumCommand(chatId, userId)
+                }
+
                 messageText.startsWith("/createInviteLink") -> {
                     inviteHandler.handleCreateInviteLink(update.message)
                 }
@@ -201,6 +234,30 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     execute(message)
                 }
             }
+        } else if (update.hasPreCheckoutQuery()) {
+            val query = update.preCheckoutQuery
+            val answer = org.telegram.telegrambots.meta.api.methods.payments.AnswerPreCheckoutQuery()
+            answer.preCheckoutQueryId = query.id
+            answer.ok = true
+            execute(answer)
+        } else if (update.hasCallbackQuery()) {
+            val data = update.callbackQuery.data
+            val chatId = update.callbackQuery.message.chatId.toString()
+            when (data) {
+                "buy_bot_1" -> sendPremiumInvoice(chatId, SubscriptionType.BOT, 1)
+                "buy_bot_3" -> sendPremiumInvoice(chatId, SubscriptionType.BOT, 3)
+                "buy_channel_1" -> sendPremiumInvoice(chatId, SubscriptionType.CHANNEL, 1)
+                "buy_channel_3" -> sendPremiumInvoice(chatId, SubscriptionType.CHANNEL, 3)
+            }
+        } else if (update.hasMessage() && update.message.hasSuccessfulPayment()) {
+            val payment = update.message.successfulPayment
+            val parts = payment.invoicePayload.split("_")
+            val type = if (parts[0] == "bot") SubscriptionType.BOT else SubscriptionType.CHANNEL
+            val months = if (parts.getOrNull(1) == "3m") 3 else 1
+            val userId = update.message.from.id.toString()
+            val newExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, type, months)
+            val expiryDate = java.time.Instant.ofEpochSecond(newExpiry).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
+            sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate")
         } else if (update.hasChatJoinRequest()) {
             logger.info("Received chat join request: ${update.chatJoinRequest}")
             inviteHandler.handleChatJoinRequest(update.chatJoinRequest)
