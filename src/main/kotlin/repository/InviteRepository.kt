@@ -22,10 +22,9 @@ class InviteRepository {
 
     private fun getConnection(): Connection = DriverManager.getConnection("jdbc:sqlite:predictions.db")
 
-    fun createInviteLink(inviteLink: String, maxSubscribers: Int, days: Int): Long {
+    fun createInviteLink(inviteLink: String, maxSubscribers: Int, expiresAt: Long): Long {
         val connection = getConnection()
         val currentTime = System.currentTimeMillis() / 1000
-        val expiresAt = currentTime + days * 24 * 60 * 60
         val sql = "INSERT INTO invite_links (invite_link, max_subscribers, created_at, expires_at, is_active) VALUES (?, ?, ?, ?, 1)"
         val statement = connection.prepareStatement(sql)
         statement.setString(1, inviteLink)
