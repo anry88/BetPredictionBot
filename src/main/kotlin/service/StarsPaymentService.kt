@@ -32,7 +32,8 @@ class StarsPaymentService(private val bot: FootballBot) {
         invoice.description = description
         invoice.payload = payload
         invoice.providerToken = providerToken
-        invoice.currency = "USD"
+        // Use Telegram Stars for payments
+        invoice.currency = "STARS"
         invoice.prices = listOf(LabeledPrice(title, price))
         bot.execute(invoice)
     }
