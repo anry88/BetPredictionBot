@@ -219,10 +219,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     generalCommands.handleSubscriptionMenu(chatId, userId)
                 }
 
-                messageText == "/premiumcmd" -> {
-                    generalCommands.handlePremiumCommand(chatId, userId)
-                }
-
                 messageText.startsWith("/createInviteLink") -> {
                     inviteHandler.handleCreateInviteLink(update.message)
                 }
