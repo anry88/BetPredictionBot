@@ -32,6 +32,7 @@ class GeneralCommands(private val bot: FootballBot) {
         """.trimIndent()
 
         val adminCommands = """
+            
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
