@@ -88,11 +88,4 @@ class GeneralCommands(private val bot: FootballBot) {
         bot.showSubscriptionOptions(chatId, statusText)
     }
 
-    fun handlePremiumCommand(chatId: String, userId: String) {
-        if (DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)) {
-            bot.sendMessage(chatId, "Premium command executed.")
-        } else {
-            bot.sendMessage(chatId, "You need an active premium subscription to use this command.")
-        }
-    }
 }
