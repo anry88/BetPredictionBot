@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import repository.MatchRepository
 import repository.InviteRepository
 import repository.UserStatsRepository
+import repository.PremiumSubscriptionRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 

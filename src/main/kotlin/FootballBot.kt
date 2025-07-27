@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
+import org.telegram.telegrambots.meta.api.methods.payments.AnswerPreCheckoutQuery
 import service.DatabaseService
 import service.HttpAPIFootballService
 import service.StrategyService
@@ -244,7 +245,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         } else if (update.hasPreCheckoutQuery()) {
             val query = update.preCheckoutQuery
-            val answer = org.telegram.telegrambots.meta.api.methods.payments.AnswerPreCheckoutQuery()
+            val answer = AnswerPreCheckoutQuery()
             answer.preCheckoutQueryId = query.id
             answer.ok = true
             execute(answer)
