@@ -63,8 +63,25 @@ class GeneralCommands(private val bot: FootballBot) {
         }
     }
 
-    fun handleSubscriptionMenu(chatId: String) {
-        bot.showSubscriptionOptions(chatId)
+    fun handleSubscriptionMenu(chatId: String, userId: String) {
+        val now = System.currentTimeMillis() / 1000
+        val botSub = DatabaseService.subscriptions.getSubscription(userId, SubscriptionType.BOT)
+        val channelSub = DatabaseService.subscriptions.getSubscription(userId, SubscriptionType.CHANNEL)
+        val statusLines = mutableListOf<String>()
+        botSub?.takeIf { it.expiresAt > now }?.let {
+            val date = java.time.Instant.ofEpochSecond(it.expiresAt).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
+            statusLines += "Bot premium active until $date"
+        }
+        channelSub?.takeIf { it.expiresAt > now }?.let {
+            val date = java.time.Instant.ofEpochSecond(it.expiresAt).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
+            statusLines += "Channel access active until $date"
+        }
+        val statusText = if (statusLines.isEmpty()) {
+            "Choose a subscription plan:"
+        } else {
+            statusLines.joinToString(separator = "\n", postfix = "\n\nChoose a subscription plan:")
+        }
+        bot.showSubscriptionOptions(chatId, statusText)
     }
 
     fun handlePremiumCommand(chatId: String, userId: String) {

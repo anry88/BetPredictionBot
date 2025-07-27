@@ -133,20 +133,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         paymentService.sendPremiumInvoice(chatId, type, months)
     }
 
-    fun showSubscriptionOptions(chatId: String) {
+    fun showSubscriptionOptions(chatId: String, text: String = "Choose subscription:") {
         val markup = org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup()
         val rows = listOf(
             listOf(
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Bot 1M").apply { callbackData = "buy_bot_1" },
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Bot 3M").apply { callbackData = "buy_bot_3" }
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
+                    "Bot 1M - ${paymentService.getPrice(SubscriptionType.BOT, 1)}⭐"
+                ).apply { callbackData = "buy_bot_1" },
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
+                    "Bot 3M - ${paymentService.getPrice(SubscriptionType.BOT, 3)}⭐"
+                ).apply { callbackData = "buy_bot_3" }
             ),
             listOf(
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Channel 1M").apply { callbackData = "buy_channel_1" },
-                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton("Channel 3M").apply { callbackData = "buy_channel_3" }
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
+                    "Channel 1M - ${paymentService.getPrice(SubscriptionType.CHANNEL, 1)}⭐"
+                ).apply { callbackData = "buy_channel_1" },
+                org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
+                    "Channel 3M - ${paymentService.getPrice(SubscriptionType.CHANNEL, 3)}⭐"
+                ).apply { callbackData = "buy_channel_3" }
             )
         )
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Choose subscription:")
+        val message = SendMessage(chatId, text)
         message.replyMarkup = markup
         execute(message)
     }
@@ -217,7 +225,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 messageText == "/subscribe" -> {
-                    generalCommands.handleSubscriptionMenu(chatId)
+                    generalCommands.handleSubscriptionMenu(chatId, userId)
                 }
 
                 messageText == "/premiumcmd" -> {

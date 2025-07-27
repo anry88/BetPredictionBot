@@ -13,6 +13,11 @@ class StarsPaymentService(private val bot: FootballBot) {
     private val botPrices = mapOf(1 to 500, 3 to 1200)
     private val channelPrices = mapOf(1 to 700, 3 to 1500)
 
+    fun getPrice(type: SubscriptionType, months: Int): Int = when (type) {
+        SubscriptionType.BOT -> botPrices.getValue(months)
+        SubscriptionType.CHANNEL -> channelPrices.getValue(months)
+    }
+
     fun sendPremiumInvoice(chatId: String, type: SubscriptionType, months: Int) {
         val title = when (type) {
             SubscriptionType.BOT -> if (months == 1) "Bot Premium 1M" else "Bot Premium 3M"
