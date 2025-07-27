@@ -28,7 +28,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /premiummatches - Get matches selected for the Premium channel
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
 
-            Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers and the admin have unlimited access.
+            Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers have unlimited access.
         """.trimIndent()
 
         val adminCommands = """
