@@ -54,3 +54,20 @@ data class JoinRequest(
     val maxSubscribers: Int,
     val expiresAt: Long
 )
+
+enum class SubscriptionType { BOT, CHANNEL }
+
+enum class SubscriptionPlan(val type: SubscriptionType, val months: Int, val label: String) {
+    BOT_1(SubscriptionType.BOT, 1, "Bot 1 month"),
+    BOT_3(SubscriptionType.BOT, 3, "Bot 3 months"),
+    CHANNEL_1(SubscriptionType.CHANNEL, 1, "Premium channel 1 month"),
+    CHANNEL_3(SubscriptionType.CHANNEL, 3, "Premium channel 3 months");
+
+    val callbackData: String get() = "buy_${type.name.lowercase()}_${months}"
+}
+
+data class PremiumSubscription(
+    val userId: String,
+    val type: SubscriptionType,
+    val expiresAt: Long
+)

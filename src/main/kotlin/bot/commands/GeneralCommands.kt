@@ -2,6 +2,7 @@ package bot.commands
 
 import FootballBot
 import service.DatabaseService
+import repository.SubscriptionType
 
 class GeneralCommands(private val bot: FootballBot) {
     fun handleStart(chatId: String) {
@@ -20,7 +21,8 @@ class GeneralCommands(private val bot: FootballBot) {
     fun handleHelp(chatId: String, isAdmin: Boolean) {
         val commonCommands = """
             /start - Start the bot and get information about it
-            /premiumlinks - Get available premium channel links
+            /freepremiumlinks - Get available premium channel links for free
+            /subscribe - Purchase bot or channel subscription
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
@@ -49,15 +51,48 @@ class GeneralCommands(private val bot: FootballBot) {
     fun handlePremiumLinks(chatId: String) {
         val links = service.DatabaseService.invites.getActiveInviteLinksWithRemainingSlots()
         if (links.isEmpty()) {
-            bot.sendMessage(chatId, "No available premium links at the moment.")
+            bot.sendMessage(chatId, "No available free premium channel joining links at the moment.")
         } else {
             val text = buildString {
-                append("Available premium links:\n")
+                append("Available free premium channel joining links:\n")
                 links.forEach { (link, left) ->
                     append("$link - $left slots left\n")
                 }
             }.trim()
             bot.sendMessage(chatId, text)
+        }
+    }
+
+    fun handleSubscriptionMenu(chatId: String, userId: String) {
+        val now = System.currentTimeMillis() / 1000
+        val botSub = DatabaseService.subscriptions.getSubscription(userId, SubscriptionType.BOT)
+        val channelSub = DatabaseService.subscriptions.getSubscription(userId, SubscriptionType.CHANNEL)
+        val statusLines = mutableListOf<String>()
+        botSub?.takeIf { it.expiresAt > now }?.let { sub ->
+            val date = java.time.Instant.ofEpochSecond(sub.expiresAt)
+                .atZone(java.time.ZoneId.of("UTC"))
+                .toLocalDate()
+            statusLines += "Bot premium active until $date"
+        }
+        channelSub?.takeIf { it.expiresAt > now }?.let { sub ->
+            val date = java.time.Instant.ofEpochSecond(sub.expiresAt)
+                .atZone(java.time.ZoneId.of("UTC"))
+                .toLocalDate()
+            statusLines += "Channel access active until $date"
+        }
+        val statusText = if (statusLines.isEmpty()) {
+            "Choose a subscription plan:"
+        } else {
+            statusLines.joinToString(separator = "\n", postfix = "\n\nChoose a subscription plan:")
+        }
+        bot.showSubscriptionOptions(chatId, statusText)
+    }
+
+    fun handlePremiumCommand(chatId: String, userId: String) {
+        if (DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)) {
+            bot.sendMessage(chatId, "Premium command executed.")
+        } else {
+            bot.sendMessage(chatId, "You need an active premium subscription to use this command.")
         }
     }
 }
