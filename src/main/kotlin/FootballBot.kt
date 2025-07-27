@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
-import org.telegram.telegrambots.meta.api.methods.payments.AnswerPreCheckoutQuery
+import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery
 import service.DatabaseService
 import service.HttpAPIFootballService
 import service.StrategyService
@@ -137,7 +137,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     fun showSubscriptionOptions(chatId: String, text: String = "Choose subscription:") {
         val markup = org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup()
-        val rows = SubscriptionPlan.values().chunked(2).map { chunk ->
+        val rows = SubscriptionPlan.values().toList().chunked(2).map { chunk ->
             chunk.map { plan ->
                 org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton(
                     "${plan.label} - ${paymentService.getPrice(plan)}⭐"
