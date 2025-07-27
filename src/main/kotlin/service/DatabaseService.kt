@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import repository.MatchRepository
 import repository.InviteRepository
 import repository.UserStatsRepository
+import repository.PremiumSubscriptionRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -102,7 +103,7 @@ private fun runManualMigration() {
         );
     """.trimIndent())
 
-    execSql("""
+        execSql("""
         CREATE TABLE IF NOT EXISTS join_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             invite_link_id INTEGER NOT NULL,
@@ -115,6 +116,16 @@ private fun runManualMigration() {
             FOREIGN KEY (invite_link_id) REFERENCES invite_links(id)
         );
     """.trimIndent())
+
+    execSql("""
+        CREATE TABLE IF NOT EXISTS premium_subscriptions (
+            user_id TEXT NOT NULL,
+            type TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            PRIMARY KEY (user_id, type)
+        );
+    """.trimIndent())
+    addColumnIfNotExists("premium_subscriptions", "type", "TEXT NOT NULL DEFAULT 'BOT'")
 }
 
 fun createLeagueTableIfNeeded(tableName: String) {
@@ -180,4 +191,5 @@ object DatabaseService {
     val matches = MatchRepository()
     val invites = InviteRepository()
     val users = UserStatsRepository()
+    val subscriptions = PremiumSubscriptionRepository()
 }
