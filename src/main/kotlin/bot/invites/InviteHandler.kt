@@ -10,6 +10,9 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.ApproveCha
 import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMember
 import org.telegram.telegrambots.meta.api.methods.groupadministration.CreateChatInviteLink
 import org.telegram.telegrambots.meta.api.methods.groupadministration.UnbanChatMember
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberLeft
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMemberBanned
 import org.telegram.telegrambots.meta.api.objects.ChatJoinRequest
 import org.telegram.telegrambots.meta.api.objects.Message
 import service.DatabaseService
@@ -19,6 +22,50 @@ class InviteHandler(private val bot: FootballBot,
                     private val adminChatId: String) {
 
     private val logger = LoggerFactory.getLogger(InviteHandler::class.java)
+
+    private fun createPersonalInviteLink(userId: Long, expiresAt: Long): String? {
+        return try {
+            val createChatInviteLink = CreateChatInviteLink()
+            createChatInviteLink.chatId = strategyChannelId
+            createChatInviteLink.expireDate = expiresAt.toInt()
+            createChatInviteLink.createsJoinRequest = true
+
+            val inviteLink = bot.execute(createChatInviteLink)
+            DatabaseService.invites.createInviteLink(inviteLink.inviteLink, 1, expiresAt, userId.toString())
+            inviteLink.inviteLink
+        } catch (e: Exception) {
+            logger.error("Error creating personal invite link", e)
+            null
+        }
+    }
+
+    fun ensurePersonalInviteLink(userId: Long, expiresAt: Long): String? {
+        val existing = DatabaseService.invites.getLatestLinkForUser(userId.toString())
+        return if (existing != null) {
+            if (existing.expiresAt < expiresAt) {
+                DatabaseService.invites.updateInviteLinkExpiry(existing.id.toLong(), expiresAt)
+            }
+            existing.inviteLink
+        } else {
+            createPersonalInviteLink(userId, expiresAt)
+        }
+    }
+
+    fun isUserInChannel(userId: Long): Boolean {
+        return try {
+            val getChatMember = GetChatMember()
+            getChatMember.chatId = strategyChannelId
+            getChatMember.userId = userId
+            val member = bot.execute(getChatMember)
+            when (member) {
+                is ChatMemberLeft, is ChatMemberBanned -> false
+                else -> true
+            }
+        } catch (e: Exception) {
+            logger.error("Error checking membership for user $userId", e)
+            false
+        }
+    }
 
     fun handleCreateInviteLink(message: Message) {
         if (message.chatId != adminChatId.toLong()) {
@@ -50,14 +97,17 @@ class InviteHandler(private val bot: FootballBot,
                 return
             }
 
+            val now = java.time.Instant.now()
+            val expireInstant = now.plusSeconds(days.toLong() * 24 * 60 * 60)
+
             val createChatInviteLink = CreateChatInviteLink()
             createChatInviteLink.chatId = strategyChannelId
-            createChatInviteLink.expireDate = (System.currentTimeMillis() / 1000 + days * 24 * 60 * 60).toInt()
+            createChatInviteLink.expireDate = expireInstant.epochSecond.toInt()
             createChatInviteLink.createsJoinRequest = true
 
             val inviteLink = bot.execute(createChatInviteLink)
 
-            val inviteLinkId = DatabaseService.invites.createInviteLink(inviteLink.inviteLink, maxSubscribers, days)
+            val inviteLinkId = DatabaseService.invites.createInviteLink(inviteLink.inviteLink, maxSubscribers, expireInstant.epochSecond, null)
             if (inviteLinkId > 0) {
                 val response = """
                     <b>New premium channel invite link created</b>

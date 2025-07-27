@@ -250,7 +250,31 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val userId = update.message.from.id.toString()
             val newExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, type, months)
             val expiryDate = java.time.Instant.ofEpochSecond(newExpiry).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
-            sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate")
+            if (type == SubscriptionType.CHANNEL) {
+                val alreadyMember = inviteHandler.isUserInChannel(update.message.from.id)
+                val link = inviteHandler.ensurePersonalInviteLink(update.message.from.id, newExpiry)
+                if (alreadyMember) {
+                    if (link == null) {
+                        sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate.")
+                    } else {
+                        sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate. You are already in the premium channel.")
+                    }
+                } else {
+                    if (link != null) {
+                        val text = buildString {
+                            append("Subscription active until $expiryDate\n")
+                            append("Use this personal link to join the premium channel:\n")
+                            append(link)
+                            append("\nPlease do not share it with others.")
+                        }
+                        sendMessage(update.message.chatId.toString(), text)
+                    } else {
+                        sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate. Failed to create invite link, please contact the admin.")
+                    }
+                }
+            } else {
+                sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate")
+            }
         } else if (update.hasChatJoinRequest()) {
             logger.info("Received chat join request: ${update.chatJoinRequest}")
             inviteHandler.handleChatJoinRequest(update.chatJoinRequest)
@@ -763,6 +787,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } catch (e: Exception) {
             logger.error("Failed to send message to chat $chatId", e)
         }
+    }
+
+    fun getOrCreatePersonalLink(userId: Long): String? {
+        val sub = DatabaseService.subscriptions.getSubscription(userId.toString(), SubscriptionType.CHANNEL)
+            ?: return null
+        return inviteHandler.ensurePersonalInviteLink(userId, sub.expiresAt)
     }
 
     private fun setCommands() {

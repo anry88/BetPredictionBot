@@ -81,6 +81,10 @@ class GeneralCommands(private val bot: FootballBot) {
                 .atZone(java.time.ZoneId.of("UTC"))
                 .toLocalDate()
             statusLines += "Premium channel access active until $date"
+            bot.getOrCreatePersonalLink(userId.toLong())?.let { link ->
+                statusLines += "Your personal channel link: $link"
+                statusLines += "Do not share it with others"
+            }
         }
         val statusText = if (statusLines.isEmpty()) {
             "Choose a subscription plan:"

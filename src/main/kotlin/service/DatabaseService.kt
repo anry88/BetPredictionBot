@@ -87,9 +87,11 @@ private fun runManualMigration() {
             max_subscribers INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
             expires_at INTEGER NOT NULL,
-            is_active BOOLEAN DEFAULT 1
+            is_active BOOLEAN DEFAULT 1,
+            owner_id TEXT
         );
     """.trimIndent())
+    addColumnIfNotExists("invite_links", "owner_id", "TEXT")
 
     execSql("""
         CREATE TABLE IF NOT EXISTS invite_subscribers (
