@@ -27,7 +27,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
             
-            Commands /upcomingmatches and /leagueupcoming together are limited to 10 uses per month for non-premium users.
+            Commands /upcomingmatches and /leagueupcoming together are limited to 10 uses per month for non-premium users. Premium subscribers and the admin have unlimited access.
         """.trimIndent()
 
         val adminCommands = """

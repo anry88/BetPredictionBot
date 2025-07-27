@@ -380,7 +380,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun handleUpcomingMatchesCommand(chatId: String, userId: String) {
         val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        if (!isPremium) {
+        val isAdmin = userId == adminChatId || chatId == adminChatId
+        if (!isPremium && !isAdmin) {
             val used = DatabaseService.commandUsage.getTotalUsage(userId)
             if (used >= 10) {
                 sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
@@ -406,7 +407,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun handleUpcomingMatchesByLeagueCommand(chatId: String, userId: String, messageText: String) {
         val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        if (!isPremium) {
+        val isAdmin = userId == adminChatId || chatId == adminChatId
+        if (!isPremium && !isAdmin) {
             val used = DatabaseService.commandUsage.getTotalUsage(userId)
             if (used >= 10) {
                 sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
