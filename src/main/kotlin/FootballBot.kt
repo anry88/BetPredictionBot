@@ -56,6 +56,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
     private val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
 
+    private val mainChannelFooter = "\n\n\uD83D\uDC49 @topPrediction_bot - check for more predictions!"
+
+    private val TELEGRAM_MESSAGE_LIMIT = 4096
+
     private val generalCommands = GeneralCommands(this)
     private val adminCommands = AdminCommands(this)
     private val inviteHandler = InviteHandler(this, strategyChannelId, adminChatId)
@@ -98,9 +102,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     override fun sendMessageAndGetId(chatId: String, text: String): Int? {
+        val messageText = if (chatId == channelId) text + mainChannelFooter else text
         val message = SendMessage()
         message.chatId = chatId
-        message.text = text
+        message.text = messageText
 
         return try {
             val sentMessage = execute(message)
@@ -113,10 +118,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     override fun updateMessage(chatId: String, messageId: String, text: String) {
         try {
+            val newText = if (chatId == channelId) text + mainChannelFooter else text
             val editMessage = EditMessageText()
             editMessage.chatId = chatId
             editMessage.messageId = messageId.toInt()
-            editMessage.text = text
+            editMessage.text = newText
 
             execute(editMessage)
             logger.info("Message with ID $messageId updated successfully")
@@ -814,9 +820,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendMessage(chatId: String, text: String, parseMode: String = "Markdown") {
+        val finalText = if (chatId == channelId) text + mainChannelFooter else text
         val message = SendMessage()
         message.chatId = chatId
-        message.text = text
+        message.text = finalText
         message.parseMode = parseMode
 
         try {
@@ -824,6 +831,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             logger.info("Sent message to chat $chatId")
         } catch (e: Exception) {
             logger.error("Failed to send message to chat $chatId", e)
+        }
+    }
+
+    fun sendMultipartMessage(chatId: String, text: String, parseMode: String = "Markdown") {
+        val footerLength = if (chatId == channelId) mainChannelFooter.length else 0
+        val chunkSize = TELEGRAM_MESSAGE_LIMIT - footerLength
+        text.chunked(chunkSize).forEach { chunk ->
+            sendMessage(chatId, chunk, parseMode)
         }
     }
 
@@ -1069,17 +1084,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "No matches were played in the last 24 hours."
         }
 
-        val message = SendMessage()
-        message.chatId = adminChatId
-        message.text = messageText
-        message.enableMarkdown(true)
-
-        try {
-            execute(message)
-            logger.info("Prediction accuracy message sent successfully")
-        } catch (e: Exception) {
-            logger.error("Failed to send prediction accuracy message", e)
-        }
+        sendMultipartMessage(adminChatId, messageText)
+        logger.info("Prediction accuracy message sent successfully")
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
@@ -1265,17 +1271,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "No matches were played in the last week."
         }
 
-        val message = SendMessage()
-        message.chatId = channelId
-        message.text = messageText
-        message.enableMarkdown(true)
-
-        try {
-            execute(message)
-            logger.info("Weekly prediction accuracy message sent successfully")
-        } catch (e: Exception) {
-            logger.error("Failed to send weekly prediction accuracy message", e)
-        }
+        sendMultipartMessage(channelId, messageText)
+        logger.info("Weekly prediction accuracy message sent successfully")
     }
 
     fun sendMonthlyPredictionAccuracyMessage() {
@@ -1299,17 +1296,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "No matches were played in the last month."
         }
 
-        val message = SendMessage()
-        message.chatId = channelId
-        message.text = messageText
-        message.enableMarkdown(true)
-
-        try {
-            execute(message)
-            logger.info("Monthly prediction accuracy message sent successfully")
-        } catch (e: Exception) {
-            logger.error("Failed to send monthly prediction accuracy message", e)
-        }
+        sendMultipartMessage(channelId, messageText)
+        logger.info("Monthly prediction accuracy message sent successfully")
     }
 
     fun sendYearlyPredictionAccuracyMessage() {
@@ -1333,17 +1321,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "No matches were played in the last week."
         }
 
-        val message = SendMessage()
-        message.chatId = channelId
-        message.text = messageText
-        message.enableMarkdown(true)
-
-        try {
-            execute(message)
-            logger.info("Yearly prediction accuracy message sent successfully")
-        } catch (e: Exception) {
-            logger.error("Failed to send yearly prediction accuracy message", e)
-        }
+        sendMultipartMessage(channelId, messageText)
+        logger.info("Yearly prediction accuracy message sent successfully")
     }
 
     private fun handleGetAccuracyCommand(chatId: String, messageText: String) {
@@ -1370,12 +1349,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     "No matches were played in the last $days days."
                 }
 
-                sendMessage(chatId, resultMessageText)
+                sendMultipartMessage(chatId, resultMessageText)
             } else {
-                sendMessage(chatId, "Please provide a valid number of days.")
+                sendMultipartMessage(chatId, "Please provide a valid number of days.")
             }
         } else {
-            sendMessage(chatId, "Usage: /getaccuracy <number_of_days>")
+            sendMultipartMessage(chatId, "Usage: /getaccuracy <number_of_days>")
         }
     }
 
@@ -1415,12 +1394,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     "No matches were played in the last $days days."
                 }
 
-                sendMessage(chatId, resultMessageText)
+                sendMultipartMessage(chatId, resultMessageText)
             } else {
-                sendMessage(chatId, "Please provide a valid number of days.")
+                sendMultipartMessage(chatId, "Please provide a valid number of days.")
             }
         } else {
-            sendMessage(chatId, "Usage: /getStrategyEfficiency <number_of_days>")
+            sendMultipartMessage(chatId, "Usage: /getStrategyEfficiency <number_of_days>")
         }
     }
 
