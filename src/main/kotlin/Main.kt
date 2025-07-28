@@ -186,7 +186,7 @@ fun main() {
 
     val updatePastMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updatePastMatchesTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(7, 0))  // Every day at 07:00 AM
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(7, 20))  // Every day at 07:00 AM
         .build()
 
     // Добавляем новый job для отправки сообщений с точностью предсказаний
