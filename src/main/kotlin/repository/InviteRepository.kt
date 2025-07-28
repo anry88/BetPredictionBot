@@ -56,7 +56,13 @@ class InviteRepository {
         return result
     }
 
-    fun approveJoinRequest(inviteLinkId: Long, userId: String): Boolean {
+    fun approveJoinRequest(
+        inviteLinkId: Long,
+        userId: String,
+        username: String?,
+        firstName: String?,
+        lastName: String?
+    ): Boolean {
         val connection = getConnection()
         val currentTime = System.currentTimeMillis() / 1000
         connection.autoCommit = false
@@ -72,11 +78,15 @@ class InviteRepository {
             updateRequestStmt.setLong(1, inviteLinkId)
             updateRequestStmt.setString(2, userId)
             updateRequestStmt.executeUpdate()
-            val insertSubscriberSql = "INSERT INTO invite_subscribers (invite_link_id, user_id, joined_at) VALUES (?, ?, ?)"
+            val insertSubscriberSql =
+                "INSERT INTO invite_subscribers (invite_link_id, user_id, username, first_name, last_name, joined_at) VALUES (?, ?, ?, ?, ?, ?)"
             val insertSubscriberStmt = connection.prepareStatement(insertSubscriberSql)
             insertSubscriberStmt.setLong(1, inviteLinkId)
             insertSubscriberStmt.setString(2, userId)
-            insertSubscriberStmt.setLong(3, currentTime)
+            insertSubscriberStmt.setString(3, username)
+            insertSubscriberStmt.setString(4, firstName)
+            insertSubscriberStmt.setString(5, lastName)
+            insertSubscriberStmt.setLong(6, currentTime)
             insertSubscriberStmt.executeUpdate()
             val updateLinkSql = "UPDATE invite_links SET expires_at = ? WHERE id = ?"
             val updateLinkStmt = connection.prepareStatement(updateLinkSql)
@@ -301,21 +311,22 @@ class InviteRepository {
         connection.close()
     }
 
-    fun getActiveInviteLinksWithRemainingSlots(): List<Pair<String, Int>> {
+    fun getActiveInviteLinksWithRemainingSlots(): List<Triple<String, Int, Long>> {
         val connection = getConnection()
-        val sql = "SELECT id, invite_link, max_subscribers FROM invite_links WHERE is_active = 1 AND expires_at > ?"
+        val sql = "SELECT id, invite_link, max_subscribers, expires_at FROM invite_links WHERE is_active = 1 AND expires_at > ?"
         val stmt = connection.prepareStatement(sql)
         stmt.setLong(1, System.currentTimeMillis() / 1000)
         val rs = stmt.executeQuery()
-        val result = mutableListOf<Pair<String, Int>>()
+        val result = mutableListOf<Triple<String, Int, Long>>()
         while (rs.next()) {
             val id = rs.getLong("id")
             val link = rs.getString("invite_link")
             val maxSub = rs.getInt("max_subscribers")
+            val expiry = rs.getLong("expires_at")
             val current = getSubscriberCount(id)
             val remaining = maxSub - current
             if (remaining > 0) {
-                result.add(link to remaining)
+                result.add(Triple(link, remaining, expiry))
             }
         }
         rs.close()

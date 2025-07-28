@@ -22,6 +22,7 @@ class GeneralCommands(private val bot: FootballBot) {
         val commonCommands = """
             /start - Start the bot and get information about it
             /freepremiumlinks - Get available premium channel links for free
+                with expiry dates
             /subscribe - Purchase bot or Premium channel subscription
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
@@ -60,8 +61,11 @@ class GeneralCommands(private val bot: FootballBot) {
         } else {
             val text = buildString {
                 append("Available free premium channel joining links:\n")
-                links.forEach { (link, left) ->
-                    append("$link - $left slots left\n")
+                links.forEach { (link, left, expires) ->
+                    val date = java.time.Instant.ofEpochSecond(expires)
+                        .atZone(java.time.ZoneId.of("UTC"))
+                        .toLocalDate()
+                    append("$link - $left slots left (valid until $date)\n")
                 }
             }.trim()
             bot.sendMessage(chatId, text)

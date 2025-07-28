@@ -160,7 +160,13 @@ class InviteHandler(private val bot: FootballBot,
                         )
 
                         if (success) {
-                            val approved = DatabaseService.invites.approveJoinRequest(inviteLinkId, chatJoinRequest.user.id.toString())
+                            val approved = DatabaseService.invites.approveJoinRequest(
+                                inviteLinkId,
+                                chatJoinRequest.user.id.toString(),
+                                chatJoinRequest.user.userName,
+                                chatJoinRequest.user.firstName,
+                                chatJoinRequest.user.lastName
+                            )
 
                             if (approved) {
                                 val approveChatJoinRequest = ApproveChatJoinRequest()
