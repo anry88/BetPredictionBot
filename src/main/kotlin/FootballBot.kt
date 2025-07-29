@@ -56,7 +56,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
     private val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
 
-    private val mainChannelFooter = "\n\n\uD83D\uDC49 @topPrediction_bot - check for more predictions!"
+    private val mainChannelFooter = "\n\n\uD83D\uDC49 @topPrediction_bot - check for more!"
 
     private val TELEGRAM_MESSAGE_LIMIT = 4096
 
