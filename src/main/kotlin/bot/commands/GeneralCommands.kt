@@ -7,13 +7,15 @@ import repository.SubscriptionType
 class GeneralCommands(private val bot: FootballBot) {
     fun handleStart(chatId: String) {
         val description = """
-                Welcome to the Football Prediction Bot!
+                ⚽ Welcome to Football Prediction Bot!
 
-                No one can truly predict the future, but our Football Prediction Bot uses advanced analysis to estimate the outcomes of football matches. By leveraging in-depth analysis of team conditions, expert opinions, and bookmaker data, this bot provides insightful predictions.
+                No one can truly predict the future - but AI can make a pretty good guess 😉
+                This bot uses advanced AI models to analyze team stats, trends and bookmaker data to generate smart football match predictions.
 
-                Please note that the predictions provided by this bot are for informational purposes only and are not recommendations for betting. Use the information at your own discretion and be aware of the regulations in your country regarding sports betting.
+                🧠 All predictions are AI-generated and meant for informational purposes only.
+                Please use responsibly and follow your local laws regarding sports betting.
 
-                To get a list of available commands, use /help.
+                Type /help to see what this bot can do!
             """.trimIndent()
         bot.sendMessage(chatId, description)
     }
