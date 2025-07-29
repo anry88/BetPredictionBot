@@ -50,5 +50,10 @@
   {"leagueId": 290, "season": 2025, "description": "Iran Persian Gulf Pro League", "premiumSelection": false},
   {"leagueId": 323, "season": 2025, "description": "India Indian Super League", "premiumSelection": false},
   {"leagueId": 274, "season": 2025, "description": "Indonesia Liga 1", "premiumSelection": false},
-  {"leagueId": 106, "season": 2025, "description": "Poland Ekstraklasa", "premiumSelection": false}
+  {"leagueId": 106, "season": 2025, "description": "Poland Ekstraklasa", "premiumSelection": false},
+  {"leagueId": 218, "season": 2025, "description": "Austria Bundesliga", "premiumSelection": false},
+  {"leagueId": 207, "season": 2025, "description": "Switzerland Super League", "premiumSelection": false},
+  {"leagueId": 119, "season": 2025, "description": "Denmark Superliga", "premiumSelection": false},
+  {"leagueId": 103, "season": 2025, "description": "Norway Eliteserien", "premiumSelection": false},
+  {"leagueId": 113, "season": 2025, "description": "Sweden Allsvenskan", "premiumSelection": false}
 ]
