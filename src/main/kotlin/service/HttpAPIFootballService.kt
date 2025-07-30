@@ -178,7 +178,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
                         val matchDateTime = LocalDateTime.parse(matchInfo.datetime, formatterMatchDate)
                         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-                        if (matchDateTime.isBefore(now.plusDays(1))) {
+                        if (matchDateTime.isBefore(now.plusHours(28))) {
                             val oddsInfo = getOddsForFixture(
                                 matchInfo.fixtureId,
                                 matchInfo.predictedOutcome ?: "",
