@@ -55,5 +55,6 @@
   {"leagueId": 207, "season": 2025, "description": "Switzerland Super League", "premiumSelection": false},
   {"leagueId": 119, "season": 2025, "description": "Denmark Superliga", "premiumSelection": false},
   {"leagueId": 103, "season": 2025, "description": "Norway Eliteserien", "premiumSelection": false},
-  {"leagueId": 113, "season": 2025, "description": "Sweden Allsvenskan", "premiumSelection": false}
+  {"leagueId": 113, "season": 2025, "description": "Sweden Allsvenskan", "premiumSelection": false},
+  {"leagueId": 19, "season": 2024, "description": "World African Nations Championship", "premiumSelection": false}
 ]

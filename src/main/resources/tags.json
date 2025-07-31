@@ -53,7 +53,8 @@
         "Switzerland Super League": "#SwitzerlandSuperLeague",
         "Denmark Superliga": "#DenmarkSuperliga",
         "Norway Eliteserien": "#NorwayEliteserien",
-        "Sweden Allsvenskan": "#SwedenAllsvenskan"
+        "Sweden Allsvenskan": "#SwedenAllsvenskan",
+        "African Nations Championship": "#AfricanNationsChampionship"
     },
     "teams": {
         "Kazakhstan": "#Kazakhstan",
@@ -1031,6 +1032,9 @@
         "Universitatea Craiova": "#UniversitateaCraiova",
         "Žilina": "#ilina",
         "Zulte Waregem": "#ZulteWaregem",
-        "RAAL La Louvière": "#RAALLaLouvire"
+        "RAAL La Louvière": "#RAALLaLouvire",
+        "Stromsgodset": "#Stromsgodset",
+        "Vejle": "#Vejle",
+        "Odense": "#Odense"
     }
 }

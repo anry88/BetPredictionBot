@@ -1437,6 +1437,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             "Europe" to "🌍", // Глобус с Европой и Африкой
             "Asia" to "🌏",   // Глобус с Азией и Австралией
             "Africa" to "🌍", // Можно использовать тот же глобус
+            "African" to "🌍", // Можно использовать тот же глобус
             "Americas" to "🌎", // Глобус с Америкой
             "North America" to "🌎",
             "South America" to "🌎",
