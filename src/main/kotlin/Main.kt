@@ -219,7 +219,7 @@ fun main() {
 
     val monthlyAccuracyTrigger = TriggerBuilder.newTrigger()
         .withIdentity("sendMonthlyAccuracyTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 8, 32))  // Первого числа каждого месяца в 08:00
+        .withSchedule(CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 9, 7))  // Первого числа каждого месяца в 08:00
         .build()
 
     // SendYearlyAccuracyJob setup
