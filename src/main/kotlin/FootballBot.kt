@@ -820,7 +820,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendMessage(chatId: String, text: String, parseMode: String = "Markdown") {
-        val finalText = if (chatId == channelId) text + mainChannelFooter else text
+        val footer = if (chatId == channelId) {
+            if (parseMode == "Markdown") mainChannelFooter.replace("_", "\\_") else mainChannelFooter
+        } else ""
+        val finalText = text + footer
         val message = SendMessage()
         message.chatId = chatId
         message.text = finalText
@@ -835,7 +838,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     fun sendMultipartMessage(chatId: String, text: String, parseMode: String = "Markdown") {
-        val footerLength = if (chatId == channelId) mainChannelFooter.length else 0
+        val footerLength = if (chatId == channelId) {
+            if (parseMode == "Markdown") mainChannelFooter.replace("_", "\\_").length else mainChannelFooter.length
+        } else 0
         val chunkSize = TELEGRAM_MESSAGE_LIMIT - footerLength
 
         var remaining = text
