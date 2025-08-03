@@ -28,6 +28,9 @@ class GeneralCommands(private val bot: FootballBot) {
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /premiummatches - Get matches selected for the Premium channel
+            /recentmatches - Get matches from the last 24 hours with results
+            /leaguerecent <filter> - Get matches from the last 24 hours for leagues matching the filter
+            /premiumrecent - Get premium matches from the last 24 hours
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
 
             Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers have unlimited access.

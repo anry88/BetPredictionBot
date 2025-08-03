@@ -36,7 +36,7 @@ $tags""".trimIndent()
     }
 
     fun formatUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, tags: String): String {
-        val analysis = buildMatchAnalysis(matchInfo, league)
+        val analysis = buildPredictionAnalysis(matchInfo, league)
         val testData = formatTestData(matchInfo)
         return """
 ${matchInfo.datetime} UTC
@@ -47,7 +47,22 @@ $analysis
 $tags""".trimIndent()
     }
 
-    private fun buildMatchAnalysis(matchInfo: MatchInfo, league: LeagueConfig?): String {
+    fun formatCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?, tags: String): String {
+        val analysis = buildPredictionAnalysis(matchInfo, league)
+        val testData = formatTestData(matchInfo)
+        val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
+        val emoji = if (isPredictionCorrect) "✅" else "❌"
+        return """
+${matchInfo.datetime} UTC
+${matchInfo.teams}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
+Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
+$testData
+$analysis
+$tags""".trimIndent()
+    }
+
+    private fun buildPredictionAnalysis(matchInfo: MatchInfo, league: LeagueConfig?): String {
         val teams = matchInfo.teams.split(" vs. ")
         val homeTeam = teams.getOrNull(0)?.trim()
         val awayTeam = teams.getOrNull(1)?.trim()
@@ -97,7 +112,7 @@ $tags""".trimIndent()
         }
 
         return """
-            Match Analysis:
+            Prediction Analysis:
             $probabilityLine
             - League predictable $leagueCheck
             - Profitability $profitCheck
