@@ -865,6 +865,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
         commands.add(BotCommand("/premiumrecent", "Get premium matches from the last 24 hours"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
+        commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
