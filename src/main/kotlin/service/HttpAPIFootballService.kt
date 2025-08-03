@@ -87,9 +87,9 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         val chatGptMaxAttempts = 10
 
-        leaguesConfig.forEach { leagueConfig ->
+        for (leagueConfig in leaguesConfig) {
             val matches = getUpcomingMatches(leagueConfig.leagueId, leagueConfig.season, formattedCurrentDate, formattedNextDay)
-            matches.forEach { match ->
+            for (match in matches) {
                 val fixtureId = match.fixture.id.toString()
                 val leagueName = "${match.league.country} ${match.league.name}"
 
@@ -312,16 +312,16 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         val messagesToUpdate = mutableMapOf<Pair<String?, String?>, MatchInfo>()
 
-        leaguesConfig.forEach { leagueConfig ->
+        for (leagueConfig in leaguesConfig) {
             val dates = listOf(formattedTwoDaysAgo, formattedOneDayAgo, formattedCurrentDate)
-            dates.forEach { date ->
+            for (date in dates) {
                 val matches = getPastMatches(
                     leagueConfig.leagueId,
                     leagueConfig.season,
                     date,
                     date
                 )
-                matches.forEach { match ->
+                for (match in matches) {
                     val fixtureId = match.fixture.id.toString()
 
                     val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
