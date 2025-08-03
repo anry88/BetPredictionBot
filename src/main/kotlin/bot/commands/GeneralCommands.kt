@@ -3,6 +3,11 @@ package bot.commands
 import FootballBot
 import service.DatabaseService
 import repository.SubscriptionType
+import java.time.Duration
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeParseException
 
 class GeneralCommands(private val bot: FootballBot) {
     fun handleStart(chatId: String) {
@@ -32,6 +37,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /leaguerecent <filter> - Get matches from the last 24 hours for leagues matching the filter
             /premiumrecent - Get premium matches from the last 24 hours
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
+            /settimezone <HH:mm> - Set your timezone by sending your current time
 
             Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers have unlimited access.
         """.trimIndent()
@@ -103,6 +109,27 @@ class GeneralCommands(private val bot: FootballBot) {
             statusLines.joinToString(separator = "\n", postfix = "\n\nChoose a subscription plan:")
         }
         bot.showSubscriptionOptions(chatId, statusText)
+    }
+
+    fun handleSetTimezone(chatId: String, userId: String, messageText: String) {
+        val timeStr = messageText.removePrefix("/settimezone").trim()
+        if (timeStr.isBlank()) {
+            bot.sendMessage(chatId, "Usage: /settimezone <HH:mm>")
+            return
+        }
+        try {
+            val userTime = LocalTime.parse(timeStr)
+            val utcNow = LocalTime.now(ZoneId.of("UTC"))
+            var diff = Duration.between(utcNow, userTime).toMinutes().toInt()
+            if (diff < -720) diff += 1440
+            if (diff > 720) diff -= 1440
+            val zone = ZoneOffset.ofTotalSeconds(diff * 60)
+            DatabaseService.userSettings.setTimezone(userId, zone.id)
+            val label = if (zone.id.startsWith("+") || zone.id.startsWith("-")) "UTC${zone.id}" else zone.id
+            bot.sendMessage(chatId, "Timezone set to $label")
+        } catch (e: DateTimeParseException) {
+            bot.sendMessage(chatId, "Invalid time format. Use HH:mm, e.g., /settimezone 21:30")
+        }
     }
 
 }

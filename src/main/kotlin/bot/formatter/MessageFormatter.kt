@@ -106,24 +106,24 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
     }
 
     // --- Direct messages ---
-    fun formatDirectUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?): String {
+    fun formatDirectUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
         val testData = formatTestData(matchInfo)
         return """
-${matchInfo.datetime} UTC
+${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
 $testData
 $analysis""".trimIndent()
     }
 
-    fun formatDirectCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?): String {
+    fun formatDirectCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
         val testData = formatTestData(matchInfo)
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         return """
-${matchInfo.datetime} UTC
+${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}

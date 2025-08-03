@@ -39,6 +39,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 import bot.commands.AdminCommands
@@ -91,6 +92,21 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         leagueTags = tags.first
         teamTags = tags.second
         leaguesConfig = loadLeaguesConfig()
+    }
+
+    private fun userTimezone(userId: String): Pair<String, String> {
+        val tz = DatabaseService.userSettings.getTimezone(userId) ?: "UTC"
+        val label = if (tz.startsWith("+") || tz.startsWith("-")) "UTC$tz" else tz
+        return tz to label
+    }
+
+    private fun adjustMatchesTimezone(matches: List<MatchInfo>, zone: String): List<MatchInfo> {
+        val zoneId = ZoneId.of(zone)
+        return matches.map {
+            val dt = LocalDateTime.parse(it.datetime, dateTimeFormatter)
+            val converted = dt.atZone(ZoneId.of("UTC")).withZoneSameInstant(zoneId).format(dateTimeFormatter)
+            it.copy(datetime = converted)
+        }
     }
 
     override fun getBotToken(): String {
@@ -196,15 +212,19 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 }
 
                 messageText == "/recentmatches" -> {
-                    handleRecentMatchesCommand(chatId)
+                    handleRecentMatchesCommand(chatId, userId)
                 }
 
                 messageText.startsWith("/leaguerecent") -> {
-                    handleRecentMatchesByLeagueCommand(chatId, messageText)
+                    handleRecentMatchesByLeagueCommand(chatId, userId, messageText)
                 }
 
                 messageText == "/premiumrecent" -> {
-                    handleRecentPremiumMatchesCommand(chatId)
+                    handleRecentPremiumMatchesCommand(chatId, userId)
+                }
+
+                messageText.startsWith("/settimezone") -> {
+                    generalCommands.handleSetTimezone(chatId, userId, messageText)
                 }
 
                 messageText.startsWith("/getaccuracy") -> {
@@ -442,11 +462,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         }
 
+        val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
-            val matchesByLeague = upcomingMatches.groupBy { it.matchType }
+            val converted = adjustMatchesTimezone(upcomingMatches, zone)
+            val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) }, includeTags = false)
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -482,10 +504,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         var found = false
+        val (zone, label) = userTimezone(userId)
         leagues.forEach { league ->
             val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
             if (matches.isNotEmpty()) {
-                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) }, includeTags = false)
+                val converted = adjustMatchesTimezone(matches, zone)
+                val messages = buildMatchMessages(converted, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
                 found = true
             }
@@ -511,15 +535,17 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         }
 
+        val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         val premiumMatches = upcomingMatches.filter { match ->
             outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
         }
 
         if (premiumMatches.isNotEmpty()) {
-            val matchesByLeague = premiumMatches.groupBy { it.matchType }
+            val converted = adjustMatchesTimezone(premiumMatches, zone)
+            val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) }, includeTags = false)
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -527,12 +553,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    private fun handleRecentMatchesCommand(chatId: String) {
+    private fun handleRecentMatchesCommand(chatId: String, userId: String) {
+        val (zone, label) = userTimezone(userId)
         val recentMatches = DatabaseService.matches.getLastMatches(1)
         if (recentMatches.isNotEmpty()) {
-            val matchesByLeague = recentMatches.groupBy { it.matchType }
+            val converted = adjustMatchesTimezone(recentMatches, zone)
+            val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) }, includeTags = false)
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -540,7 +568,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    private fun handleRecentMatchesByLeagueCommand(chatId: String, messageText: String) {
+    private fun handleRecentMatchesByLeagueCommand(chatId: String, userId: String, messageText: String) {
         val filter = messageText.removePrefix("/leaguerecent").trim()
         if (filter.isBlank()) {
             sendMessage(chatId, "Usage: /leaguerecent <filter>")
@@ -554,10 +582,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         var found = false
+        val (zone, label) = userTimezone(userId)
         leagues.forEach { league ->
             val matches = DatabaseService.matches.getLastMatchesForLeague(league, 1)
             if (matches.isNotEmpty()) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) }, includeTags = false)
+                val converted = adjustMatchesTimezone(matches, zone)
+                val messages = buildMatchMessages(converted, formatter = { formatMatchInfoWithResultDetailed(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
                 found = true
             }
@@ -568,16 +598,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    private fun handleRecentPremiumMatchesCommand(chatId: String) {
+    private fun handleRecentPremiumMatchesCommand(chatId: String, userId: String) {
+        val (zone, label) = userTimezone(userId)
         val recentMatches = DatabaseService.matches.getLastMatches(1)
         val premiumMatches = recentMatches.filter { match ->
             outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
         }
 
         if (premiumMatches.isNotEmpty()) {
-            val matchesByLeague = premiumMatches.groupBy { it.matchType }
+            val converted = adjustMatchesTimezone(premiumMatches, zone)
+            val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) }, includeTags = false)
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -646,9 +678,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return MessageFormatter.formatMainUpcomingMatch(matchInfo, tags, isTest)
     }
 
-    private fun formatUpcomingMatchInfo(matchInfo: MatchInfo): String {
+    private fun formatUpcomingMatchInfo(matchInfo: MatchInfo, timezone: String): String {
         val league = leaguesConfig.find { it.description == matchInfo.matchType }
-        return MessageFormatter.formatDirectUpcomingMatch(matchInfo, league)
+        return MessageFormatter.formatDirectUpcomingMatch(matchInfo, league, timezone)
     }
 
     private fun formatMatchInfoWithResult(matchInfo: MatchInfo): String {
@@ -656,9 +688,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return MessageFormatter.formatMainCompletedMatch(matchInfo, tags, isTest)
     }
 
-    private fun formatMatchInfoWithResultDetailed(matchInfo: MatchInfo): String {
+    private fun formatMatchInfoWithResultDetailed(matchInfo: MatchInfo, timezone: String): String {
         val league = leaguesConfig.find { it.description == matchInfo.matchType }
-        return MessageFormatter.formatDirectCompletedMatch(matchInfo, league)
+        return MessageFormatter.formatDirectCompletedMatch(matchInfo, league, timezone)
     }
 
 
