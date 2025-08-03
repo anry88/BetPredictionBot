@@ -179,7 +179,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         val matchDateTime = LocalDateTime.parse(matchInfo.datetime, formatterMatchDate)
                         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
                         if (matchDateTime.isBefore(now.plusHours(28))) {
-                            val oddsInfo = getOddsForFixture(
+                            val oddsInfo = this@HttpAPIFootballService.getOddsForFixture(
                                 matchInfo.fixtureId,
                                 matchInfo.predictedOutcome ?: "",
                                 homeTeam,
@@ -208,7 +208,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                                 existingMatch.awayWinOdds == null
 
                         if (matchDateTime.isBefore(now.plusDays(1)) && needsOdds) {
-                            val oddsInfo = getOddsForFixture(
+                            val oddsInfo = this@HttpAPIFootballService.getOddsForFixture(
                                 existingMatch.fixtureId,
                                 existingMatch.predictedOutcome ?: "",
                                 match.teams.home.name,
@@ -576,6 +576,4 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         return null
     }
 
-
-}
 }
