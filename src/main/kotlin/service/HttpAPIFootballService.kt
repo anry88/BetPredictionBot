@@ -258,27 +258,46 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     }
 
     suspend fun getPastMatches(leagueId: Int, season: Int, fromDate: String, toDate: String): List<Match> {
-        val response: HttpResponse = client.get(url) {
-            headers {
-                append("X-RapidAPI-Key", apiKey)
-                append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
+        val maxAttempts = 3
+        var attempt = 0
+        while (attempt < maxAttempts) {
+            try {
+                val response: HttpResponse = client.get(url) {
+                    headers {
+                        append("X-RapidAPI-Key", apiKey)
+                        append("X-RapidAPI-Host", "api-football-v1.p.rapidapi.com")
+                    }
+                    parameter("league", leagueId)
+                    parameter("season", season)
+                    if (fromDate == toDate) {
+                        parameter("date", fromDate)
+                    } else {
+                        parameter("from", fromDate)
+                        parameter("to", toDate)
+                    }
+                    parameter("status", "FT") // "FT" означает завершённый матч
+                }
+
+                val remainingRequests = response.headers["X-RateLimit-requests-Remaining"] ?: "Unknown"
+                logger.info("Remaining API calls after request: $remainingRequests")
+
+                return if (response.status == HttpStatusCode.OK) {
+                    val result = response.body<ApiFootballResponse>()
+                    result.response
+                } else {
+                    emptyList()
+                }
+            } catch (e: Exception) {
+                attempt++
+                logger.warn("Attempt $attempt to fetch past matches failed: ${'$'}{e.message}")
+                if (attempt >= maxAttempts) {
+                    logger.error("Failed to fetch past matches after ${'$'}maxAttempts attempts", e)
+                    break
+                }
+                delay(1000L * attempt)
             }
-            parameter("league", leagueId)
-            parameter("season", season)
-            parameter("from", fromDate)
-            parameter("to", toDate)
-            parameter("status", "FT") // "FT" означает завершённый матч
         }
-
-        val remainingRequests = response.headers["X-RateLimit-requests-Remaining"] ?: "Unknown"
-        logger.info("Remaining API calls after request: $remainingRequests")
-
-        return if (response.status == HttpStatusCode.OK) {
-            val result = response.body<ApiFootballResponse>()
-            result.response
-        } else {
-            emptyList()
-        }
+        return emptyList()
     }
 
     suspend fun updatePastMatches() {
@@ -288,23 +307,26 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
         val formattedTwoDaysAgo = twoDaysAgo.format(formatter)
+        val formattedOneDayAgo = oneDayAgo.format(formatter)
         val formattedCurrentDate = currentDate.format(formatter)
 
         val messagesToUpdate = mutableMapOf<Pair<String?, String?>, MatchInfo>()
 
         leaguesConfig.forEach { leagueConfig ->
-            val matches = getPastMatches(
-                leagueConfig.leagueId,
-                leagueConfig.season,
-                formattedTwoDaysAgo,
-                formattedCurrentDate
-            )
-            matches.forEach { match ->
-                val fixtureId = match.fixture.id.toString()
+            val dates = listOf(formattedTwoDaysAgo, formattedOneDayAgo, formattedCurrentDate)
+            dates.forEach { date ->
+                val matches = getPastMatches(
+                    leagueConfig.leagueId,
+                    leagueConfig.season,
+                    date,
+                    date
+                )
+                matches.forEach { match ->
+                    val fixtureId = match.fixture.id.toString()
 
-                val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
-                if (existingMatchInfo != null) {
-                    val homeTeam = match.teams.home.name
+                    val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
+                    if (existingMatchInfo != null) {
+                        val homeTeam = match.teams.home.name
                     val awayTeam = match.teams.away.name
 
                     val homeGoals = match.score?.fulltime?.home ?: 0
