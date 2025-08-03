@@ -9,7 +9,7 @@
   {"leagueId": 94, "season": 2025, "description": "Portugal Primeira Liga", "premiumSelection": false},
   {"leagueId": 235, "season": 2025, "description": "Russia Premier League", "premiumSelection": true},
   {"leagueId": 10, "season": 2025, "description": "World Friendlies", "premiumSelection": true},
-  {"leagueId": 2, "season": 2025, "description": "World UEFA Champions League", "premiumSelection": false},
+  {"leagueId": 2, "season": 2025, "description": "World UEFA Champions League", "premiumSelection": true},
   {"leagueId": 3, "season": 2025, "description": "World UEFA Europa League", "premiumSelection": false},
   {"leagueId": 5, "season": 2024, "description": "World UEFA Nations League", "premiumSelection": false},
   {"leagueId": 30, "season": 2026, "description": "World World Cup - Qualification Asia", "premiumSelection": true},
