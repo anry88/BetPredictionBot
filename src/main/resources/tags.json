@@ -1038,6 +1038,22 @@
         "Odense": "#Odense",
         "SK Poltava": "#SKPoltava",
         "FC BW Linz": "#FCBWLinz",
-        "Grazer AK": "#GrazerAK"
+        "Grazer AK": "#GrazerAK",
+        "KFUM Oslo": "#KFUMOslo",
+        "Tromso": "#Tromso",
+        "Fredrikstad": "#Fredrikstad",
+        "Sarpsborg 08 FF": "#Sarpsborg08FF",
+        "Wolfsberger AC": "#WolfsbergerAC",
+        "SCR Altach": "#SCRAltach",
+        "WSG Wattens": "#WSGWattens",
+        "TSV Hartberg": "#TSVHartberg",
+        "Ried": "#Ried",
+        "FC Winterthur": "#FCWinterthur",
+        "FC Basel 1893": "#FCBasel1893",
+        "Grasshoppers": "#Grasshoppers",
+        "IF Brommapojkarna": "#IFBrommapojkarna",
+        "IFK Norrkoping": "#IFKNorrkoping",
+        "IFK Varnamo": "#IFKVarnamo",
+        "Gais": "#Gais"
     }
 }
