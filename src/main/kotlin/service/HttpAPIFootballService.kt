@@ -283,58 +283,21 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
     suspend fun updatePastMatches() {
         val currentDate = LocalDate.now()
-        val twoDaysAgo = currentDate.minusDays(2)
         val oneDayAgo = currentDate.minusDays(1)
-        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-        val formattedTwoDaysAgo = twoDaysAgo.format(formatter)
-        val formattedCurrentDate = currentDate.format(formatter)
 
         val messagesToUpdate = mutableMapOf<Pair<String?, String?>, MatchInfo>()
 
-        leaguesConfig.forEach { leagueConfig ->
-            val matches = getPastMatches(
-                leagueConfig.leagueId,
-                leagueConfig.season,
-                formattedTwoDaysAgo,
-                formattedCurrentDate
-            )
-            matches.forEach { match ->
-                val fixtureId = match.fixture.id.toString()
-
-                val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
-                if (existingMatchInfo != null) {
-                    val homeTeam = match.teams.home.name
-                    val awayTeam = match.teams.away.name
-
-                    val homeGoals = match.score?.fulltime?.home ?: 0
-                    val awayGoals = match.score?.fulltime?.away ?: 0
-
-                    // Определяем победителя
-                    val winner = when {
-                        homeGoals > awayGoals -> homeTeam
-                        awayGoals > homeGoals -> awayTeam
-                        else -> "Draw"
-                    }
-
-                    // Update the actual outcome and actual score in the database
-                    val actualScore = "$homeGoals:$awayGoals"
-
-                    val updatedMatchInfo = existingMatchInfo.copy(
-                        actualOutcome = winner,
-                        actualScore = actualScore
-                    )
-
-                    DatabaseService.matches.updateMatchResult(updatedMatchInfo)
-
-                    val key = updatedMatchInfo.telegramMessageId to updatedMatchInfo.strategyTelegramMessageId
-                    if (key.first != null || key.second != null) {
-                        messagesToUpdate.putIfAbsent(key, updatedMatchInfo)
-                    }
-
-                    delay(1000)
+        val matches = DatabaseService.matches.getMatchesFromLastDaysWithoutResult(2)
+        for (match in matches) {
+            val updatedMatchInfo = getLiveMatchInfo(match.fixtureId)
+            if (updatedMatchInfo != null && updatedMatchInfo.actualOutcome != null) {
+                DatabaseService.matches.updateMatchResult(updatedMatchInfo)
+                val key = updatedMatchInfo.telegramMessageId to updatedMatchInfo.strategyTelegramMessageId
+                if (key.first != null || key.second != null) {
+                    messagesToUpdate.putIfAbsent(key, updatedMatchInfo)
                 }
             }
+            delay(1000)
         }
 
         for ((_, info) in messagesToUpdate) {

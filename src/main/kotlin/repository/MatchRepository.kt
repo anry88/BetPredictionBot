@@ -317,6 +317,24 @@ class MatchRepository {
         return matchesToUpdate
     }
 
+    fun getMatchesFromLastDaysWithoutResult(days: Int): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val startDate = now.minusDays(days.toLong())
+        val matchesToUpdate = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.selectAll().mapNotNullTo(matchesToUpdate) { row ->
+                    val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
+                    val isWithinRange = matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) && row[leagueTable.actualOutcome] == null
+                    if (isWithinRange) mapRowToMatchInfo(row, leagueTable) else null
+                }
+            }
+        }
+        return matchesToUpdate
+    }
+
     fun getMatchInfoByFixtureId(fixtureId: String): MatchInfo? {
         var matchInfo: MatchInfo? = null
         transaction {
