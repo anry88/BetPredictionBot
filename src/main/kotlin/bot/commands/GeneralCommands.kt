@@ -38,6 +38,9 @@ class GeneralCommands(private val bot: FootballBot) {
             /leaguerecent <filter> - Get matches from the last 24 hours for leagues matching the filter
             /premiumrecent - Get premium matches from the last 24 hours
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
+            /jobs - Manage scheduled jobs
+            /confirm - Confirm pending scheduled job
+            /cancel - Cancel pending scheduled job
             /settimezone <HH:mm> - Set your timezone by sending your current time
 
             Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers have unlimited access.

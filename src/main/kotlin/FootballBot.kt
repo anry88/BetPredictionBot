@@ -25,6 +25,8 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import service.DatabaseService
 import service.HttpAPIFootballService
 import service.StrategyService
@@ -34,6 +36,7 @@ import service.ChatGPTService
 import service.StarsPaymentService
 import repository.SubscriptionPlan
 import repository.SubscriptionType
+import repository.ScheduledJob
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -77,6 +80,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         ignoreUnknownKeys = true
         isLenient = true
     }
+    private val pendingJobs = mutableMapOf<String, ScheduledJob>()
+    private val jobCreationStates = mutableMapOf<String, JobCreationState>()
+    private val editingJobs = mutableMapOf<String, Long>()
+
+    private enum class JobCreationState {
+        WAITING_LEAGUE_UPCOMING_FILTER,
+        WAITING_LEAGUE_RECENT_FILTER,
+        WAITING_ACCURACY_DAYS
+    }
 
     private fun loadLeaguesConfig(): List<LeagueConfig> {
         val leaguesJson = javaClass.getResource("/leagues.json")?.readText()
@@ -90,8 +102,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         setCommands()
         val tags = loadTags()
         leagueTags = tags.first
-        teamTags = tags.second
+       teamTags = tags.second
         leaguesConfig = loadLeaguesConfig()
+        startScheduledJobs()
     }
 
     private fun userTimezone(userId: String): Pair<String, String> {
@@ -172,6 +185,98 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         execute(message)
     }
 
+    private fun showJobsMenu(chatId: String) {
+        val markup = InlineKeyboardMarkup()
+        val rows = listOf(
+            listOf(InlineKeyboardButton("Create Job").apply { callbackData = "jobs_create" }),
+            listOf(InlineKeyboardButton("Edit Job").apply { callbackData = "jobs_edit" }),
+            listOf(InlineKeyboardButton("Delete Job").apply { callbackData = "jobs_delete" })
+        )
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Job management:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
+    private fun showCreateCategory(chatId: String) {
+        val markup = InlineKeyboardMarkup()
+        val rows = listOf(
+            listOf(InlineKeyboardButton("Upcoming").apply { callbackData = "jobs_create_upcoming" }),
+            listOf(InlineKeyboardButton("Recent").apply { callbackData = "jobs_create_recent" }),
+            listOf(InlineKeyboardButton("Accuracy stats").apply { callbackData = "jobs_create_accuracy" })
+        )
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Choose job type:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
+    private fun showUpcomingOptions(chatId: String) {
+        val markup = InlineKeyboardMarkup()
+        val rows = listOf(
+            listOf(InlineKeyboardButton("All upcoming").apply { callbackData = "jobs_create_upcoming_all" }),
+            listOf(InlineKeyboardButton("League upcoming").apply { callbackData = "jobs_create_upcoming_league" }),
+            listOf(InlineKeyboardButton("Premium upcoming").apply { callbackData = "jobs_create_upcoming_premium" })
+        )
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Choose upcoming option:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
+    private fun showRecentOptions(chatId: String) {
+        val markup = InlineKeyboardMarkup()
+        val rows = listOf(
+            listOf(InlineKeyboardButton("All recent").apply { callbackData = "jobs_create_recent_all" }),
+            listOf(InlineKeyboardButton("League recent").apply { callbackData = "jobs_create_recent_league" }),
+            listOf(InlineKeyboardButton("Premium recent").apply { callbackData = "jobs_create_recent_premium" })
+        )
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Choose recent option:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
+    private fun showEditJobs(chatId: String, userId: String) {
+        val jobs = DatabaseService.jobs.getJobsByUser(userId)
+        if (jobs.isEmpty()) {
+            sendMessage(chatId, "No jobs to edit.")
+            return
+        }
+        val markup = InlineKeyboardMarkup()
+        val rows = jobs.map { job ->
+            listOf(
+                InlineKeyboardButton("${job.command} ${job.params ?: ""}").apply {
+                    callbackData = "jobs_edit_${job.id}"
+                }
+            )
+        }
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Select job to edit:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
+    private fun showDeleteJobs(chatId: String, userId: String) {
+        val jobs = DatabaseService.jobs.getJobsByUser(userId)
+        if (jobs.isEmpty()) {
+            sendMessage(chatId, "No jobs to delete.")
+            return
+        }
+        val markup = InlineKeyboardMarkup()
+        val rows = jobs.map { job ->
+            listOf(
+                InlineKeyboardButton("${job.command} ${job.params ?: ""}").apply {
+                    callbackData = "jobs_delete_${job.id}"
+                }
+            )
+        }
+        markup.keyboard = rows
+        val message = SendMessage(chatId, "Select job to delete:")
+        message.replyMarkup = markup
+        execute(message)
+    }
+
     override fun onUpdateReceived(update: Update) {
         logger.info("Received update: ${update.updateId}")
         
@@ -185,6 +290,33 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
             // Записываем активность пользователя
             DatabaseService.users.addUserActivity(userId, firstName, lastName, username)
+
+            val state = jobCreationStates[userId]
+            if (state != null) {
+                when (state) {
+                    JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER -> {
+                        val jobId = editingJobs[userId]
+                        handleScheduleLeagueUpcomingCommand(chatId, userId, messageText, jobId)
+                        jobCreationStates.remove(userId)
+                    }
+                    JobCreationState.WAITING_LEAGUE_RECENT_FILTER -> {
+                        val jobId = editingJobs[userId]
+                        handleScheduleLeagueRecentCommand(chatId, userId, messageText, jobId)
+                        jobCreationStates.remove(userId)
+                    }
+                    JobCreationState.WAITING_ACCURACY_DAYS -> {
+                        val jobId = editingJobs[userId]
+                        val days = messageText.toIntOrNull()
+                        if (days == null || days <= 0) {
+                            sendMessage(chatId, "Please provide a valid number of days.")
+                        } else {
+                            handleScheduleAccuracyCommand(chatId, userId, days, jobId)
+                        }
+                        jobCreationStates.remove(userId)
+                    }
+                }
+                return
+            }
 
             when {
                 chatId == adminChatId && messageText == "/getdatabase" -> {
@@ -229,6 +361,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
                 messageText.startsWith("/getaccuracy") -> {
                     handleGetAccuracyCommand(chatId, messageText)
+                }
+
+                messageText == "/jobs" -> {
+                    showJobsMenu(chatId)
+                }
+
+                messageText == "/confirm" -> {
+                    handleConfirmJob(chatId, userId)
+                }
+
+                messageText == "/cancel" -> {
+                    handleCancelJob(chatId, userId)
                 }
 
                 chatId == adminChatId && messageText.startsWith("/getStrategyEfficiency") -> {
@@ -283,9 +427,48 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         } else if (update.hasCallbackQuery()) {
             val data = update.callbackQuery.data
             val chatId = update.callbackQuery.message.chatId.toString()
+            val userId = update.callbackQuery.from.id.toString()
             val plan = SubscriptionPlan.values().firstOrNull { it.callbackData == data }
-            if (plan != null) {
-                sendPremiumInvoice(chatId, plan)
+            when {
+                plan != null -> sendPremiumInvoice(chatId, plan)
+                data == "jobs_create" -> {
+                    editingJobs.remove(userId)
+                    showCreateCategory(chatId)
+                }
+                data == "jobs_edit" -> showEditJobs(chatId, userId)
+                data == "jobs_delete" -> showDeleteJobs(chatId, userId)
+                data == "jobs_create_upcoming" -> showUpcomingOptions(chatId)
+                data == "jobs_create_recent" -> showRecentOptions(chatId)
+                data == "jobs_create_accuracy" -> {
+                    jobCreationStates[userId] = JobCreationState.WAITING_ACCURACY_DAYS
+                    sendMessage(chatId, "Enter number of days:")
+                }
+                data == "jobs_create_upcoming_all" -> handleScheduleUpcomingCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_upcoming_league" -> {
+                    jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER
+                    sendMessage(chatId, "Enter league filter:")
+                }
+                data == "jobs_create_upcoming_premium" -> handleSchedulePremiumUpcomingCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_recent_all" -> handleScheduleRecentCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_recent_league" -> {
+                    jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_RECENT_FILTER
+                    sendMessage(chatId, "Enter league filter:")
+                }
+                data == "jobs_create_recent_premium" -> handleSchedulePremiumRecentCommand(chatId, userId, editingJobs[userId])
+                data.startsWith("jobs_edit_") -> {
+                    val id = data.removePrefix("jobs_edit_").toLongOrNull()
+                    if (id != null) {
+                        editingJobs[userId] = id
+                        showCreateCategory(chatId)
+                    }
+                }
+                data.startsWith("jobs_delete_") -> {
+                    val id = data.removePrefix("jobs_delete_").toLongOrNull()
+                    if (id != null) {
+                        DatabaseService.jobs.deleteJob(id)
+                        sendMessage(chatId, "Job deleted.")
+                    }
+                }
             }
         } else if (update.hasMessage() && update.message.hasSuccessfulPayment()) {
             val payment = update.message.successfulPayment
@@ -865,6 +1048,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
         commands.add(BotCommand("/premiumrecent", "Get premium matches from the last 24 hours"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
+        commands.add(BotCommand("/jobs", "Manage scheduled jobs"))
         commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
 
         val setMyCommands = SetMyCommands()
@@ -1408,6 +1592,240 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         } else {
             sendMultipartMessage(chatId, "Usage: /getStrategyEfficiency <number_of_days>")
+        }
+    }
+
+    private fun handleScheduleUpcomingCommand(chatId: String, userId: String, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        sendUpcomingMatches(chatId, userId)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "upcomingmatches", null, nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleScheduleLeagueUpcomingCommand(chatId: String, userId: String, filter: String, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        val leagues = DatabaseService.matches.getAllLeagues().filter { it.contains(filter, ignoreCase = true) }
+        if (leagues.isEmpty()) {
+            sendMessage(chatId, "No leagues found for '$filter'.")
+            return
+        }
+        if (leagues.size > 1) {
+            val list = leagues.joinToString(separator = "\n") { "- $it" }
+            sendMessage(chatId, "Multiple leagues found:\n$list\nPlease refine your filter.")
+            return
+        }
+        val league = leagues.first()
+        sendUpcomingMatchesForLeague(chatId, userId, league)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "leagueupcoming", league, nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent for league '$league'. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleScheduleRecentCommand(chatId: String, userId: String, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        sendRecentMatches(chatId, userId)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "recentmatches", null, nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleScheduleAccuracyCommand(chatId: String, userId: String, days: Int, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        sendAccuracyStats(chatId, days)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "getaccuracy", days.toString(), nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleSchedulePremiumUpcomingCommand(chatId: String, userId: String, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        handleUpcomingPremiumMatchesCommand(chatId, userId)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "premiummatches", null, nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleScheduleLeagueRecentCommand(chatId: String, userId: String, filter: String, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        val leagues = DatabaseService.matches.getAllLeagues().filter { it.contains(filter, ignoreCase = true) }
+        if (leagues.isEmpty()) {
+            sendMessage(chatId, "No leagues found for '$filter'.")
+            return
+        }
+        if (leagues.size > 1) {
+            val list = leagues.joinToString(separator = "\n") { "- $it" }
+            sendMessage(chatId, "Multiple leagues found:\n$list\nPlease refine your filter.")
+            return
+        }
+        val league = leagues.first()
+        sendRecentMatchesForLeague(chatId, userId, league)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "leaguerecent", league, nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent for league '$league'. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleSchedulePremiumRecentCommand(chatId: String, userId: String, existingId: Long? = null) {
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+        if (!isPremium) {
+            sendMessage(chatId, "This command is available for premium users only.")
+            return
+        }
+        handleRecentPremiumMatchesCommand(chatId, userId)
+        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
+        val id = existingId ?: 0
+        pendingJobs[userId] = ScheduledJob(id, userId, "premiumrecent", null, nextRun, 24 * 60 * 60)
+        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+    }
+
+    private fun handleConfirmJob(chatId: String, userId: String) {
+        val job = pendingJobs.remove(userId)
+        if (job != null) {
+            if (job.id == 0L) {
+                DatabaseService.jobs.addJob(job)
+            } else {
+                DatabaseService.jobs.updateJob(job)
+            }
+            editingJobs.remove(userId)
+            sendMessage(chatId, "Job scheduled.")
+        } else {
+            sendMessage(chatId, "No pending job to confirm.")
+        }
+    }
+
+    private fun handleCancelJob(chatId: String, userId: String) {
+        if (pendingJobs.remove(userId) != null) {
+            editingJobs.remove(userId)
+            sendMessage(chatId, "Job creation cancelled.")
+        } else {
+            sendMessage(chatId, "No pending job to cancel.")
+        }
+    }
+
+    private fun startScheduledJobs() {
+        CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                try {
+                    val jobs = DatabaseService.jobs.getDueJobs()
+                    jobs.forEach { job ->
+                        executeScheduledJob(job)
+                        val next = job.nextRun + job.intervalSeconds
+                        DatabaseService.jobs.updateNextRun(job.id, next)
+                    }
+                } catch (e: Exception) {
+                    logger.error("Error processing scheduled jobs", e)
+                }
+                delay(60_000)
+            }
+        }
+    }
+
+    private fun executeScheduledJob(job: ScheduledJob) {
+        val chatId = job.userId
+        when (job.command) {
+            "upcomingmatches" -> sendUpcomingMatches(chatId, job.userId)
+            "leagueupcoming" -> job.params?.let { sendUpcomingMatchesForLeague(chatId, job.userId, it) }
+            "recentmatches" -> sendRecentMatches(chatId, job.userId)
+            "premiummatches" -> handleUpcomingPremiumMatchesCommand(chatId, job.userId)
+            "leaguerecent" -> job.params?.let { sendRecentMatchesForLeague(chatId, job.userId, it) }
+            "premiumrecent" -> handleRecentPremiumMatchesCommand(chatId, job.userId)
+            "getaccuracy" -> job.params?.toIntOrNull()?.let { sendAccuracyStats(chatId, it) }
+        }
+    }
+
+    private fun sendUpcomingMatches(chatId: String, userId: String) {
+        val (zone, label) = userTimezone(userId)
+        val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
+        if (upcomingMatches.isNotEmpty()) {
+            val converted = adjustMatchesTimezone(upcomingMatches, zone)
+            val matchesByLeague = converted.groupBy { it.matchType }
+            for ((_, matches) in matchesByLeague) {
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
+            }
+        }
+    }
+
+    private fun sendUpcomingMatchesForLeague(chatId: String, userId: String, league: String) {
+        val (zone, label) = userTimezone(userId)
+        val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
+        if (matches.isNotEmpty()) {
+            val converted = adjustMatchesTimezone(matches, zone)
+            val messages = buildMatchMessages(converted, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
+            messages.forEach { (text, _) -> sendMessage(chatId, text) }
+        }
+    }
+
+    private fun sendRecentMatches(chatId: String, userId: String) {
+        val (zone, label) = userTimezone(userId)
+        val recentMatches = DatabaseService.matches.getLastMatches(1)
+        if (recentMatches.isNotEmpty()) {
+            val converted = adjustMatchesTimezone(recentMatches, zone)
+            val matchesByLeague = converted.groupBy { it.matchType }
+            for ((_, matches) in matchesByLeague) {
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it, label) }, includeTags = false)
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
+            }
+        }
+    }
+
+    private fun sendRecentMatchesForLeague(chatId: String, userId: String, league: String) {
+        val (zone, label) = userTimezone(userId)
+        val matches = DatabaseService.matches.getLastMatchesForLeague(league, 1)
+        if (matches.isNotEmpty()) {
+            val converted = adjustMatchesTimezone(matches, zone)
+            val messages = buildMatchMessages(converted, formatter = { formatMatchInfoWithResultDetailed(it, label) }, includeTags = false)
+            messages.forEach { (text, _) -> sendMessage(chatId, text) }
+        }
+    }
+
+    private fun sendAccuracyStats(chatId: String, days: Int) {
+        val stats = DatabaseService.matches.getStatisticsForPeriod(days)
+        if (stats.totalMatches > 0) {
+            val leagueText = formatLeagueStats(getLeagueStatsForPeriod(days))
+            val resultMessageText = """
+                📊 **Prediction Statistics for Last $days Days**
+
+                **Overall:**
+                - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
+                - ROI: ${"%.2f".format(stats.roi)}%
+                """.trimIndent() + leagueText + """
+
+                ✨ **Selected matches for the Premium channel:**
+                - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
+                - ROI: ${"%.2f".format(stats.strategyRoi)}%
+            """.trimIndent()
+            sendMultipartMessage(chatId, resultMessageText)
         }
     }
 

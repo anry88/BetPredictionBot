@@ -10,6 +10,7 @@ import repository.UserStatsRepository
 import repository.PremiumSubscriptionRepository
 import repository.CommandUsageRepository
 import repository.UserSettingsRepository
+import repository.ScheduledJobRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -147,6 +148,17 @@ private fun runManualMigration() {
             timezone TEXT DEFAULT 'UTC'
         );
     """.trimIndent())
+
+    execSql("""
+        CREATE TABLE IF NOT EXISTS scheduled_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            command TEXT NOT NULL,
+            params TEXT,
+            next_run INTEGER NOT NULL,
+            interval_seconds INTEGER NOT NULL
+        );
+    """.trimIndent())
 }
 
 fun createLeagueTableIfNeeded(tableName: String) {
@@ -215,4 +227,5 @@ object DatabaseService {
     val subscriptions = PremiumSubscriptionRepository()
     val commandUsage = CommandUsageRepository()
     val userSettings = UserSettingsRepository()
+    val jobs = ScheduledJobRepository()
 }
