@@ -202,12 +202,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun showCreateCategory(chatId: String) {
         val markup = InlineKeyboardMarkup()
         val rows = listOf(
-            listOf(InlineKeyboardButton("Upcoming").apply { callbackData = "jobs_create_upcoming" }),
-            listOf(InlineKeyboardButton("Recent").apply { callbackData = "jobs_create_recent" }),
+            listOf(InlineKeyboardButton("Upcoming matches").apply { callbackData = "jobs_create_upcoming" }),
+            listOf(InlineKeyboardButton("Recent results").apply { callbackData = "jobs_create_recent" }),
             listOf(InlineKeyboardButton("Accuracy stats").apply { callbackData = "jobs_create_accuracy" })
         )
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Choose job type:")
+        val message = SendMessage(chatId, "What do you want to schedule?")
         message.replyMarkup = markup
         execute(message)
     }
@@ -215,12 +215,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun showUpcomingOptions(chatId: String) {
         val markup = InlineKeyboardMarkup()
         val rows = listOf(
-            listOf(InlineKeyboardButton("All upcoming").apply { callbackData = "jobs_create_upcoming_all" }),
-            listOf(InlineKeyboardButton("League upcoming").apply { callbackData = "jobs_create_upcoming_league" }),
-            listOf(InlineKeyboardButton("Premium upcoming").apply { callbackData = "jobs_create_upcoming_premium" })
+            listOf(InlineKeyboardButton("All upcoming matches").apply { callbackData = "jobs_create_upcoming_all" }),
+            listOf(InlineKeyboardButton("Upcoming matches for a league").apply { callbackData = "jobs_create_upcoming_league" }),
+            listOf(InlineKeyboardButton("Premium upcoming matches").apply { callbackData = "jobs_create_upcoming_premium" })
         )
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Choose upcoming option:")
+        val message = SendMessage(chatId, "Which upcoming matches to schedule:")
         message.replyMarkup = markup
         execute(message)
     }
@@ -228,12 +228,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun showRecentOptions(chatId: String) {
         val markup = InlineKeyboardMarkup()
         val rows = listOf(
-            listOf(InlineKeyboardButton("All recent").apply { callbackData = "jobs_create_recent_all" }),
-            listOf(InlineKeyboardButton("League recent").apply { callbackData = "jobs_create_recent_league" }),
-            listOf(InlineKeyboardButton("Premium recent").apply { callbackData = "jobs_create_recent_premium" })
+            listOf(InlineKeyboardButton("All recent results").apply { callbackData = "jobs_create_recent_all" }),
+            listOf(InlineKeyboardButton("Recent results for a league").apply { callbackData = "jobs_create_recent_league" }),
+            listOf(InlineKeyboardButton("Premium recent results").apply { callbackData = "jobs_create_recent_premium" })
         )
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Choose recent option:")
+        val message = SendMessage(chatId, "Which recent results to schedule:")
         message.replyMarkup = markup
         execute(message)
     }
@@ -459,18 +459,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 data == "jobs_create_recent" -> showRecentOptions(chatId)
                 data == "jobs_create_accuracy" -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_ACCURACY_DAYS
-                    sendMessage(chatId, "Enter number of days:")
+                    sendMessage(chatId, "Enter how many past days to calculate accuracy stats:")
                 }
                 data == "jobs_create_upcoming_all" -> handleScheduleUpcomingCommand(chatId, userId, editingJobs[userId])
                 data == "jobs_create_upcoming_league" -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER
-                    sendMessage(chatId, "Enter league filter:")
+                    sendMessage(chatId, "Enter league name or keyword:")
                 }
                 data == "jobs_create_upcoming_premium" -> handleSchedulePremiumUpcomingCommand(chatId, userId, editingJobs[userId])
                 data == "jobs_create_recent_all" -> handleScheduleRecentCommand(chatId, userId, editingJobs[userId])
                 data == "jobs_create_recent_league" -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_RECENT_FILTER
-                    sendMessage(chatId, "Enter league filter:")
+                    sendMessage(chatId, "Enter league name or keyword:")
                 }
                 data == "jobs_create_recent_premium" -> handleSchedulePremiumRecentCommand(chatId, userId, editingJobs[userId])
                 data.startsWith("jobs_edit_") -> {
