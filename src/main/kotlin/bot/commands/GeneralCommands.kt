@@ -4,6 +4,8 @@ import FootballBot
 import service.DatabaseService
 import repository.SubscriptionType
 import java.time.Duration
+import java.time.Instant
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -38,6 +40,9 @@ class GeneralCommands(private val bot: FootballBot) {
             /leaguerecent <filter> - Get matches from the last 24 hours for leagues matching the filter
             /premiumrecent - Get premium matches from the last 24 hours
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
+            /myjobs - Manage scheduled jobs
+            /confirm - Confirm pending scheduled job
+            /cancel - Cancel pending scheduled job
             /settimezone <HH:mm> - Set your timezone by sending your current time
 
             Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers have unlimited access.
@@ -126,9 +131,25 @@ class GeneralCommands(private val bot: FootballBot) {
             if (diffMinutes > 720) diffMinutes -= 1440
             val offsetHours = (diffMinutes / 60.0).roundToInt()
             val zone = ZoneOffset.ofHours(offsetHours)
+            val oldZone = DatabaseService.userSettings.getTimezone(userId) ?: "UTC"
             DatabaseService.userSettings.setTimezone(userId, zone.id)
             val label = if (zone.id.startsWith("+") || zone.id.startsWith("-")) "UTC${zone.id}" else zone.id
             bot.sendMessage(chatId, "Timezone set to $label")
+            if (oldZone != zone.id) {
+                val jobs = DatabaseService.jobs.getJobsByUser(userId)
+                if (jobs.isNotEmpty()) {
+                    val oldZoneId = ZoneId.of(oldZone)
+                    val newZoneId = ZoneId.of(zone.id)
+                    val nowNew = LocalDateTime.now(newZoneId)
+                    jobs.forEach { job ->
+                        val localTime = Instant.ofEpochSecond(job.nextRun).atZone(oldZoneId).toLocalTime()
+                        var next = nowNew.with(localTime)
+                        if (!next.isAfter(nowNew)) next = next.plusDays(1)
+                        DatabaseService.jobs.updateNextRun(job.id, next.atZone(newZoneId).toEpochSecond())
+                    }
+                    bot.sendMessage(chatId, "Existing jobs moved to $label time.")
+                }
+            }
         } catch (e: DateTimeParseException) {
             bot.sendMessage(chatId, "Invalid time format. Use HH:mm, e.g., /settimezone 21:30")
         }
