@@ -289,9 +289,9 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 }
             } catch (e: Exception) {
                 attempt++
-                logger.warn("Attempt $attempt to fetch past matches failed: ${'$'}{e.message}")
+                logger.warn("Attempt $attempt to fetch past matches failed: ${e.message}")
                 if (attempt >= maxAttempts) {
-                    logger.error("Failed to fetch past matches after ${'$'}maxAttempts attempts", e)
+                    logger.error("Failed to fetch past matches after $maxAttempts attempts", e)
                     break
                 }
                 delay(1000L * attempt)
@@ -577,4 +577,5 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     }
 
 
+}
 }
