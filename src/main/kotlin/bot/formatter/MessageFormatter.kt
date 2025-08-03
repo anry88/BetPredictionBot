@@ -88,6 +88,7 @@ ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+#Live
 """.trimIndent()
     }
 
