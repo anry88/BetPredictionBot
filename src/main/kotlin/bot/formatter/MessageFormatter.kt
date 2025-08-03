@@ -25,17 +25,87 @@ Odds: $homeOdds - $drawOdds - $awayOdds
 """.trimIndent()
     }
 
-    fun formatRegularMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
-        val testData = if (includeTestData) formatTestData(matchInfo) else ""
-
+    // --- Main channel ---
+    fun formatMainUpcomingMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
+        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}${if (testData.isNotEmpty()) "\n$testData" else ""}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
 $tags""".trimIndent()
     }
 
-    fun formatUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, tags: String): String {
+    fun formatMainLiveMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
+        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+        return """
+${matchInfo.datetime} UTC
+${matchInfo.teams}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
+Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
+$tags #Live""".trimIndent()
+    }
+
+    fun formatMainCompletedMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
+        val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
+        val emoji = if (isPredictionCorrect) "✅" else "❌"
+        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+        return """
+${matchInfo.datetime} UTC
+${matchInfo.teams}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
+Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
+$tags""".trimIndent()
+    }
+
+    // --- Premium channel ---
+    private fun predictedOutcomeProbability(matchInfo: MatchInfo): Double {
+        val teams = matchInfo.teams.split(" vs. ")
+        val homeTeam = teams.getOrNull(0)?.trim()
+        val awayTeam = teams.getOrNull(1)?.trim()
+        return when (matchInfo.predictedOutcome) {
+            homeTeam -> matchInfo.modelHomeWinProb ?: 0.0
+            "Draw" -> matchInfo.modelDrawProb ?: 0.0
+            awayTeam -> matchInfo.modelAwayWinProb ?: 0.0
+            else -> 0.0
+        } * 100
+    }
+
+    fun formatPremiumUpcomingMatch(matchInfo: MatchInfo): String {
+        val probability = predictedOutcomeProbability(matchInfo)
+        return """
+${matchInfo.datetime} UTC
+${matchInfo.teams}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
+Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+""".trimIndent()
+    }
+
+    fun formatPremiumLiveMatch(matchInfo: MatchInfo): String {
+        val probability = predictedOutcomeProbability(matchInfo)
+        return """
+${matchInfo.datetime} UTC
+${matchInfo.teams}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
+Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
+Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+""".trimIndent()
+    }
+
+    fun formatPremiumCompletedMatch(matchInfo: MatchInfo): String {
+        val probability = predictedOutcomeProbability(matchInfo)
+        val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
+        val emoji = if (isPredictionCorrect) "✅" else "❌"
+        return """
+${matchInfo.datetime} UTC
+${matchInfo.teams}
+Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji (${"%.2f".format(probability)}%)
+Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
+Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+""".trimIndent()
+    }
+
+    // --- Direct messages ---
+    fun formatDirectUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
         val testData = formatTestData(matchInfo)
         return """
@@ -43,11 +113,10 @@ ${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
 $testData
-$analysis
-$tags""".trimIndent()
+$analysis""".trimIndent()
     }
 
-    fun formatCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?, tags: String): String {
+    fun formatDirectCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
         val testData = formatTestData(matchInfo)
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
@@ -58,8 +127,7 @@ ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 $testData
-$analysis
-$tags""".trimIndent()
+$analysis""".trimIndent()
     }
 
     private fun buildPredictionAnalysis(matchInfo: MatchInfo, league: LeagueConfig?): String {

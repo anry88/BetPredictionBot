@@ -446,7 +446,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (upcomingMatches.isNotEmpty()) {
             val matchesByLeague = upcomingMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -485,7 +485,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         leagues.forEach { league ->
             val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
             if (matches.isNotEmpty()) {
-                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
                 found = true
             }
@@ -519,7 +519,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (premiumMatches.isNotEmpty()) {
             val matchesByLeague = premiumMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -532,7 +532,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (recentMatches.isNotEmpty()) {
             val matchesByLeague = recentMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -557,7 +557,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         leagues.forEach { league ->
             val matches = DatabaseService.matches.getLastMatchesForLeague(league, 1)
             if (matches.isNotEmpty()) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
                 found = true
             }
@@ -577,7 +577,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (premiumMatches.isNotEmpty()) {
             val matchesByLeague = premiumMatches.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
-                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) })
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResultDetailed(it) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
             }
         } else {
@@ -643,163 +643,40 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun formatMatchInfo(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
-        return MessageFormatter.formatRegularMatch(matchInfo, tags, isTest)
+        return MessageFormatter.formatMainUpcomingMatch(matchInfo, tags, isTest)
     }
 
     private fun formatUpcomingMatchInfo(matchInfo: MatchInfo): String {
-        val tags = getTeamTags(matchInfo.teams)
         val league = leaguesConfig.find { it.description == matchInfo.matchType }
-        return MessageFormatter.formatUpcomingMatch(matchInfo, league, tags)
+        return MessageFormatter.formatDirectUpcomingMatch(matchInfo, league)
     }
 
     private fun formatMatchInfoWithResult(matchInfo: MatchInfo): String {
-        val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
-        val emoji = if (isPredictionCorrect) "✅" else "❌"
         val tags = getTeamTags(matchInfo.teams)
-
-        var testData = ""
-        if (isTest){
-            testData =
-                """
-            Probabilities: ${if (matchInfo.modelHomeWinProb != null) "%.2f%%".format(matchInfo.modelHomeWinProb!! * 100) else "0%"} - ${if (matchInfo.modelDrawProb != null) "%.2f%%".format(matchInfo.modelDrawProb!! * 100) else "0%"} - ${if (matchInfo.modelAwayWinProb != null) "%.2f%%".format(matchInfo.modelAwayWinProb!! * 100) else "0%"}
-            Expected Goals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.2f".format(matchInfo.modelExpectedHomeGoals)} else 0} : ${if (matchInfo.modelExpectedAwayGoals != null) {"%.2f".format(matchInfo.modelExpectedAwayGoals)} else 0}
-            Odds: ${if (matchInfo.homeWinOdds != null) {matchInfo.homeWinOdds} else 0} - ${if (matchInfo.drawOdds != null) {matchInfo.drawOdds} else 0} - ${if (matchInfo.awayWinOdds != null) {matchInfo.awayWinOdds} else 0}""".trimIndent()
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
-            Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
-            $tags
-        """.trimIndent()
+        return MessageFormatter.formatMainCompletedMatch(matchInfo, tags, isTest)
     }
 
     private fun formatMatchInfoWithResultDetailed(matchInfo: MatchInfo): String {
-        val tags = getTeamTags(matchInfo.teams)
         val league = leaguesConfig.find { it.description == matchInfo.matchType }
-        return MessageFormatter.formatCompletedMatch(matchInfo, league, tags)
+        return MessageFormatter.formatDirectCompletedMatch(matchInfo, league)
     }
 
 
     private fun formatLiveMatch(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
-
-        var testData = ""
-
-        if (isTest){
-            testData =
-                """
-            Probabilities: ${if (matchInfo.modelHomeWinProb != null) "%.2f%%".format(matchInfo.modelHomeWinProb!! * 100) else "0%"} - ${if (matchInfo.modelDrawProb != null) "%.2f%%".format(matchInfo.modelDrawProb!! * 100) else "0%"} - ${if (matchInfo.modelAwayWinProb != null) "%.2f%%".format(matchInfo.modelAwayWinProb!! * 100) else "0%"}
-            Expected Goals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.2f".format(matchInfo.modelExpectedHomeGoals)} else 0} : ${if (matchInfo.modelExpectedAwayGoals != null) {"%.2f".format(matchInfo.modelExpectedAwayGoals)} else 0}
-            Odds: ${if (matchInfo.homeWinOdds != null) {matchInfo.homeWinOdds} else 0} - ${if (matchInfo.drawOdds != null) {matchInfo.drawOdds} else 0} - ${if (matchInfo.awayWinOdds != null) {matchInfo.awayWinOdds} else 0}"""
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
-            Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
-            $tags #Live
-        """.trimIndent()
+        return MessageFormatter.formatMainLiveMatch(matchInfo, tags, isTest)
     }
 
     private fun formatPremiumMatchInfo(matchInfo: MatchInfo): String {
-
-        var probabilityPredictedOutcome = 0.0
-
-        val teams = matchInfo.teams.split(" vs. ")
-        if (teams.size == 2) {
-            val homeTeam = teams[0].trim()
-            val awayTeam = teams[1].trim()
-            probabilityPredictedOutcome =
-                when (matchInfo.predictedOutcome) {
-                    homeTeam -> {
-                        (matchInfo.modelHomeWinProb!! * 100)
-                    }
-                    "Draw" -> {
-                        (matchInfo.modelDrawProb!! * 100)
-                    }
-                    awayTeam -> {
-                        ((matchInfo.modelAwayWinProb!! * 100))
-                    }
-                    else -> 0.0
-                }
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probabilityPredictedOutcome)}%)
-            Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
-        """.trimIndent()
+        return MessageFormatter.formatPremiumUpcomingMatch(matchInfo)
     }
 
     private fun formatPremiumMatchInfoWithResult(matchInfo: MatchInfo): String {
-        val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
-        val emoji = if (isPredictionCorrect) "✅" else "❌"
-
-        var probabilityPredictedOutcome = 0.0
-
-        val teams = matchInfo.teams.split(" vs. ")
-        if (teams.size == 2) {
-            val homeTeam = teams[0].trim()
-            val awayTeam = teams[1].trim()
-            probabilityPredictedOutcome =
-                when (matchInfo.predictedOutcome) {
-                    homeTeam -> {
-                        (matchInfo.modelHomeWinProb!! * 100)
-                    }
-                    "Draw" -> {
-                        (matchInfo.modelDrawProb!! * 100)
-                    }
-                    awayTeam -> {
-                        ((matchInfo.modelAwayWinProb!! * 100))
-                    }
-                    else -> 0.0
-                }
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji (${"%.2f".format(probabilityPredictedOutcome)}%)
-            Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
-            Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
-        """.trimIndent()
+        return MessageFormatter.formatPremiumCompletedMatch(matchInfo)
     }
 
     private fun formatLivePremiumMatch(matchInfo: MatchInfo): String {
-
-        var probabilityPredictedOutcome = 0.0
-
-        val teams = matchInfo.teams.split(" vs. ")
-        if (teams.size == 2) {
-            val homeTeam = teams[0].trim()
-            val awayTeam = teams[1].trim()
-            probabilityPredictedOutcome =
-                when (matchInfo.predictedOutcome) {
-                    homeTeam -> {
-                        (matchInfo.modelHomeWinProb!! * 100)
-                    }
-                    "Draw" -> {
-                        (matchInfo.modelDrawProb!! * 100)
-                    }
-                    awayTeam -> {
-                        ((matchInfo.modelAwayWinProb!! * 100))
-                    }
-                    else -> 0.0
-                }
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probabilityPredictedOutcome)}%)
-            Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
-            Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
-            #Live
-        """.trimIndent()
+        return MessageFormatter.formatPremiumLiveMatch(matchInfo)
     }
 
     private fun formatMatchesBatch(matches: List<MatchInfo>, formatter: (MatchInfo) -> String): String {
