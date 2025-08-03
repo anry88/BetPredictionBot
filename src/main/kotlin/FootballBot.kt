@@ -87,7 +87,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private enum class JobCreationState {
         WAITING_LEAGUE_UPCOMING_FILTER,
         WAITING_LEAGUE_RECENT_FILTER,
-        WAITING_ACCURACY_DAYS
+        WAITING_ACCURACY_DAYS,
+        WAITING_JOB_TIME
     }
 
     private fun loadLeaguesConfig(): List<LeagueConfig> {
@@ -297,12 +298,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER -> {
                         val jobId = editingJobs[userId]
                         handleScheduleLeagueUpcomingCommand(chatId, userId, messageText, jobId)
-                        jobCreationStates.remove(userId)
                     }
                     JobCreationState.WAITING_LEAGUE_RECENT_FILTER -> {
                         val jobId = editingJobs[userId]
                         handleScheduleLeagueRecentCommand(chatId, userId, messageText, jobId)
-                        jobCreationStates.remove(userId)
                     }
                     JobCreationState.WAITING_ACCURACY_DAYS -> {
                         val jobId = editingJobs[userId]
@@ -312,7 +311,26 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                         } else {
                             handleScheduleAccuracyCommand(chatId, userId, days, jobId)
                         }
-                        jobCreationStates.remove(userId)
+                    }
+                    JobCreationState.WAITING_JOB_TIME -> {
+                        val job = pendingJobs[userId]
+                        if (job == null) {
+                            sendMessage(chatId, "No job in progress. Use /myjobs to create one.")
+                        } else {
+                            try {
+                                val time = java.time.LocalTime.parse(messageText.trim())
+                                val (zone, label) = userTimezone(userId)
+                                val now = java.time.LocalDateTime.now(java.time.ZoneId.of(zone))
+                                var next = now.withHour(time.hour).withMinute(time.minute).withSecond(0).withNano(0)
+                                if (!next.isAfter(now)) next = next.plusDays(1)
+                                val epoch = next.atZone(java.time.ZoneId.of(zone)).toEpochSecond()
+                                pendingJobs[userId] = job.copy(nextRun = epoch)
+                                jobCreationStates.remove(userId)
+                                sendMessage(chatId, "Time set to ${time.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))} $label. Send /confirm to schedule or /cancel.")
+                            } catch (e: Exception) {
+                                sendMessage(chatId, "Invalid time format. Use HH:mm, e.g., 21:30")
+                            }
+                        }
                     }
                 }
                 return
@@ -363,7 +381,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     handleGetAccuracyCommand(chatId, messageText)
                 }
 
-                messageText == "/jobs" -> {
+                messageText == "/myjobs" -> {
                     showJobsMenu(chatId)
                 }
 
@@ -1048,7 +1066,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
         commands.add(BotCommand("/premiumrecent", "Get premium matches from the last 24 hours"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
-        commands.add(BotCommand("/jobs", "Manage scheduled jobs"))
+        commands.add(BotCommand("/myjobs", "Manage scheduled jobs"))
         commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
 
         val setMyCommands = SetMyCommands()
@@ -1590,9 +1608,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             } else {
                 sendMultipartMessage(chatId, "Please provide a valid number of days.")
             }
-        } else {
-            sendMultipartMessage(chatId, "Usage: /getStrategyEfficiency <number_of_days>")
-        }
+    } else {
+        sendMultipartMessage(chatId, "Usage: /getStrategyEfficiency <number_of_days>")
+    }
+}
+
+    private fun requestJobTime(chatId: String, userId: String) {
+        val (_, label) = userTimezone(userId)
+        sendMessage(chatId, "Preview sent. Enter time in HH:mm ($label):")
+        jobCreationStates[userId] = JobCreationState.WAITING_JOB_TIME
     }
 
     private fun handleScheduleUpcomingCommand(chatId: String, userId: String, existingId: Long? = null) {
@@ -1602,10 +1626,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             return
         }
         sendUpcomingMatches(chatId, userId)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "upcomingmatches", null, nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "upcomingmatches", null, 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleScheduleLeagueUpcomingCommand(chatId: String, userId: String, filter: String, existingId: Long? = null) {
@@ -1626,10 +1649,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
         val league = leagues.first()
         sendUpcomingMatchesForLeague(chatId, userId, league)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "leagueupcoming", league, nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent for league '$league'. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "leagueupcoming", league, 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleScheduleRecentCommand(chatId: String, userId: String, existingId: Long? = null) {
@@ -1639,10 +1661,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             return
         }
         sendRecentMatches(chatId, userId)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "recentmatches", null, nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "recentmatches", null, 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleScheduleAccuracyCommand(chatId: String, userId: String, days: Int, existingId: Long? = null) {
@@ -1652,10 +1673,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             return
         }
         sendAccuracyStats(chatId, days)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "getaccuracy", days.toString(), nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "getaccuracy", days.toString(), 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleSchedulePremiumUpcomingCommand(chatId: String, userId: String, existingId: Long? = null) {
@@ -1665,10 +1685,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             return
         }
         handleUpcomingPremiumMatchesCommand(chatId, userId)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "premiummatches", null, nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "premiummatches", null, 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleScheduleLeagueRecentCommand(chatId: String, userId: String, filter: String, existingId: Long? = null) {
@@ -1689,10 +1708,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
         val league = leagues.first()
         sendRecentMatchesForLeague(chatId, userId, league)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "leaguerecent", league, nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent for league '$league'. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "leaguerecent", league, 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleSchedulePremiumRecentCommand(chatId: String, userId: String, existingId: Long? = null) {
@@ -1702,21 +1720,26 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             return
         }
         handleRecentPremiumMatchesCommand(chatId, userId)
-        val nextRun = System.currentTimeMillis() / 1000 + 24 * 60 * 60
         val id = existingId ?: 0
-        pendingJobs[userId] = ScheduledJob(id, userId, "premiumrecent", null, nextRun, 24 * 60 * 60)
-        sendMessage(chatId, "Preview sent. Send /confirm to schedule daily updates or /cancel.")
+        pendingJobs[userId] = ScheduledJob(id, userId, "premiumrecent", null, 0, 24 * 60 * 60)
+        requestJobTime(chatId, userId)
     }
 
     private fun handleConfirmJob(chatId: String, userId: String) {
-        val job = pendingJobs.remove(userId)
+        val job = pendingJobs[userId]
         if (job != null) {
+            if (job.nextRun == 0L) {
+                sendMessage(chatId, "Please set time for the job before confirming.")
+                return
+            }
+            pendingJobs.remove(userId)
             if (job.id == 0L) {
                 DatabaseService.jobs.addJob(job)
             } else {
                 DatabaseService.jobs.updateJob(job)
             }
             editingJobs.remove(userId)
+            jobCreationStates.remove(userId)
             sendMessage(chatId, "Job scheduled.")
         } else {
             sendMessage(chatId, "No pending job to confirm.")
@@ -1726,6 +1749,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun handleCancelJob(chatId: String, userId: String) {
         if (pendingJobs.remove(userId) != null) {
             editingJobs.remove(userId)
+            jobCreationStates.remove(userId)
             sendMessage(chatId, "Job creation cancelled.")
         } else {
             sendMessage(chatId, "No pending job to cancel.")
