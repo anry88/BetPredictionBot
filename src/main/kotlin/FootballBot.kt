@@ -195,6 +195,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     handleUpcomingPremiumMatchesCommand(chatId, userId)
                 }
 
+                messageText == "/recentmatches" -> {
+                    handleRecentMatchesCommand(chatId)
+                }
+
+                messageText.startsWith("/leaguerecent") -> {
+                    handleRecentMatchesByLeagueCommand(chatId, messageText)
+                }
+
+                messageText == "/premiumrecent" -> {
+                    handleRecentPremiumMatchesCommand(chatId)
+                }
+
                 messageText.startsWith("/getaccuracy") -> {
                     handleGetAccuracyCommand(chatId, messageText)
                 }
@@ -512,6 +524,64 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
         } else {
             sendMessage(chatId, "No upcoming matches within the next 24 hours.")
+        }
+    }
+
+    private fun handleRecentMatchesCommand(chatId: String) {
+        val recentMatches = DatabaseService.matches.getLastMatches(1)
+        if (recentMatches.isNotEmpty()) {
+            val matchesByLeague = recentMatches.groupBy { it.matchType }
+            for ((_, matches) in matchesByLeague) {
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResult(it) })
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
+            }
+        } else {
+            sendMessage(chatId, "No matches in the last 24 hours.")
+        }
+    }
+
+    private fun handleRecentMatchesByLeagueCommand(chatId: String, messageText: String) {
+        val filter = messageText.removePrefix("/leaguerecent").trim()
+        if (filter.isBlank()) {
+            sendMessage(chatId, "Usage: /leaguerecent <filter>")
+            return
+        }
+
+        val leagues = DatabaseService.matches.getAllLeagues().filter { it.contains(filter, ignoreCase = true) }
+        if (leagues.isEmpty()) {
+            sendMessage(chatId, "No leagues found for '$filter'.")
+            return
+        }
+
+        var found = false
+        leagues.forEach { league ->
+            val matches = DatabaseService.matches.getLastMatchesForLeague(league, 1)
+            if (matches.isNotEmpty()) {
+                val messages = buildMatchMessages(matches, formatter = { formatMatchInfoWithResult(it) })
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
+                found = true
+            }
+        }
+
+        if (!found) {
+            sendMessage(chatId, "No matches in the last 24 hours for '$filter'.")
+        }
+    }
+
+    private fun handleRecentPremiumMatchesCommand(chatId: String) {
+        val recentMatches = DatabaseService.matches.getLastMatches(1)
+        val premiumMatches = recentMatches.filter { match ->
+            outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
+        }
+
+        if (premiumMatches.isNotEmpty()) {
+            val matchesByLeague = premiumMatches.groupBy { it.matchType }
+            for ((_, matches) in matchesByLeague) {
+                val messages = buildMatchMessages(matches, formatter = { formatPremiumMatchInfoWithResult(it) })
+                messages.forEach { (text, _) -> sendMessage(chatId, text) }
+            }
+        } else {
+            sendMessage(chatId, "No matches in the last 24 hours.")
         }
     }
 
@@ -876,6 +946,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with analysis"))
         commands.add(BotCommand("/leagueupcoming", "Get upcoming matches for leagues matching a filter"))
         commands.add(BotCommand("/premiummatches", "Get premium matches for the next 24 hours"))
+        commands.add(BotCommand("/recentmatches", "Get matches from the last 24 hours with results"))
+        commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
+        commands.add(BotCommand("/premiumrecent", "Get premium matches from the last 24 hours"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
 
         val setMyCommands = SetMyCommands()
