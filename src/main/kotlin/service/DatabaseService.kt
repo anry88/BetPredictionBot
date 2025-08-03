@@ -9,6 +9,7 @@ import repository.InviteRepository
 import repository.UserStatsRepository
 import repository.PremiumSubscriptionRepository
 import repository.CommandUsageRepository
+import repository.UserSettingsRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -139,6 +140,13 @@ private fun runManualMigration() {
             PRIMARY KEY (user_id, command, month)
         );
     """.trimIndent())
+
+    execSql("""
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_id TEXT PRIMARY KEY,
+            timezone TEXT DEFAULT 'UTC'
+        );
+    """.trimIndent())
 }
 
 fun createLeagueTableIfNeeded(tableName: String) {
@@ -206,4 +214,5 @@ object DatabaseService {
     val users = UserStatsRepository()
     val subscriptions = PremiumSubscriptionRepository()
     val commandUsage = CommandUsageRepository()
+    val userSettings = UserSettingsRepository()
 }
