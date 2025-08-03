@@ -653,28 +653,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     }
 
     private fun formatMatchInfoWithResult(matchInfo: MatchInfo): String {
-        val isPredictionCorrect = matchInfo.predictedOutcome?.lowercase() == matchInfo.actualOutcome?.lowercase()
-        val emoji = if (isPredictionCorrect) "✅" else "❌"
         val tags = getTeamTags(matchInfo.teams)
-
-        var testData = ""
-
-        if (isTest){
-            testData =
-                """
-            Probabilities: ${if (matchInfo.modelHomeWinProb != null) "%.2f%%".format(matchInfo.modelHomeWinProb!! * 100) else "0%"} - ${if (matchInfo.modelDrawProb != null) "%.2f%%".format(matchInfo.modelDrawProb!! * 100) else "0%"} - ${if (matchInfo.modelAwayWinProb != null) "%.2f%%".format(matchInfo.modelAwayWinProb!! * 100) else "0%"}
-            Expected Goals: ${if (matchInfo.modelExpectedHomeGoals != null) {"%.2f".format(matchInfo.modelExpectedHomeGoals)} else 0} : ${if (matchInfo.modelExpectedAwayGoals != null) {"%.2f".format(matchInfo.modelExpectedAwayGoals)} else 0}
-            Odds: ${if (matchInfo.homeWinOdds != null) {matchInfo.homeWinOdds} else 0} - ${if (matchInfo.drawOdds != null) {matchInfo.drawOdds} else 0} - ${if (matchInfo.awayWinOdds != null) {matchInfo.awayWinOdds} else 0}"""
-        }
-
-        return """
-            ${matchInfo.datetime} UTC
-            ${matchInfo.teams}
-            Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
-            Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
-            $tags
-        """.trimIndent()
+        val league = leaguesConfig.find { it.description == matchInfo.matchType }
+        return MessageFormatter.formatCompletedMatch(matchInfo, league, tags)
     }
+
 
     private fun formatLiveMatch(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
