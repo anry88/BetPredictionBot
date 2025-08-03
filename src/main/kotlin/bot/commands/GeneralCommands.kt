@@ -8,6 +8,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
+import kotlin.math.roundToInt
 
 class GeneralCommands(private val bot: FootballBot) {
     fun handleStart(chatId: String) {
@@ -120,10 +121,11 @@ class GeneralCommands(private val bot: FootballBot) {
         try {
             val userTime = LocalTime.parse(timeStr)
             val utcNow = LocalTime.now(ZoneId.of("UTC"))
-            var diff = Duration.between(utcNow, userTime).toMinutes().toInt()
-            if (diff < -720) diff += 1440
-            if (diff > 720) diff -= 1440
-            val zone = ZoneOffset.ofTotalSeconds(diff * 60)
+            var diffMinutes = Duration.between(utcNow, userTime).toMinutes().toInt()
+            if (diffMinutes < -720) diffMinutes += 1440
+            if (diffMinutes > 720) diffMinutes -= 1440
+            val offsetHours = (diffMinutes / 60.0).roundToInt()
+            val zone = ZoneOffset.ofHours(offsetHours)
             DatabaseService.userSettings.setTimezone(userId, zone.id)
             val label = if (zone.id.startsWith("+") || zone.id.startsWith("-")) "UTC${zone.id}" else zone.id
             bot.sendMessage(chatId, "Timezone set to $label")
