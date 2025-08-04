@@ -26,12 +26,26 @@ fun startPremiumLinksServer() {
                                         background-color: var(--tg-theme-bg-color);
                                         color: var(--tg-theme-text-color);
                                         font-family: sans-serif;
+                                        margin: 0;
                                         padding: 1rem;
                                     }
-                                    ul { list-style: none; padding: 0; }
+                                    h1 { text-align: center; }
+                                    .container { max-width: 600px; margin: 0 auto; }
+                                    .link-card {
+                                        background: var(--tg-theme-secondary-bg-color);
+                                        border-radius: 10px;
+                                        padding: 1rem;
+                                        margin-bottom: 1rem;
+                                        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                                    }
+                                    .link-info {
+                                        color: var(--tg-theme-hint-color);
+                                        margin-bottom: 0.75rem;
+                                        font-size: 0.9rem;
+                                    }
                                     .link-btn {
                                         display: block;
-                                        margin: 0.5rem 0;
+                                        width: 100%;
                                         padding: 0.75rem;
                                         text-align: center;
                                         text-decoration: none;
@@ -46,22 +60,26 @@ fun startPremiumLinksServer() {
                         }
                     }
                     body {
-                        h1 { +"Available premium channel links" }
-                        if (links.isEmpty()) {
-                            p { +"No available free premium channel joining links at the moment." }
-                        } else {
-                            ul {
-                                links.forEachIndexed { index, (link, left, expires) ->
+                        div(classes = "container") {
+                            h1 { +"Available premium channel links" }
+                            if (links.isEmpty()) {
+                                p { +"No available free premium channel joining links at the moment." }
+                            } else {
+                                links.forEach { (link, left, expires) ->
                                     val date = Instant.ofEpochSecond(expires)
                                         .atZone(ZoneId.of("UTC"))
                                         .toLocalDate()
-                                    li {
-                                        a(href = link, classes = "link-btn") {
-                                            +"Link ${index + 1} - $left slots left (valid until $date)"
+                                    div(classes = "link-card") {
+                                        div(classes = "link-info") {
+                                            +"$left slots left • valid until $date"
                                         }
+                                        a(href = link, classes = "link-btn") { +"Join" }
                                     }
                                 }
                             }
+                        }
+                        script {
+                            unsafe { raw("Telegram.WebApp.ready();") }
                         }
                     }
                 }
@@ -69,3 +87,4 @@ fun startPremiumLinksServer() {
         }
     }.start(wait = false)
 }
+
