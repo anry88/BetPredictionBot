@@ -39,6 +39,11 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:2.3.1")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.1")
 
+    // Ktor server for mini app
+    implementation("io.ktor:ktor-server-core:2.3.1")
+    implementation("io.ktor:ktor-server-netty:2.3.1")
+    implementation("io.ktor:ktor-server-html-builder:2.3.1")
+
     // Quartz for scheduling tasks
     implementation("org.quartz-scheduler:quartz:2.3.2")
 
