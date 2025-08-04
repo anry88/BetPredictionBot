@@ -16,6 +16,9 @@ fun startPremiumLinksServer() {
             get("/") {
                 val links = DatabaseService.invites.getActiveInviteLinksWithRemainingSlots()
                 call.respondHtml {
+                    head {
+                        script(src = "https://telegram.org/js/telegram-web-app.js") {}
+                    }
                     body {
                         h1 { +"Available premium channel links" }
                         if (links.isEmpty()) {
