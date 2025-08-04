@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMem
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 import service.HttpAPIFootballService
 import service.ModelDataUploader
+import miniapp.startPremiumLinksServer
 
 class FetchMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
@@ -134,6 +135,9 @@ fun main() {
     val footballBot = FootballBot(telegramBotToken)
     botsApi.registerBot(footballBot)
     logger.info("Football bot started successfully")
+
+    startPremiumLinksServer()
+    logger.info("Premium links server started on port 6006")
 
     // Setup and start Quartz scheduler
     val scheduler = StdSchedulerFactory().scheduler

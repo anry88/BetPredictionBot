@@ -2,17 +2,15 @@ package miniapp
 
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
-import io.ktor.server.netty.*
 import io.ktor.server.html.*
+import io.ktor.server.netty.*
 import io.ktor.server.routing.*
 import kotlinx.html.*
 import service.DatabaseService
-import service.initDatabase
 import java.time.Instant
 import java.time.ZoneId
 
-fun main() {
-    initDatabase("predictions.db")
+fun startPremiumLinksServer() {
     embeddedServer(Netty, port = 6006) {
         routing {
             get("/") {
@@ -36,5 +34,5 @@ fun main() {
                 }
             }
         }
-    }.start(wait = true)
+    }.start(wait = false)
 }
