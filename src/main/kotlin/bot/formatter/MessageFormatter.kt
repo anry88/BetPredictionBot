@@ -3,6 +3,7 @@ package bot.formatter
 import dto.MatchInfo
 import dto.LeagueConfig
 import dto.outcomeStrategyConfigs
+import service.StrategyService
 
 object MessageFormatter {
 
@@ -114,8 +115,13 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
     fun formatDirectUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
         val testData = formatTestData(matchInfo)
+        val premiumHeader = if (outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }) {
+            "$PREMIUM_HEADER\n"
+        } else {
+            ""
+        }
         return """
-${matchInfo.datetime} $timezone
+${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
 $testData
@@ -127,8 +133,13 @@ $analysis""".trimIndent()
         val testData = formatTestData(matchInfo)
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
+        val premiumHeader = if (outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }) {
+            "$PREMIUM_HEADER\n"
+        } else {
+            ""
+        }
         return """
-${matchInfo.datetime} $timezone
+${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
