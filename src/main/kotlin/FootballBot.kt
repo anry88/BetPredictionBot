@@ -1799,7 +1799,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
         if (bigWin != null) {
             val message = "\uD83D\uDD25 Massive win! Premium pick ${bigWin.teams} cashed at odds ${bigWin.odds}!\n" +
-                    "Don't miss today's high-value predictions – join now! \uD83D\uDE80"
+                    "Don't miss today's high-value predictions - join now! \uD83D\uDE80"
             sendMessage(channelId, message)
             return
         }
