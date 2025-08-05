@@ -6,7 +6,7 @@ import dto.outcomeStrategyConfigs
 
 object MessageFormatter {
 
-    private const val PREMIUM_HEADER = "\uD83D\uDC8E Premium Prediction"
+    private const val PREMIUM_HEADER = "\uD83D\uDD25 PREMIUM PICKS \uD83D\uDD25"
 
     private fun formatTestData(matchInfo: MatchInfo): String {
         val homeProb = matchInfo.modelHomeWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
