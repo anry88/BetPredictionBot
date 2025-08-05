@@ -250,7 +250,7 @@ fun main() {
 
     val weeklyTopMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("sendWeeklyTopMatchesTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 9, 0))
+        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 8, 35))
         .build()
 
     val liveUpdateJob = JobBuilder.newJob(UpdateLiveMatchesJob::class.java)
@@ -314,7 +314,7 @@ fun main() {
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
     logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
-    logger.info("Scheduled SendWeeklyTopMatchesJob to run every Monday at 09:00")
+    logger.info("Scheduled SendWeeklyTopMatchesJob to run every Monday at 08:35")
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
     logger.info("Executed UploadModelDataJob every monday at 1:00")

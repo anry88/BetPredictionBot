@@ -1792,8 +1792,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (topMatches.isEmpty()) return
         val stats = DatabaseService.matches.getStatisticsForPeriod(7)
         val message = buildString {
-            append("\uD83D\uDD25 PREMIUM PICKS \uD83D\uDD25\n\n")
-            append("Top 3 premium predictions by ROI from last week\n\n")
+            append("\uD83D\uDD25 Top 3 premium predictions from last week \uD83D\uDD25\n\n")
             topMatches.forEachIndexed { index, (match, roi) ->
                 val sign = if (roi >= 0) "+" else ""
                 append("${index + 1}. ${match.teams}\n")
@@ -1801,7 +1800,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             }
             val sign = if (stats.strategyRoi >= 0) "+" else ""
             append("Total premium matches: ${stats.strategyTotalMatches} | ROI: $sign${"%.2f".format(stats.strategyRoi)}%\n\n")
-            append("To get premium picks, subscribe to the premium channel via @topPrediction_bot or subscribe to the bot to use premium features.")
+            append("To get premium picks, subscribe to the premium channel via @topPrediction_bot or subscribe to the bot to use premium features without any limits.")
         }
         val msg = SendMessage(channelId, message)
         try {
