@@ -1805,7 +1805,13 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
 
         if (matches.size >= 5 && matches.all { it.predictedOutcome?.equals(it.actualOutcome, true) == true }) {
+            val averageRoi = matches.map { match ->
+                val oddsVal = match.odds?.toDoubleOrNull() ?: 0.0
+                if (match.predictedOutcome?.equals(match.actualOutcome, true) == true) (oddsVal - 1) * 100 else -100.0
+            }.average()
+            val sign = if (averageRoi >= 0) "+" else ""
             val message = "\uD83C\uDF1F Premium perfection! All ${matches.size} picks hit yesterday.\n" +
+                    "Average ROI: $sign${"%.2f".format(averageRoi)}%\n" +
                     "Jump in before today's action kicks off! \u26BD\uD83D\uDCB0"
             sendMessage(channelId, message)
         }
