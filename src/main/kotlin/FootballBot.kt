@@ -1795,7 +1795,14 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             append("\uD83D\uDD25 Top 3 premium predictions from last week \uD83D\uDD25\n\n")
             topMatches.forEachIndexed { index, (match, roi) ->
                 val sign = if (roi >= 0) "+" else ""
-                append("${index + 1}. ${match.teams}\n")
+                val league = combineLeagueName(match)
+                val flag = getCountryFlag(match.matchType)
+                val prediction = buildString {
+                    append(match.predictedOutcome ?: "N/A")
+                }
+                append("${index + 1}. $league$flag\n")
+                append("${match.teams}\n")
+                append("Prediction: $prediction\n")
                 append("ROI: $sign${"%.2f".format(roi)}% | Odds: ${match.odds}\n\n")
             }
             val sign = if (stats.strategyRoi >= 0) "+" else ""
