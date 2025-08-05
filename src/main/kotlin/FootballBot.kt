@@ -1787,6 +1787,30 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
+    fun sendWeeklyTopMatches() {
+        val topMatches = DatabaseService.matches.getTopPremiumRoiMatchesForPeriod(7, 3)
+        if (topMatches.isEmpty()) return
+        val stats = DatabaseService.matches.getStatisticsForPeriod(7)
+        val message = buildString {
+            append("\uD83D\uDD25 PREMIUM PICKS \uD83D\uDD25\n\n")
+            append("Top 3 premium predictions by ROI from last week\n\n")
+            topMatches.forEachIndexed { index, (match, roi) ->
+                val sign = if (roi >= 0) "+" else ""
+                append("${index + 1}. ${match.teams}\n")
+                append("ROI: $sign${"%.2f".format(roi)}% | Odds: ${match.odds}\n\n")
+            }
+            val sign = if (stats.strategyRoi >= 0) "+" else ""
+            append("Total premium matches: ${stats.strategyTotalMatches} | ROI: $sign${"%.2f".format(stats.strategyRoi)}%\n\n")
+            append("To get premium picks, subscribe to the premium channel via @topPrediction_bot or subscribe to the bot to use premium features.")
+        }
+        val msg = SendMessage(channelId, message)
+        try {
+            execute(msg)
+        } catch (e: Exception) {
+            logger.error("Failed to send weekly top matches", e)
+        }
+    }
+
     private fun sendUpcomingMatches(chatId: String, userId: String) {
         val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()

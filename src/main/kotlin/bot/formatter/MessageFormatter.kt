@@ -6,6 +6,8 @@ import dto.outcomeStrategyConfigs
 
 object MessageFormatter {
 
+    private const val PREMIUM_HEADER = "\uD83D\uDD25 PREMIUM PICKS \uD83D\uDD25"
+
     private fun formatTestData(matchInfo: MatchInfo): String {
         val homeProb = matchInfo.modelHomeWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
         val drawProb = matchInfo.modelDrawProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
@@ -73,6 +75,7 @@ $tags""".trimIndent()
     fun formatPremiumUpcomingMatch(matchInfo: MatchInfo): String {
         val probability = predictedOutcomeProbability(matchInfo)
         return """
+$PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
@@ -83,6 +86,7 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
     fun formatPremiumLiveMatch(matchInfo: MatchInfo): String {
         val probability = predictedOutcomeProbability(matchInfo)
         return """
+$PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
@@ -97,6 +101,7 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         return """
+$PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji (${"%.2f".format(probability)}%)

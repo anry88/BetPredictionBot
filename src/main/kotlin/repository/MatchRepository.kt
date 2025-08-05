@@ -523,6 +523,36 @@ class MatchRepository {
         )
     }
 
+    fun getTopPremiumRoiMatchesForPeriod(days: Int, limit: Int): List<Pair<MatchInfo, Double>> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val startDate = now.minusDays(days.toLong())
+        val matchesWithRoi = mutableListOf<Pair<MatchInfo, Double>>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                leagueTable.selectAll().forEach { row ->
+                    val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
+                        .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
+                    if (matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now)) {
+                        val predicted = row[leagueTable.predictedOutcome]
+                        val actual = row[leagueTable.actualOutcome]
+                        val oddsStr = row[leagueTable.odds]
+                        val strategyMessageId = row[leagueTable.strategyTelegramMessageId]
+                        if (predicted != null && actual != null && oddsStr != null && strategyMessageId != null) {
+                            val match = mapRowToMatchInfo(row, leagueTable)
+                            val oddsVal = oddsStr.toDoubleOrNull()
+                            if (oddsVal != null) {
+                                val roi = if (predicted.equals(actual, true)) (oddsVal - 1) * 100 else -100.0
+                                matchesWithRoi.add(match to roi)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return matchesWithRoi.sortedByDescending { it.second }.take(limit)
+    }
+
     fun getDetailedStatisticsForPeriod(days: Int): Statistics {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val startDate = now.minusDays(days.toLong())
