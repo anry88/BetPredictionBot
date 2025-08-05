@@ -99,6 +99,15 @@ class SendWeeklyTopMatchesJob : Job {
     }
 }
 
+class SendDailyPremiumSummaryJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.sendDailyPremiumSummary()
+        }
+    }
+}
+
 class UploadModelDataJob : Job {
     private val logger = LoggerFactory.getLogger(UploadModelDataJob::class.java)
 
@@ -253,6 +262,16 @@ fun main() {
         .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 8, 35))
         .build()
 
+    val dailyPremiumSummaryJob = JobBuilder.newJob(SendDailyPremiumSummaryJob::class.java)
+        .withIdentity("sendDailyPremiumSummaryJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val dailyPremiumSummaryTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("sendDailyPremiumSummaryTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 45))
+        .build()
+
     val liveUpdateJob = JobBuilder.newJob(UpdateLiveMatchesJob::class.java)
         .withIdentity("updateLiveMatchesJob", "group1")
         .usingJobData(jobDataMap)
@@ -302,6 +321,7 @@ fun main() {
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
     scheduler.scheduleJob(weeklyTopMatchesJob, weeklyTopMatchesTrigger)
+    scheduler.scheduleJob(dailyPremiumSummaryJob, dailyPremiumSummaryTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
     scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
 //    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
@@ -315,6 +335,7 @@ fun main() {
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
     logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
     logger.info("Scheduled SendWeeklyTopMatchesJob to run every Monday at 08:35")
+    logger.info("Scheduled SendDailyPremiumSummaryJob to run daily at 08:45")
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
     logger.info("Executed UploadModelDataJob every monday at 1:00")
