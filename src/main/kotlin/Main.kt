@@ -250,7 +250,8 @@ fun main() {
 
     val weeklyTopMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("sendWeeklyTopMatchesTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 8, 35))
+        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.TUESDAY, 19, 6))
+//        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 8, 35))
         .build()
 
     val liveUpdateJob = JobBuilder.newJob(UpdateLiveMatchesJob::class.java)
