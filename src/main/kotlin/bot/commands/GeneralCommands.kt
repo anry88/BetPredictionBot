@@ -1,5 +1,6 @@
 package bot.commands
 
+import Config
 import FootballBot
 import service.DatabaseService
 import repository.SubscriptionType
@@ -11,6 +12,10 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
 import kotlin.math.roundToInt
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo
 
 class GeneralCommands(private val bot: FootballBot) {
     fun handleStart(chatId: String) {
@@ -25,7 +30,19 @@ class GeneralCommands(private val bot: FootballBot) {
 
                 Type /help to see what this bot can do!
             """.trimIndent()
-        bot.sendMessage(chatId, description)
+
+        val miniAppUrl = Config.getProperty("miniapp.url")
+        if (miniAppUrl != null) {
+            val button = InlineKeyboardButton("Open Premium Links").apply {
+                webApp = WebAppInfo(miniAppUrl)
+            }
+            val markup = InlineKeyboardMarkup(listOf(listOf(button)))
+            val message = SendMessage(chatId, description)
+            message.replyMarkup = markup
+            bot.execute(message)
+        } else {
+            bot.sendMessage(chatId, description)
+        }
     }
 
     fun handleHelp(chatId: String, isAdmin: Boolean) {
@@ -69,20 +86,31 @@ class GeneralCommands(private val bot: FootballBot) {
     }
 
     fun handlePremiumLinks(chatId: String) {
-        val links = service.DatabaseService.invites.getActiveInviteLinksWithRemainingSlots()
-        if (links.isEmpty()) {
-            bot.sendMessage(chatId, "No available free premium channel joining links at the moment.")
+        val miniAppUrl = Config.getProperty("miniapp.url")
+        if (miniAppUrl != null) {
+            val button = InlineKeyboardButton("Open Premium Links").apply {
+                webApp = WebAppInfo(miniAppUrl)
+            }
+            val markup = InlineKeyboardMarkup(listOf(listOf(button)))
+            val message = SendMessage(chatId, "Use the mini app to view available premium channel links:")
+            message.replyMarkup = markup
+            bot.execute(message)
         } else {
-            val text = buildString {
-                append("Available free premium channel joining links:\n")
-                links.forEach { (link, left, expires) ->
-                    val date = java.time.Instant.ofEpochSecond(expires)
-                        .atZone(java.time.ZoneId.of("UTC"))
-                        .toLocalDate()
-                    append("$link - $left slots left (valid until $date)\n")
-                }
-            }.trim()
-            bot.sendMessage(chatId, text)
+            val links = service.DatabaseService.invites.getActiveInviteLinksWithRemainingSlots()
+            if (links.isEmpty()) {
+                bot.sendMessage(chatId, "No available free premium channel joining links at the moment.")
+            } else {
+                val text = buildString {
+                    append("Available free premium channel joining links:\n")
+                    links.forEach { (link, left, expires) ->
+                        val date = java.time.Instant.ofEpochSecond(expires)
+                            .atZone(java.time.ZoneId.of("UTC"))
+                            .toLocalDate()
+                        append("$link - $left slots left (valid until $date)\n")
+                    }
+                }.trim()
+                bot.sendMessage(chatId, text)
+            }
         }
     }
 
