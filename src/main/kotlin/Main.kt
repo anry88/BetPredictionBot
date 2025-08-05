@@ -90,6 +90,15 @@ class SendYearlyAccuracyJob : Job {
     }
 }
 
+class SendWeeklyTopMatchesJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
+        runBlocking {
+            footballBot.sendWeeklyTopMatches()
+        }
+    }
+}
+
 class UploadModelDataJob : Job {
     private val logger = LoggerFactory.getLogger(UploadModelDataJob::class.java)
 
@@ -233,6 +242,17 @@ fun main() {
         .withSchedule(CronScheduleBuilder.cronSchedule("0 33 8 1 1 ?"))
         .build()
 
+    // SendWeeklyTopMatchesJob setup
+    val weeklyTopMatchesJob = JobBuilder.newJob(SendWeeklyTopMatchesJob::class.java)
+        .withIdentity("sendWeeklyTopMatchesJob", "group1")
+        .usingJobData(jobDataMap)
+        .build()
+
+    val weeklyTopMatchesTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("sendWeeklyTopMatchesTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 9, 0))
+        .build()
+
     val liveUpdateJob = JobBuilder.newJob(UpdateLiveMatchesJob::class.java)
         .withIdentity("updateLiveMatchesJob", "group1")
         .usingJobData(jobDataMap)
@@ -281,6 +301,7 @@ fun main() {
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
+    scheduler.scheduleJob(weeklyTopMatchesJob, weeklyTopMatchesTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
     scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
 //    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
@@ -293,6 +314,7 @@ fun main() {
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
     logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
+    logger.info("Scheduled SendWeeklyTopMatchesJob to run every Monday at 09:00")
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
     logger.info("Executed UploadModelDataJob every monday at 1:00")
