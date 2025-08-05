@@ -1787,6 +1787,30 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
+    fun sendDailyPremiumSummary() {
+        val matches = DatabaseService.matches.getLastMatches(1)
+            .filter { it.strategyTelegramMessageId != null }
+        if (matches.isEmpty()) return
+
+        val bigWin = matches
+            .filter { it.predictedOutcome?.equals(it.actualOutcome, true) == true }
+            .filter { (it.odds?.toDoubleOrNull() ?: 0.0) >= 5.0 }
+            .maxByOrNull { it.odds?.toDoubleOrNull() ?: 0.0 }
+
+        if (bigWin != null) {
+            val message = "\uD83D\uDD25 Massive win! Premium pick ${bigWin.teams} cashed at odds ${bigWin.odds}!\n" +
+                    "Don't miss today's high-value predictions – join now! \uD83D\uDE80"
+            sendMessage(channelId, message)
+            return
+        }
+
+        if (matches.size >= 5 && matches.all { it.predictedOutcome?.equals(it.actualOutcome, true) == true }) {
+            val message = "\uD83C\uDF1F Premium perfection! All ${matches.size} picks hit yesterday.\n" +
+                    "Jump in before today's action kicks off! \u26BD\uD83D\uDCB0"
+            sendMessage(channelId, message)
+        }
+    }
+
     fun sendWeeklyTopMatches() {
         val topMatches = DatabaseService.matches.getTopPremiumRoiMatchesForPeriod(7, 3)
         if (topMatches.isEmpty()) return
