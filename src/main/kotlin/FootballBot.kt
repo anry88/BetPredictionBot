@@ -1799,7 +1799,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 val flag = getCountryFlag(match.matchType)
                 val prediction = buildString {
                     append(match.predictedOutcome ?: "N/A")
-                    if (!match.predictedScore.isNullOrBlank()) append(" ${match.predictedScore}")
                 }
                 append("${index + 1}. $league$flag\n")
                 append("${match.teams}\n")
