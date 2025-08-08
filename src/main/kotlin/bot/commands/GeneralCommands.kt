@@ -33,6 +33,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /start - Start the bot and get information about it
             /freepremiumlinks - Get available premium channel links for free
             /subscribe - Purchase bot or Premium channel subscription
+            /paysupport - Request a refund
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /premiummatches - Get matches selected for the Premium channel
@@ -57,6 +58,9 @@ class GeneralCommands(private val bot: FootballBot) {
             /uploadmodeldata - Upload matches data to the model
             /addPastResults league season startDate endDate - Add past results to database
             /createInviteLink subscribers days - Create an invite link for the premium channel
+            /refundapprove id - Approve refund request
+            /refunddecline id - Decline refund request
+            /refundinfo id message - Request more info for refund
         """.trimIndent()
 
         val responseText = if (isAdmin) {
