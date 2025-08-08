@@ -41,7 +41,7 @@ object Metrics {
         }
     }
 
-    fun updateUserMetrics(total: Int, activeLastDay: Int) {
+    fun updateUserMetrics(total: Long, activeLastDay: Long) {
         totalUsersGauge.set(total.toDouble())
         activeUsersGauge.set(activeLastDay.toDouble())
     }
