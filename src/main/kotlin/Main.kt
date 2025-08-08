@@ -7,6 +7,8 @@ import org.telegram.telegrambots.meta.api.methods.groupadministration.BanChatMem
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession
 import service.HttpAPIFootballService
 import service.ModelDataUploader
+import service.DatabaseService
+import Metrics
 
 class FetchMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
@@ -152,6 +154,13 @@ fun main() {
     val footballBot = FootballBot(telegramBotToken)
     botsApi.registerBot(footballBot)
     logger.info("Football bot started successfully")
+
+    val metricsPort = Config.getProperty("metrics.port")?.toInt() ?: 8080
+    Metrics.startServer(metricsPort)
+    Metrics.updateUserMetrics(
+        DatabaseService.users.getUserCount(),
+        DatabaseService.users.getActiveUserCountLast24Hours()
+    )
 
     // Setup and start Quartz scheduler
     val scheduler = StdSchedulerFactory().scheduler

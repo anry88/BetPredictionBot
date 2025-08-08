@@ -48,6 +48,7 @@ import kotlin.math.roundToInt
 import bot.commands.AdminCommands
 import bot.commands.GeneralCommands
 import bot.invites.InviteHandler
+import Metrics
 
 class FootballBot(private val token: String) : TelegramLongPollingBot(), TelegramService {
     private val logger = LoggerFactory.getLogger(FootballBot::class.java)
@@ -299,8 +300,34 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             // Записываем активность пользователя
             DatabaseService.users.addUserActivity(userId, firstName, lastName, username)
 
+            Metrics.updateUserMetrics(
+                DatabaseService.users.getUserCount(),
+                DatabaseService.users.getActiveUserCountLast24Hours()
+            )
+
+            if (messageText.startsWith("/")) {
+                val parts = messageText.trim().split(" ", limit = 2)
+                val command = parts[0]
+                val params = parts.getOrNull(1) ?: ""
+                logger.info("User $userId executed command $command ${if (params.isNotBlank()) "with params '$params'" else ""}")
+                Metrics.commandCounter.labels(command).inc()
+                when (command) {
+                    "/paysupport" -> Metrics.refundOperationCounter.labels("init").inc()
+                    "/myjobs" -> Metrics.jobOperationCounter.labels("menu").inc()
+                    "/confirm" -> Metrics.jobOperationCounter.labels("confirm").inc()
+                    "/cancel" -> Metrics.jobOperationCounter.labels("cancel").inc()
+                    "/refundapprove" -> Metrics.refundOperationCounter.labels("approve").inc()
+                    "/refunddecline" -> Metrics.refundOperationCounter.labels("decline").inc()
+                    "/refundinfo" -> Metrics.refundOperationCounter.labels("info_request").inc()
+                }
+            } else {
+                logger.info("User $userId message: $messageText")
+            }
+
             if (pendingRefundInfo.containsKey(userId)) {
                 val reqId = pendingRefundInfo.remove(userId)!!
+                logger.info("User $userId additional refund info for request $reqId: $messageText")
+                Metrics.refundOperationCounter.labels("additional_info").inc()
                 if (messageText == "/cancel") {
                     sendMessage(chatId, "Additional information request cancelled.")
                     sendMessage(adminChatId, "User $userInfo cancelled additional info for refund request #$reqId", null)
@@ -323,6 +350,8 @@ Available actions:
             }
 
             if (pendingRefunds.contains(userId)) {
+                logger.info("User $userId refund reason: $messageText")
+                Metrics.refundOperationCounter.labels("reason").inc()
                 pendingRefunds.remove(userId)
                 val payment = DatabaseService.payments.getLastPayment(userId)
                 if (payment == null) {
@@ -348,6 +377,8 @@ Available actions:
 
             val state = jobCreationStates[userId]
             if (state != null) {
+                logger.info("User $userId job state $state input: $messageText")
+                Metrics.jobOperationCounter.labels(state.name.lowercase()).inc()
                 when (state) {
                     JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER -> {
                         val jobId = editingJobs[userId]
@@ -597,15 +628,28 @@ Available actions:
             val data = update.callbackQuery.data
             val chatId = update.callbackQuery.message.chatId.toString()
             val userId = update.callbackQuery.from.id.toString()
+            Metrics.updateUserMetrics(
+                DatabaseService.users.getUserCount(),
+                DatabaseService.users.getActiveUserCountLast24Hours()
+            )
+            logger.info("User $userId callback: $data")
+            Metrics.commandCounter.labels(data).inc()
             val plan = SubscriptionPlan.values().firstOrNull { it.callbackData == data }
             when {
                 plan != null -> sendPremiumInvoice(chatId, plan)
                 data == "jobs_create" -> {
                     editingJobs.remove(userId)
                     showCreateCategory(chatId)
+                    Metrics.jobOperationCounter.labels("create").inc()
                 }
-                data == "jobs_edit" -> showEditJobs(chatId, userId)
-                data == "jobs_delete" -> showDeleteJobs(chatId, userId)
+                data == "jobs_edit" -> {
+                    showEditJobs(chatId, userId)
+                    Metrics.jobOperationCounter.labels("edit").inc()
+                }
+                data == "jobs_delete" -> {
+                    showDeleteJobs(chatId, userId)
+                    Metrics.jobOperationCounter.labels("delete").inc()
+                }
                 data == "jobs_create_upcoming" -> showUpcomingOptions(chatId)
                 data == "jobs_create_recent" -> showRecentOptions(chatId)
                 data == "jobs_create_accuracy" -> {
@@ -629,6 +673,7 @@ Available actions:
                     if (id != null) {
                         editingJobs[userId] = id
                         showCreateCategory(chatId)
+                        Metrics.jobOperationCounter.labels("edit").inc()
                     }
                 }
                 data.startsWith("jobs_delete_") -> {
@@ -636,6 +681,7 @@ Available actions:
                     if (id != null) {
                         DatabaseService.jobs.deleteJob(id)
                         sendMessage(chatId, "Job deleted.")
+                        Metrics.jobOperationCounter.labels("delete").inc()
                     }
                 }
             }
@@ -645,6 +691,11 @@ Available actions:
             val type = if (parts[0] == "bot") SubscriptionType.BOT else SubscriptionType.CHANNEL
             val months = parts.getOrNull(1)?.toIntOrNull() ?: 1
             val userId = update.message.from.id.toString()
+            val payerInfo = update.message.from.userName?.let { "@$it" } ?: listOfNotNull(update.message.from.firstName, update.message.from.lastName).joinToString(" ")
+            Metrics.updateUserMetrics(
+                DatabaseService.users.getUserCount(),
+                DatabaseService.users.getActiveUserCountLast24Hours()
+            )
             DatabaseService.payments.addPayment(userId, payment)
             val newExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, type, months)
             val expiryDate = java.time.Instant.ofEpochSecond(newExpiry).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
@@ -673,6 +724,7 @@ Available actions:
             } else {
                 sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate")
             }
+            sendMessage(adminChatId, "User $payerInfo (id $userId) purchased ${type.name.lowercase()} subscription for $months month(s)")
         } else if (update.hasChatJoinRequest()) {
             logger.info("Received chat join request: ${update.chatJoinRequest}")
             inviteHandler.handleChatJoinRequest(update.chatJoinRequest)
