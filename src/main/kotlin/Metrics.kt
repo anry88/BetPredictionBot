@@ -7,7 +7,7 @@ object Metrics {
     val commandCounter: Counter = Counter.build()
         .name("bot_commands_total")
         .help("Total number of bot commands received")
-        .labelNames("command")
+        .labelNames("command", "user_id", "is_admin")
         .register()
 
     val jobOperationCounter: Counter = Counter.build()

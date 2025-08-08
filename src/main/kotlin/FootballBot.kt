@@ -87,6 +87,20 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val pendingRefunds = mutableSetOf<String>()
     private val pendingRefundInfo = mutableMapOf<String, Long>()
 
+    private val adminCommandNames = setOf(
+        "/getdatabase",
+        "/usercount",
+        "/activeusercount",
+        "/refundapprove",
+        "/refunddecline",
+        "/refundinfo",
+        "/getStrategyEfficiency",
+        "/getLeaguePredictability",
+        "/getjsonl",
+        "/uploadmodeldata",
+        "/addPastResults"
+    )
+
     private enum class JobCreationState {
         WAITING_LEAGUE_UPCOMING_FILTER,
         WAITING_LEAGUE_RECENT_FILTER,
@@ -309,8 +323,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 val parts = messageText.trim().split(" ", limit = 2)
                 val command = parts[0]
                 val params = parts.getOrNull(1) ?: ""
+                val isAdminCommand = adminCommandNames.contains(command)
                 logger.info("User $userId executed command $command ${if (params.isNotBlank()) "with params '$params'" else ""}")
-                Metrics.commandCounter.labels(command).inc()
+                Metrics.commandCounter.labels(command, userId, isAdminCommand.toString()).inc()
                 when (command) {
                     "/paysupport" -> Metrics.refundOperationCounter.labels("init").inc()
                     "/myjobs" -> Metrics.jobOperationCounter.labels("menu").inc()
@@ -633,7 +648,8 @@ Available actions:
                 DatabaseService.users.getActiveUserCountLast24Hours()
             )
             logger.info("User $userId callback: $data")
-            Metrics.commandCounter.labels(data).inc()
+            val isAdminCallback = chatId == adminChatId
+            Metrics.commandCounter.labels(data, userId, isAdminCallback.toString()).inc()
             val plan = SubscriptionPlan.values().firstOrNull { it.callbackData == data }
             when {
                 plan != null -> sendPremiumInvoice(chatId, plan)
