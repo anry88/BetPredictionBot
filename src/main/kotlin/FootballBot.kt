@@ -553,8 +553,15 @@ Available actions:
                     if (payment == null) {
                         sendMessage(chatId, "No recent payments found")
                     } else {
-                        pendingRefunds.add(userId)
-                        sendMessage(chatId, "Please describe the reason for refund for payment of ${payment.amount} ${payment.currency}.")
+                        val existing = DatabaseService.refunds.getLatestByPaymentId(payment.id)
+                        when (existing?.status) {
+                            "approved" -> sendMessage(chatId, "This payment has already been refunded.")
+                            "pending", "need_info" -> sendMessage(chatId, "A refund request for this payment is already in progress.")
+                            else -> {
+                                pendingRefunds.add(userId)
+                                sendMessage(chatId, "Please describe the reason for refund for payment of ${payment.amount} ${payment.currency}.")
+                            }
+                        }
                     }
                 }
 

@@ -89,5 +89,32 @@ class RefundRequestRepository {
         connection.close()
         return req
     }
+
+    fun getLatestByPaymentId(paymentId: Long): RefundRequest? {
+        val connection = getConnection()
+        val stmt = connection.prepareStatement(
+            "SELECT id, user_id, payment_id, reason, status, created_at, admin_comment, user_comment FROM refund_requests WHERE payment_id = ? ORDER BY created_at DESC LIMIT 1"
+        )
+        stmt.setLong(1, paymentId)
+        val rs = stmt.executeQuery()
+        val req = if (rs.next()) {
+            RefundRequest(
+                rs.getLong("id"),
+                rs.getString("user_id"),
+                rs.getLong("payment_id"),
+                rs.getString("reason"),
+                rs.getString("status"),
+                rs.getLong("created_at"),
+                rs.getString("admin_comment"),
+                rs.getString("user_comment")
+            )
+        } else {
+            null
+        }
+        rs.close()
+        stmt.close()
+        connection.close()
+        return req
+    }
 }
 
