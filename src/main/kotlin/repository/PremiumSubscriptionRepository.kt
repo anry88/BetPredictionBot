@@ -40,6 +40,48 @@ class PremiumSubscriptionRepository {
         return newExpiry
     }
 
+    fun revokeSubscription(userId: String, type: SubscriptionType, months: Int) {
+        val connection = getConnection()
+        val select = connection.prepareStatement("SELECT expires_at FROM premium_subscriptions WHERE user_id = ? AND type = ?")
+        select.setString(1, userId)
+        select.setString(2, type.name)
+        val rs = select.executeQuery()
+        val existing = if (rs.next()) rs.getLong("expires_at") else null
+        rs.close()
+        select.close()
+
+        if (existing == null) {
+            connection.close()
+            return
+        }
+
+        val baseDateTime = java.time.Instant.ofEpochSecond(existing)
+            .atZone(java.time.ZoneOffset.UTC)
+            .toLocalDateTime()
+        val newExpiry = baseDateTime.minusMonths(months.toLong())
+            .toEpochSecond(java.time.ZoneOffset.UTC)
+        val currentTime = System.currentTimeMillis() / 1000
+        if (newExpiry <= currentTime) {
+            val delete = connection.prepareStatement(
+                "DELETE FROM premium_subscriptions WHERE user_id = ? AND type = ?"
+            )
+            delete.setString(1, userId)
+            delete.setString(2, type.name)
+            delete.executeUpdate()
+            delete.close()
+        } else {
+            val update = connection.prepareStatement(
+                "UPDATE premium_subscriptions SET expires_at = ? WHERE user_id = ? AND type = ?"
+            )
+            update.setLong(1, newExpiry)
+            update.setString(2, userId)
+            update.setString(3, type.name)
+            update.executeUpdate()
+            update.close()
+        }
+        connection.close()
+    }
+
     fun getSubscription(userId: String, type: SubscriptionType): PremiumSubscription? {
         val connection = getConnection()
         val stmt = connection.prepareStatement(
