@@ -83,6 +83,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val pendingJobs = mutableMapOf<String, ScheduledJob>()
     private val jobCreationStates = mutableMapOf<String, JobCreationState>()
     private val editingJobs = mutableMapOf<String, Long>()
+    private val pendingRefunds = mutableSetOf<String>()
 
     private enum class JobCreationState {
         WAITING_LEAGUE_UPCOMING_FILTER,
@@ -292,6 +293,28 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             // Записываем активность пользователя
             DatabaseService.users.addUserActivity(userId, firstName, lastName, username)
 
+            if (pendingRefunds.contains(userId)) {
+                pendingRefunds.remove(userId)
+                val payment = DatabaseService.payments.getLastPayment(userId)
+                if (payment == null) {
+                    sendMessage(chatId, "No payment found to refund.")
+                } else {
+                    val requestId = DatabaseService.refunds.createRequest(userId, payment.id, messageText)
+                    sendMessage(chatId, "Refund request submitted. Admin will review it soon.")
+                    val userInfo = when {
+                        username != null -> "@$username"
+                        else -> listOfNotNull(firstName, lastName).joinToString(" ")
+                    }
+                    val adminText = buildString {
+                        append("Refund request #$requestId from $userInfo (id $userId)\n")
+                        append("Payment: ${payment.amount} ${payment.currency}\n")
+                        append("Reason: $messageText")
+                    }
+                    sendMessage(adminChatId, adminText)
+                }
+                return
+            }
+
             val state = jobCreationStates[userId]
             if (state != null) {
                 when (state) {
@@ -347,6 +370,56 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
                 chatId == adminChatId && messageText == "/activeusercount" -> {
                     adminCommands.handleActiveUserCount(chatId)
+                }
+
+                chatId == adminChatId && messageText.startsWith("/refundapprove") -> {
+                    val id = messageText.removePrefix("/refundapprove").trim().toLongOrNull()
+                    if (id == null) {
+                        sendMessage(chatId, "Usage: /refundapprove <id>")
+                    } else {
+                        val req = DatabaseService.refunds.getRequest(id)
+                        if (req == null) {
+                            sendMessage(chatId, "Refund request not found")
+                        } else {
+                            DatabaseService.refunds.updateStatus(id, "approved")
+                            sendMessage(req.userId, "Your refund request #$id has been approved. Refund will be processed soon.")
+                            sendMessage(chatId, "Refund request #$id approved")
+                        }
+                    }
+                }
+
+                chatId == adminChatId && messageText.startsWith("/refunddecline") -> {
+                    val id = messageText.removePrefix("/refunddecline").trim().toLongOrNull()
+                    if (id == null) {
+                        sendMessage(chatId, "Usage: /refunddecline <id>")
+                    } else {
+                        val req = DatabaseService.refunds.getRequest(id)
+                        if (req == null) {
+                            sendMessage(chatId, "Refund request not found")
+                        } else {
+                            DatabaseService.refunds.updateStatus(id, "declined")
+                            sendMessage(req.userId, "Your refund request #$id has been declined.")
+                            sendMessage(chatId, "Refund request #$id declined")
+                        }
+                    }
+                }
+
+                chatId == adminChatId && messageText.startsWith("/refundinfo") -> {
+                    val parts = messageText.removePrefix("/refundinfo").trim().split(" ", limit = 2)
+                    val id = parts.getOrNull(0)?.toLongOrNull()
+                    val msg = parts.getOrNull(1)
+                    if (id == null || msg == null) {
+                        sendMessage(chatId, "Usage: /refundinfo <id> <message>")
+                    } else {
+                        val req = DatabaseService.refunds.getRequest(id)
+                        if (req == null) {
+                            sendMessage(chatId, "Refund request not found")
+                        } else {
+                            DatabaseService.refunds.updateStatus(id, "need_info", msg)
+                            sendMessage(req.userId, "Admin requests more information: $msg")
+                            sendMessage(chatId, "Request #$id marked for more info")
+                        }
+                    }
                 }
 
                 messageText == "/upcomingmatches" -> {
@@ -426,6 +499,16 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                     generalCommands.handleSubscriptionMenu(chatId, userId)
                 }
 
+                messageText == "/paysupport" -> {
+                    val payment = DatabaseService.payments.getLastPayment(userId)
+                    if (payment == null) {
+                        sendMessage(chatId, "No recent payments found")
+                    } else {
+                        pendingRefunds.add(userId)
+                        sendMessage(chatId, "Please describe the reason for refund for payment of ${payment.amount} ${payment.currency}.")
+                    }
+                }
+
                 messageText.startsWith("/createInviteLink") -> {
                     inviteHandler.handleCreateInviteLink(update.message)
                 }
@@ -494,6 +577,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val type = if (parts[0] == "bot") SubscriptionType.BOT else SubscriptionType.CHANNEL
             val months = parts.getOrNull(1)?.toIntOrNull() ?: 1
             val userId = update.message.from.id.toString()
+            DatabaseService.payments.addPayment(userId, payment)
             val newExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, type, months)
             val expiryDate = java.time.Instant.ofEpochSecond(newExpiry).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
             if (type == SubscriptionType.CHANNEL) {
@@ -1068,6 +1152,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
         commands.add(BotCommand("/myjobs", "Manage scheduled jobs"))
         commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
+        commands.add(BotCommand("/paysupport", "Request a refund"))
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands

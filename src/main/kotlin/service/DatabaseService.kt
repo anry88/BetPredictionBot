@@ -11,6 +11,8 @@ import repository.PremiumSubscriptionRepository
 import repository.CommandUsageRepository
 import repository.UserSettingsRepository
 import repository.ScheduledJobRepository
+import repository.PaymentRepository
+import repository.RefundRequestRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -159,6 +161,32 @@ private fun runManualMigration() {
             interval_seconds INTEGER NOT NULL
         );
     """.trimIndent())
+
+    execSql("""
+        CREATE TABLE IF NOT EXISTS payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            telegram_payment_charge_id TEXT NOT NULL,
+            provider_payment_charge_id TEXT,
+            payload TEXT,
+            currency TEXT NOT NULL,
+            amount INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+    """.trimIndent())
+
+    execSql("""
+        CREATE TABLE IF NOT EXISTS refund_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            payment_id INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at INTEGER NOT NULL,
+            admin_comment TEXT,
+            FOREIGN KEY(payment_id) REFERENCES payments(id)
+        );
+    """.trimIndent())
 }
 
 fun createLeagueTableIfNeeded(tableName: String) {
@@ -228,4 +256,6 @@ object DatabaseService {
     val commandUsage = CommandUsageRepository()
     val userSettings = UserSettingsRepository()
     val jobs = ScheduledJobRepository()
+    val payments = PaymentRepository()
+    val refunds = RefundRequestRepository()
 }
