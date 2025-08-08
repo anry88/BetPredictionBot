@@ -155,7 +155,8 @@ fun main() {
     botsApi.registerBot(footballBot)
     logger.info("Football bot started successfully")
 
-    Metrics.startServer()
+    val metricsPort = Config.getProperty("metrics.port")?.toInt() ?: 8080
+    Metrics.startServer(metricsPort)
     Metrics.updateUserMetrics(
         DatabaseService.users.getUserCount(),
         DatabaseService.users.getActiveUserCountLast24Hours()

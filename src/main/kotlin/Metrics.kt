@@ -34,7 +34,7 @@ object Metrics {
 
     private var server: HTTPServer? = null
 
-    fun startServer(port: Int = 8080) {
+    fun startServer(port: Int) {
         if (server == null) {
             DefaultExports.initialize()
             server = HTTPServer(port)
