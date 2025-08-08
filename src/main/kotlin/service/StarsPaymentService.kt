@@ -2,6 +2,10 @@ package service
 
 import Config
 import FootballBot
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.telegram.telegrambots.meta.api.methods.invoices.SendInvoice
 import org.telegram.telegrambots.meta.api.objects.payments.LabeledPrice
 import repository.SubscriptionPlan
@@ -9,6 +13,8 @@ import repository.SubscriptionPlan
 class StarsPaymentService(private val bot: FootballBot) {
     private val providerToken: String =
         Config.getProperty("provider.token") ?: "stars"
+
+    private val httpClient = OkHttpClient()
 
     private val prices = mapOf(
         SubscriptionPlan.BOT_1 to 400,
@@ -36,5 +42,17 @@ class StarsPaymentService(private val bot: FootballBot) {
         invoice.setCurrency("XTR")
         invoice.setPrices(listOf(LabeledPrice(title, price)))
         bot.execute(invoice)
+    }
+
+    fun refundStars(userId: Long, telegramPaymentChargeId: String) {
+        val url = "https://api.telegram.org/bot${bot.getBotToken()}/refundStarPayment"
+        val json = "{\"user_id\":$userId,\"telegram_payment_charge_id\":\"$telegramPaymentChargeId\"}"
+        val body = json.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url(url).post(body).build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw RuntimeException("Failed to refund stars: ${response.code}")
+            }
+        }
     }
 }

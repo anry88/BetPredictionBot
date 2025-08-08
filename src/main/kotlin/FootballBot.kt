@@ -25,7 +25,6 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery
-import org.telegram.telegrambots.meta.api.methods.payments.RefundStarPayment
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import service.DatabaseService
@@ -417,14 +416,17 @@ Available actions:
                             val payment = DatabaseService.payments.getPayment(req.paymentId)
                             if (payment != null) {
                                 try {
-                                    val refund = RefundStarPayment()
-                                    refund.userId = req.userId.toLong()
-                                    refund.telegramPaymentChargeId = payment.telegramPaymentChargeId
-                                    execute(refund)
-                                    sendMessage(req.userId, "Your refund request #$id has been approved. ${payment.amount} ${payment.currency} returned to your balance.")
+                                    paymentService.refundStars(req.userId.toLong(), payment.telegramPaymentChargeId)
+                                    sendMessage(
+                                        req.userId,
+                                        "Your refund request #$id has been approved. ${payment.amount} ${payment.currency} returned to your balance."
+                                    )
                                 } catch (e: Exception) {
                                     logger.error("Failed to refund stars", e)
-                                    sendMessage(req.userId, "Your refund request #$id has been approved, but refund failed. Please contact support.")
+                                    sendMessage(
+                                        req.userId,
+                                        "Your refund request #$id has been approved, but refund failed. Please contact support."
+                                    )
                                 }
                             } else {
                                 sendMessage(req.userId, "Your refund request #$id has been approved.")
