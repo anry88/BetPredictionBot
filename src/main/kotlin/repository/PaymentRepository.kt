@@ -67,5 +67,32 @@ class PaymentRepository {
         connection.close()
         return payment
     }
+
+    fun getPayment(id: Long): Payment? {
+        val connection = getConnection()
+        val stmt = connection.prepareStatement(
+            "SELECT id, user_id, telegram_payment_charge_id, provider_payment_charge_id, payload, currency, amount, created_at FROM payments WHERE id = ?"
+        )
+        stmt.setLong(1, id)
+        val rs = stmt.executeQuery()
+        val payment = if (rs.next()) {
+            Payment(
+                rs.getLong("id"),
+                rs.getString("user_id"),
+                rs.getString("telegram_payment_charge_id"),
+                rs.getString("provider_payment_charge_id"),
+                rs.getString("payload"),
+                rs.getString("currency"),
+                rs.getInt("amount"),
+                rs.getLong("created_at")
+            )
+        } else {
+            null
+        }
+        rs.close()
+        stmt.close()
+        connection.close()
+        return payment
+    }
 }
 

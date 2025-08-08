@@ -11,7 +11,8 @@ data class RefundRequest(
     val reason: String,
     val status: String,
     val createdAt: Long,
-    val adminComment: String?
+    val adminComment: String?,
+    val userComment: String?
 )
 
 class RefundRequestRepository {
@@ -50,10 +51,22 @@ class RefundRequestRepository {
         connection.close()
     }
 
+    fun saveUserComment(id: Long, comment: String) {
+        val connection = getConnection()
+        val stmt = connection.prepareStatement(
+            "UPDATE refund_requests SET user_comment = ?, status = 'pending' WHERE id = ?"
+        )
+        stmt.setString(1, comment)
+        stmt.setLong(2, id)
+        stmt.executeUpdate()
+        stmt.close()
+        connection.close()
+    }
+
     fun getRequest(id: Long): RefundRequest? {
         val connection = getConnection()
         val stmt = connection.prepareStatement(
-            "SELECT id, user_id, payment_id, reason, status, created_at, admin_comment FROM refund_requests WHERE id = ?"
+            "SELECT id, user_id, payment_id, reason, status, created_at, admin_comment, user_comment FROM refund_requests WHERE id = ?"
         )
         stmt.setLong(1, id)
         val rs = stmt.executeQuery()
@@ -65,7 +78,8 @@ class RefundRequestRepository {
                 rs.getString("reason"),
                 rs.getString("status"),
                 rs.getLong("created_at"),
-                rs.getString("admin_comment")
+                rs.getString("admin_comment"),
+                rs.getString("user_comment")
             )
         } else {
             null

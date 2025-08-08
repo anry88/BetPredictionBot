@@ -25,6 +25,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 import org.telegram.telegrambots.meta.api.methods.AnswerPreCheckoutQuery
+import org.telegram.telegrambots.meta.api.methods.payments.RefundStarPayment
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 import service.DatabaseService
@@ -84,6 +85,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val jobCreationStates = mutableMapOf<String, JobCreationState>()
     private val editingJobs = mutableMapOf<String, Long>()
     private val pendingRefunds = mutableSetOf<String>()
+    private val pendingRefundInfo = mutableMapOf<String, Long>()
 
     private enum class JobCreationState {
         WAITING_LEAGUE_UPCOMING_FILTER,
@@ -290,8 +292,36 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val lastName = update.message.from.lastName
             val username = update.message.from.userName
 
+            val userInfo = when {
+                username != null -> "@$username"
+                else -> listOfNotNull(firstName, lastName).joinToString(" ")
+            }
+
             // Записываем активность пользователя
             DatabaseService.users.addUserActivity(userId, firstName, lastName, username)
+
+            if (pendingRefundInfo.containsKey(userId)) {
+                val reqId = pendingRefundInfo.remove(userId)!!
+                if (messageText == "/cancel") {
+                    sendMessage(chatId, "Additional information request cancelled.")
+                    sendMessage(adminChatId, "User $userInfo cancelled additional info for refund request #$reqId", null)
+                } else {
+                    DatabaseService.refunds.saveUserComment(reqId, messageText)
+                    val adminText = buildString {
+                        append("Additional info for refund request #$reqId from $userInfo (id $userId)\n")
+                        append(messageText)
+                    }
+                    val commands = """
+Available actions:
+/refundapprove $reqId - approve refund and return stars
+/refunddecline $reqId - decline refund
+/refundinfo $reqId <message> - request more info
+""".trimIndent()
+                    sendMessage(adminChatId, "$adminText\n\n$commands", null)
+                    sendMessage(chatId, "Additional information sent to admin. Please wait for response.")
+                }
+                return
+            }
 
             if (pendingRefunds.contains(userId)) {
                 pendingRefunds.remove(userId)
@@ -301,16 +331,18 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 } else {
                     val requestId = DatabaseService.refunds.createRequest(userId, payment.id, messageText)
                     sendMessage(chatId, "Refund request submitted. Admin will review it soon.")
-                    val userInfo = when {
-                        username != null -> "@$username"
-                        else -> listOfNotNull(firstName, lastName).joinToString(" ")
-                    }
                     val adminText = buildString {
                         append("Refund request #$requestId from $userInfo (id $userId)\n")
                         append("Payment: ${payment.amount} ${payment.currency}\n")
                         append("Reason: $messageText")
                     }
-                    sendMessage(adminChatId, adminText, null)
+                    val commands = """
+Available actions:
+/refundapprove $requestId - approve refund and return stars
+/refunddecline $requestId - decline refund
+/refundinfo $requestId <message> - request more info
+""".trimIndent()
+                    sendMessage(adminChatId, "$adminText\n\n$commands", null)
                 }
                 return
             }
@@ -382,7 +414,21 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                             sendMessage(chatId, "Refund request not found")
                         } else {
                             DatabaseService.refunds.updateStatus(id, "approved")
-                            sendMessage(req.userId, "Your refund request #$id has been approved. Refund will be processed soon.")
+                            val payment = DatabaseService.payments.getPayment(req.paymentId)
+                            if (payment != null) {
+                                try {
+                                    val refund = RefundStarPayment()
+                                    refund.userId = req.userId.toLong()
+                                    refund.telegramPaymentChargeId = payment.telegramPaymentChargeId
+                                    execute(refund)
+                                    sendMessage(req.userId, "Your refund request #$id has been approved. ${payment.amount} ${payment.currency} returned to your balance.")
+                                } catch (e: Exception) {
+                                    logger.error("Failed to refund stars", e)
+                                    sendMessage(req.userId, "Your refund request #$id has been approved, but refund failed. Please contact support.")
+                                }
+                            } else {
+                                sendMessage(req.userId, "Your refund request #$id has been approved.")
+                            }
                             sendMessage(chatId, "Refund request #$id approved")
                         }
                     }
@@ -416,7 +462,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                             sendMessage(chatId, "Refund request not found")
                         } else {
                             DatabaseService.refunds.updateStatus(id, "need_info", msg)
-                            sendMessage(req.userId, "Admin requests more information: $msg")
+                            pendingRefundInfo[req.userId] = id
+                            sendMessage(req.userId, "Admin requests more information: $msg\nPlease reply with the additional details. Send /cancel to abort.")
                             sendMessage(chatId, "Request #$id marked for more info")
                         }
                     }

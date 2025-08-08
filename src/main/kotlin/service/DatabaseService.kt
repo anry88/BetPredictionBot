@@ -184,9 +184,12 @@ private fun runManualMigration() {
             status TEXT NOT NULL DEFAULT 'pending',
             created_at INTEGER NOT NULL,
             admin_comment TEXT,
+            user_comment TEXT,
             FOREIGN KEY(payment_id) REFERENCES payments(id)
         );
     """.trimIndent())
+
+    addColumnIfNotExists("refund_requests", "user_comment", "TEXT")
 }
 
 fun createLeagueTableIfNeeded(tableName: String) {
