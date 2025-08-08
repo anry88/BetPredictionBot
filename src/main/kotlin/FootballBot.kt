@@ -310,7 +310,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                         append("Payment: ${payment.amount} ${payment.currency}\n")
                         append("Reason: $messageText")
                     }
-                    sendMessage(adminChatId, adminText)
+                    sendMessage(adminChatId, adminText, null)
                 }
                 return
             }
@@ -1089,7 +1089,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return "This is a response to: $messageText"
     }
 
-    fun sendMessage(chatId: String, text: String, parseMode: String = "Markdown") {
+    fun sendMessage(chatId: String, text: String, parseMode: String? = "Markdown") {
         val footer = if (chatId == channelId) {
             if (parseMode == "Markdown") mainChannelFooter.replace("_", "\\_") else mainChannelFooter
         } else ""
@@ -1097,7 +1097,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = chatId
         message.text = finalText
-        message.parseMode = parseMode
+        if (!parseMode.isNullOrBlank()) {
+            message.parseMode = parseMode
+        }
 
         try {
             execute(message)
@@ -1107,7 +1109,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    fun sendMultipartMessage(chatId: String, text: String, parseMode: String = "Markdown") {
+    fun sendMultipartMessage(chatId: String, text: String, parseMode: String? = "Markdown") {
         val footerLength = if (chatId == channelId) {
             if (parseMode == "Markdown") mainChannelFooter.replace("_", "\\_").length else mainChannelFooter.length
         } else 0
