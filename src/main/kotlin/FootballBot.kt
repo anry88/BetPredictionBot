@@ -421,6 +421,18 @@ Available actions:
                                         req.userId,
                                         "Your refund request #$id has been approved. ${payment.amount} ${payment.currency} returned to your balance."
                                     )
+                                    payment.payload?.let { payload ->
+                                        val parts = payload.split("_")
+                                        val parsedType = parts.getOrNull(0)?.let { SubscriptionType.valueOf(it.uppercase()) }
+                                        val parsedMonths = parts.getOrNull(1)?.toIntOrNull()
+                                        if (parsedType != null && parsedMonths != null) {
+                                            DatabaseService.subscriptions.revokeSubscription(req.userId, parsedType, parsedMonths)
+                                            sendMessage(
+                                                req.userId,
+                                                "${parsedType.name.lowercase().replaceFirstChar { c -> c.uppercase() }} subscription has been revoked."
+                                            )
+                                        }
+                                    }
                                 } catch (e: Exception) {
                                     logger.error("Failed to refund stars", e)
                                     sendMessage(
