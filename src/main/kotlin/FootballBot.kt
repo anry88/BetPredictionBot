@@ -2167,6 +2167,7 @@ Available actions:
 //            "UEFA" to "🇪🇺",
             "UEFA" to "🌍",
             "CONMEBOL" to "🌎",
+            "AFC" to "🌏",
             "Europe" to "🌍", // Глобус с Европой и Африкой
             "Asia" to "🌏",   // Глобус с Азией и Австралией
             "Africa" to "🌍", // Можно использовать тот же глобус

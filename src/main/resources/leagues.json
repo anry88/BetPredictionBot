@@ -10,7 +10,7 @@
   {"leagueId": 235, "season": 2025, "description": "Russia Premier League", "premiumSelection": true},
   {"leagueId": 10, "season": 2025, "description": "World Friendlies", "premiumSelection": true},
   {"leagueId": 2, "season": 2025, "description": "World UEFA Champions League", "premiumSelection": true},
-  {"leagueId": 3, "season": 2025, "description": "World UEFA Europa League", "premiumSelection": false},
+  {"leagueId": 3, "season": 2025, "description": "World UEFA Europa League", "premiumSelection": true},
   {"leagueId": 5, "season": 2024, "description": "World UEFA Nations League", "premiumSelection": false},
   {"leagueId": 30, "season": 2026, "description": "World World Cup - Qualification Asia", "premiumSelection": true},
   {"leagueId": 32, "season": 2024, "description": "World World Cup - Qualification Europe", "premiumSelection": true},
@@ -31,7 +31,7 @@
   {"leagueId": 305, "season": 2025, "description": "Qatar Stars League", "premiumSelection": true},
   {"leagueId": 301, "season": 2025, "description": "United-Arab-Emirates Pro League", "premiumSelection": false},
   {"leagueId": 262, "season": 2025, "description": "Mexico Liga MX", "premiumSelection": true},
-  {"leagueId": 169, "season": 2025, "description": "China Super League", "premiumSelection": true},
+  {"leagueId": 169, "season": 2025, "description": "China Super League", "premiumSelection": false},
   {"leagueId": 29, "season": 2023, "description": "World World Cup - Qualification Africa", "premiumSelection": false},
   {"leagueId": 15, "season": 2025, "description": "World FIFA Club World Cup", "premiumSelection": false},
   {"leagueId": 98, "season": 2025, "description": "Japan J1 League", "premiumSelection": false},
@@ -56,5 +56,8 @@
   {"leagueId": 119, "season": 2025, "description": "Denmark Superliga", "premiumSelection": false},
   {"leagueId": 103, "season": 2025, "description": "Norway Eliteserien", "premiumSelection": false},
   {"leagueId": 113, "season": 2025, "description": "Sweden Allsvenskan", "premiumSelection": false},
-  {"leagueId": 19, "season": 2024, "description": "World African Nations Championship", "premiumSelection": false}
+  {"leagueId": 19, "season": 2024, "description": "World African Nations Championship", "premiumSelection": true},
+  {"leagueId": 17, "season": 2025, "description": "World AFC Champions League", "premiumSelection": false},
+  {"leagueId": 18, "season": 2025, "description": "World AFC Cup", "premiumSelection": false},
+  {"leagueId": 1132, "season": 2025, "description": "World AFC Challenge League", "premiumSelection": false}
 ]
