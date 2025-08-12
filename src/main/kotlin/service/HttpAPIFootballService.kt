@@ -101,9 +101,13 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val formatterMatchDate = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
                 val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
 
-                val teams = "${match.teams.home.name} vs. ${match.teams.away.name}"
+                val homeTeamName = match.teams.home.name
+                val awayTeamName = match.teams.away.name
+                val teams = "$homeTeamName vs. $awayTeamName"
 
-                // Создаём объект MatchInfo перед вызовом matchExists
+                val homeMatchesCount = DatabaseService.matches.getTeamMatchesCountLastTwoYears(homeTeamName)
+                val awayMatchesCount = DatabaseService.matches.getTeamMatchesCountLastTwoYears(awayTeamName)
+
                 val matchInfo = MatchInfo(
                     fixtureId = fixtureId,
                     datetime = datetime,
@@ -125,7 +129,9 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     modelDrawProb = null,
                     modelAwayWinProb = null,
                     modelExpectedHomeGoals = null,
-                    modelExpectedAwayGoals = null
+                    modelExpectedAwayGoals = null,
+                    homeMatchesLastTwoYears = homeMatchesCount,
+                    awayMatchesLastTwoYears = awayMatchesCount
                 )
 
                 // Проверяем, существует ли матч в базе данных

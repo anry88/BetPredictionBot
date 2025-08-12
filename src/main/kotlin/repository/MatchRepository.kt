@@ -11,6 +11,10 @@ import service.StrategyService
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.and
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -45,6 +49,8 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val modelAwayWinProb = double("modelAwayWinProb").nullable()
     val modelExpectedHomeGoals = double("modelExpectedHomeGoals").nullable()
     val modelExpectedAwayGoals = double("modelExpectedAwayGoals").nullable()
+    val homeMatchesLastTwoYears = integer("homeMatchesLastTwoYears").nullable()
+    val awayMatchesLastTwoYears = integer("awayMatchesLastTwoYears").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -116,6 +122,8 @@ class MatchRepository {
                     it[actualScore] = match.actualScore
                     it[odds] = match.odds ?: ""
                     it[telegramMessageId] = match.telegramMessageId
+                    it[homeMatchesLastTwoYears] = match.homeMatchesLastTwoYears
+                    it[awayMatchesLastTwoYears] = match.awayMatchesLastTwoYears
                 }
             }
         }
@@ -686,6 +694,63 @@ class MatchRepository {
         return allMatches
     }
 
+    fun getTeamMatchesCountLastTwoYears(team: String): Int {
+        val twoYearsAgo = LocalDateTime.now().minusYears(2).format(dateTimeFormatter)
+        var count = 0
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                val homePattern = "$team vs.%"
+                val awayPattern = "% vs. $team"
+                val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
+                    (leagueTable.datetime greaterEq twoYearsAgo)
+                count += leagueTable.select { condition }.count()
+            }
+        }
+        return count
+    }
+
+    fun backfillMissingMatchCounts() {
+        val now = LocalDateTime.now().format(dateTimeFormatter)
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
+                val condition = (leagueTable.homeMatchesLastTwoYears.isNull() or leagueTable.awayMatchesLastTwoYears.isNull()) and
+                        leagueTable.predictedOutcome.isNotNull() and
+                        (leagueTable.datetime greaterEq now)
+                leagueTable.select { condition }
+                    .forEach { row ->
+                        val teams = row[leagueTable.teams].split(" vs. ")
+                        if (teams.size == 2) {
+                            val homeTeam = teams[0].trim()
+                            val awayTeam = teams[1].trim()
+                            val homeCount = getTeamMatchesCountLastTwoYearsInternal(homeTeam)
+                            val awayCount = getTeamMatchesCountLastTwoYearsInternal(awayTeam)
+                            leagueTable.update({ leagueTable.fixtureId eq row[leagueTable.fixtureId] }) {
+                                it[homeMatchesLastTwoYears] = homeCount
+                                it[awayMatchesLastTwoYears] = awayCount
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun getTeamMatchesCountLastTwoYearsInternal(team: String): Int {
+        val twoYearsAgo = LocalDateTime.now().minusYears(2).format(dateTimeFormatter)
+        var count = 0
+        listOfLeagues.forEach { leagueName ->
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            val homePattern = "${'$'}team vs.%"
+            val awayPattern = "% vs. ${'$'}team"
+            val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
+                    (leagueTable.datetime greaterEq twoYearsAgo)
+            count += leagueTable.select { condition }.count()
+        }
+        return count
+    }
+
     private fun mapRowToMatchInfo(row: ResultRow, leagueTable: LeagueTable): MatchInfo =
         MatchInfo(
             fixtureId = row[leagueTable.fixtureId],
@@ -708,6 +773,8 @@ class MatchRepository {
             modelDrawProb = row[leagueTable.modelDrawProb],
             modelAwayWinProb = row[leagueTable.modelAwayWinProb],
             modelExpectedHomeGoals = row[leagueTable.modelExpectedHomeGoals],
-            modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals]
+            modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals],
+            homeMatchesLastTwoYears = row[leagueTable.homeMatchesLastTwoYears],
+            awayMatchesLastTwoYears = row[leagueTable.awayMatchesLastTwoYears]
         )
 }
