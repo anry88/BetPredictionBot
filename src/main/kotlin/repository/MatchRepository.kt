@@ -220,12 +220,15 @@ class MatchRepository {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                leagueTable.selectAll().mapNotNullTo(allUpcomingMatches) {
-                    val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.selectAll().forEach { row ->
+                    val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                     if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
-                        mapRowToMatchInfo(it, leagueTable)
-                    } else null
+                        val match = mapRowToMatchInfo(row, leagueTable)
+                        ensureMatchCounts(match, leagueTable)
+                        allUpcomingMatches.add(match)
+                    }
                 }
             }
         }
@@ -238,12 +241,15 @@ class MatchRepository {
         val matches = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-            leagueTable.selectAll().mapNotNullTo(matches) {
-                val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+            addMissingColumnsForLeague(leagueName)
+            leagueTable.selectAll().forEach { row ->
+                val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                     .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                 if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
-                    mapRowToMatchInfo(it, leagueTable)
-                } else null
+                    val match = mapRowToMatchInfo(row, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    matches.add(match)
+                }
             }
         }
         return matches
