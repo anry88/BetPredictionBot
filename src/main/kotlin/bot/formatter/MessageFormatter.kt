@@ -188,6 +188,9 @@ $analysis""".trimIndent()
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
         val minOdds = config?.minOdds ?: 0.0
         val profitCheck = if (odds >= minOdds) "✅" else "❌"
+        val dataEnough =
+            (matchInfo.homeMatchesLastYear ?: 0) > 5 && (matchInfo.awayMatchesLastYear ?: 0) > 5
+        val dataCheck = if (dataEnough) "✅" else "❌"
 
         val probabilityLine = when {
             probability == 0.0 -> "- Probability ❌ no data available"
@@ -201,6 +204,7 @@ $analysis""".trimIndent()
             $probabilityLine
             - League predictable $leagueCheck
             - Profitability $profitCheck
+            - Enough data $dataCheck
         """.trimIndent()
     }
 }

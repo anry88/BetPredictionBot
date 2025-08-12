@@ -28,6 +28,10 @@ object StrategyService {
         val awayTeam = teams[1].trim()
         val predictedOutcome = match.predictedOutcome ?: return false
 
+        val homeCount = match.homeMatchesLastYear ?: 0
+        val awayCount = match.awayMatchesLastYear ?: 0
+        if (homeCount <= 5 || awayCount <= 5) return false
+
         // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
         val isFromLocalModel = match.modelHomeWinProb != null
         val isPremiumSelection = if (Config.getProperty("test")?.toBoolean() == true) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }

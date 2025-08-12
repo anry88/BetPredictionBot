@@ -1039,7 +1039,7 @@ Available actions:
     }
 
     private fun handleGetJsonlCommand(chatId: String) {
-        val matches = DatabaseService.matches.getAllMatchesForLastTwoYears()
+        val matches = DatabaseService.matches.getAllMatchesForLastYear()
         if (matches.isNotEmpty()) {
             val jsonlFile = createJsonlFile(matches)
             if (jsonlFile != null && jsonlFile.exists()) {

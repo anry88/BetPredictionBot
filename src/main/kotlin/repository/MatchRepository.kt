@@ -10,7 +10,10 @@ import service.addMissingColumnsForLeague
 import service.StrategyService
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -45,6 +48,8 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val modelAwayWinProb = double("modelAwayWinProb").nullable()
     val modelExpectedHomeGoals = double("modelExpectedHomeGoals").nullable()
     val modelExpectedAwayGoals = double("modelExpectedAwayGoals").nullable()
+    val homeMatchesLastYear = integer("homeMatchesLastYear").nullable()
+    val awayMatchesLastYear = integer("awayMatchesLastYear").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -116,6 +121,8 @@ class MatchRepository {
                     it[actualScore] = match.actualScore
                     it[odds] = match.odds ?: ""
                     it[telegramMessageId] = match.telegramMessageId
+                    it[homeMatchesLastYear] = match.homeMatchesLastYear
+                    it[awayMatchesLastYear] = match.awayMatchesLastYear
                 }
             }
         }
@@ -213,12 +220,15 @@ class MatchRepository {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                leagueTable.selectAll().mapNotNullTo(allUpcomingMatches) {
-                    val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.selectAll().forEach { row ->
+                    val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                         .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                     if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
-                        mapRowToMatchInfo(it, leagueTable)
-                    } else null
+                        val match = mapRowToMatchInfo(row, leagueTable)
+                        ensureMatchCounts(match, leagueTable)
+                        allUpcomingMatches.add(match)
+                    }
                 }
             }
         }
@@ -231,12 +241,15 @@ class MatchRepository {
         val matches = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-            leagueTable.selectAll().mapNotNullTo(matches) {
-                val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
+            addMissingColumnsForLeague(leagueName)
+            leagueTable.selectAll().forEach { row ->
+                val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                     .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                 if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
-                    mapRowToMatchInfo(it, leagueTable)
-                } else null
+                    val match = mapRowToMatchInfo(row, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    matches.add(match)
+                }
             }
         }
         return matches
@@ -254,7 +267,11 @@ class MatchRepository {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
                             (leagueTable.datetime lessEq eightHoursLater.format(dateTimeFormatter)) and
                             (leagueTable.telegramMessageId.isNull())
-                }.mapNotNullTo(matchesToSend) { mapRowToMatchInfo(it, leagueTable) }
+                }.mapNotNullTo(matchesToSend) {
+                    val match = mapRowToMatchInfo(it, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    match
+                }
             }
         }
         return matchesToSend
@@ -271,7 +288,11 @@ class MatchRepository {
                 (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
                         (leagueTable.datetime lessEq twentyHoursLater.format(dateTimeFormatter)) and
                         (leagueTable.telegramMessageId.isNull())
-            }.mapNotNullTo(matchesToSend) { mapRowToMatchInfo(it, leagueTable) }
+            }.mapNotNullTo(matchesToSend) {
+                val match = mapRowToMatchInfo(it, leagueTable)
+                ensureMatchCounts(match, leagueTable)
+                match
+            }
         }
         return matchesToSend
     }
@@ -282,7 +303,11 @@ class MatchRepository {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
             addMissingColumnsForLeague(leagueName)
             leagueTable.select { leagueTable.telegramMessageId eq messageId }
-                .mapNotNullTo(matches) { mapRowToMatchInfo(it, leagueTable) }
+                .mapNotNullTo(matches) {
+                    val match = mapRowToMatchInfo(it, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    match
+                }
         }
         return matches
     }
@@ -293,7 +318,11 @@ class MatchRepository {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
             addMissingColumnsForLeague(leagueName)
             leagueTable.select { leagueTable.strategyTelegramMessageId eq messageId }
-                .mapNotNullTo(matches) { mapRowToMatchInfo(it, leagueTable) }
+                .mapNotNullTo(matches) {
+                    val match = mapRowToMatchInfo(it, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    match
+                }
         }
         return matches
     }
@@ -671,19 +700,81 @@ class MatchRepository {
         )
     }
 
-    fun getAllMatchesForLastTwoYears(): List<MatchInfo> {
+    fun getAllMatchesForLastYear(): List<MatchInfo> {
         val allMatches = mutableListOf<MatchInfo>()
-        val twoYearsAgo = LocalDateTime.now().minusYears(2)
+        val oneYearAgo = LocalDateTime.now().minusYears(1)
         transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            transactionLeagueTables().forEach { tableName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
                 leagueTable.selectAll().mapNotNullTo(allMatches) { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                    if (matchDateTime.isAfter(twoYearsAgo)) mapRowToMatchInfo(row, leagueTable) else null
+                    if (matchDateTime.isAfter(oneYearAgo)) mapRowToMatchInfo(row, leagueTable) else null
                 }
             }
         }
         return allMatches
+    }
+
+    fun getTeamMatchesCountLastYear(team: String): Int = transaction { teamMatchesCountLastYear(team) }
+
+    private fun Transaction.teamMatchesCountLastYear(team: String): Int {
+        val oneYearAgo = LocalDateTime.now().minusYears(1).format(dateTimeFormatter)
+        var count = 0
+        transactionLeagueTables().forEach { tableName ->
+            val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
+            val homePattern = "$team vs.%"
+            val awayPattern = "% vs. $team"
+            val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
+                (leagueTable.datetime greaterEq oneYearAgo)
+            count += leagueTable.select { condition }.count().toInt()
+        }
+        return count
+    }
+
+    private fun Transaction.ensureMatchCounts(match: MatchInfo, leagueTable: LeagueTable) {
+        if (match.homeMatchesLastYear == null || match.awayMatchesLastYear == null) {
+            val teams = match.teams.split(" vs. ")
+            if (teams.size == 2) {
+                val homeTeam = teams[0].trim()
+                val awayTeam = teams[1].trim()
+                val homeCount = teamMatchesCountLastYear(homeTeam)
+                val awayCount = teamMatchesCountLastYear(awayTeam)
+                leagueTable.update({ leagueTable.fixtureId eq match.fixtureId }) {
+                    it[homeMatchesLastYear] = homeCount
+                    it[awayMatchesLastYear] = awayCount
+                }
+                match.homeMatchesLastYear = homeCount
+                match.awayMatchesLastYear = awayCount
+            }
+        }
+    }
+
+    private fun Transaction.transactionLeagueTables(): List<String> {
+        val excluded = setOf(
+            "leagues",
+            "userstats",
+            "leaguepredictability",
+            "invite_links",
+            "invite_subscribers",
+            "join_requests",
+            "premium_subscriptions",
+            "command_usage",
+            "user_settings",
+            "scheduled_jobs",
+            "payments",
+            "refund_requests",
+            "sqlite_sequence"
+        )
+        val names = mutableListOf<String>()
+        exec("SELECT name FROM sqlite_master WHERE type='table'") { rs ->
+            while (rs.next()) {
+                val name = rs.getString("name")
+                if (!excluded.contains(name.lowercase())) {
+                    names.add(name)
+                }
+            }
+        }
+        return names
     }
 
     private fun mapRowToMatchInfo(row: ResultRow, leagueTable: LeagueTable): MatchInfo =
@@ -708,6 +799,8 @@ class MatchRepository {
             modelDrawProb = row[leagueTable.modelDrawProb],
             modelAwayWinProb = row[leagueTable.modelAwayWinProb],
             modelExpectedHomeGoals = row[leagueTable.modelExpectedHomeGoals],
-            modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals]
+            modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals],
+            homeMatchesLastYear = row[leagueTable.homeMatchesLastYear],
+            awayMatchesLastYear = row[leagueTable.awayMatchesLastYear]
         )
 }

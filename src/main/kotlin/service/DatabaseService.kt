@@ -215,7 +215,9 @@ fun createLeagueTableIfNeeded(tableName: String) {
             modelDrawProb REAL,
             modelAwayWinProb REAL,
             modelExpectedHomeGoals REAL,
-            modelExpectedAwayGoals REAL
+            modelExpectedAwayGoals REAL,
+            homeMatchesLastYear INTEGER,
+            awayMatchesLastYear INTEGER
         );
     """.trimIndent())
 }
@@ -249,6 +251,8 @@ fun addMissingColumnsForLeague(tableName: String) {
     addColumnIfNotExists(tableName, "modelAwayWinProb", "DOUBLE")
     addColumnIfNotExists(tableName, "modelExpectedHomeGoals", "DOUBLE")
     addColumnIfNotExists(tableName, "modelExpectedAwayGoals", "DOUBLE")
+    addColumnIfNotExists(tableName, "homeMatchesLastYear", "INTEGER")
+    addColumnIfNotExists(tableName, "awayMatchesLastYear", "INTEGER")
 }
 
 object DatabaseService {
