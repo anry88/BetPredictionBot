@@ -682,8 +682,8 @@ class MatchRepository {
         val allMatches = mutableListOf<MatchInfo>()
         val twoYearsAgo = LocalDateTime.now().minusYears(2)
         transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            transactionLeagueTables().forEach { tableName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
                 leagueTable.selectAll().mapNotNullTo(allMatches) { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                     if (matchDateTime.isAfter(twoYearsAgo)) mapRowToMatchInfo(row, leagueTable) else null
@@ -697,12 +697,14 @@ class MatchRepository {
         val twoYearsAgo = LocalDateTime.now().minusYears(2).format(dateTimeFormatter)
         var count = 0
         transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            transactionLeagueTables().forEach { tableName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
                 val homePattern = "$team vs.%"
                 val awayPattern = "% vs. $team"
-                val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
-                    (leagueTable.datetime greaterEq twoYearsAgo)
+                val condition = with(SqlExpressionBuilder) {
+                    ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
+                        (leagueTable.datetime greaterEq twoYearsAgo)
+                }
                 count += leagueTable.select { condition }.count().toInt()
             }
         }
@@ -712,44 +714,57 @@ class MatchRepository {
     fun backfillMissingMatchCounts() {
         val now = LocalDateTime.now().format(dateTimeFormatter)
         transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                addMissingColumnsForLeague(leagueName)
+            transactionLeagueTables().forEach { tableName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
+                addMissingColumnsForLeague(tableName)
                 val condition = with(SqlExpressionBuilder) {
                     (leagueTable.homeMatchesLastTwoYears.isNull() or leagueTable.awayMatchesLastTwoYears.isNull()) and
                         leagueTable.predictedOutcome.isNotNull() and
                         (leagueTable.datetime greaterEq now)
                 }
-                leagueTable.select { condition }
-                    .forEach { row ->
-                        val teams = row[leagueTable.teams].split(" vs. ")
-                        if (teams.size == 2) {
-                            val homeTeam = teams[0].trim()
-                            val awayTeam = teams[1].trim()
-                            val homeCount = getTeamMatchesCountLastTwoYearsInternal(homeTeam)
-                            val awayCount = getTeamMatchesCountLastTwoYearsInternal(awayTeam)
-                            leagueTable.update({ leagueTable.fixtureId eq row[leagueTable.fixtureId] }) {
-                                it[homeMatchesLastTwoYears] = homeCount
-                                it[awayMatchesLastTwoYears] = awayCount
-                            }
+                leagueTable.select { condition }.forEach { row ->
+                    val teams = row[leagueTable.teams].split(" vs. ")
+                    if (teams.size == 2) {
+                        val homeTeam = teams[0].trim()
+                        val awayTeam = teams[1].trim()
+                        val homeCount = getTeamMatchesCountLastTwoYears(homeTeam)
+                        val awayCount = getTeamMatchesCountLastTwoYears(awayTeam)
+                        leagueTable.update({ leagueTable.fixtureId eq row[leagueTable.fixtureId] }) {
+                            it[homeMatchesLastTwoYears] = homeCount
+                            it[awayMatchesLastTwoYears] = awayCount
                         }
                     }
+                }
             }
         }
     }
 
-    private fun getTeamMatchesCountLastTwoYearsInternal(team: String): Int {
-        val twoYearsAgo = LocalDateTime.now().minusYears(2).format(dateTimeFormatter)
-        var count = 0
-        listOfLeagues.forEach { leagueName ->
-            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-            val homePattern = "${'$'}team vs.%"
-            val awayPattern = "% vs. ${'$'}team"
-            val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
-                    (leagueTable.datetime greaterEq twoYearsAgo)
-            count += leagueTable.select { condition }.count().toInt()
+    private fun Transaction.transactionLeagueTables(): List<String> {
+        val excluded = setOf(
+            "leagues",
+            "userstats",
+            "leaguepredictability",
+            "invite_links",
+            "invite_subscribers",
+            "join_requests",
+            "premium_subscriptions",
+            "command_usage",
+            "user_settings",
+            "scheduled_jobs",
+            "payments",
+            "refund_requests",
+            "sqlite_sequence"
+        )
+        val names = mutableListOf<String>()
+        exec("SELECT name FROM sqlite_master WHERE type='table'") { rs ->
+            while (rs.next()) {
+                val name = rs.getString("name")
+                if (!excluded.contains(name.lowercase())) {
+                    names.add(name)
+                }
+            }
         }
-        return count
+        return names
     }
 
     private fun mapRowToMatchInfo(row: ResultRow, leagueTable: LeagueTable): MatchInfo =
