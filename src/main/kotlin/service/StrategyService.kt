@@ -28,8 +28,8 @@ object StrategyService {
         val awayTeam = teams[1].trim()
         val predictedOutcome = match.predictedOutcome ?: return false
 
-        val homeCount = match.homeMatchesLastTwoYears ?: 0
-        val awayCount = match.awayMatchesLastTwoYears ?: 0
+        val homeCount = match.homeMatchesLastYear ?: 0
+        val awayCount = match.awayMatchesLastYear ?: 0
         if (homeCount <= 5 || awayCount <= 5) return false
 
         // Если у матча есть modelHomeWinProb != null, значит прогноз от модели

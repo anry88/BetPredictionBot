@@ -28,7 +28,7 @@ object ModelDataUploader {
         if (isTest) return -1
 
         val completedMatches = DatabaseService.matches
-            .getAllMatchesForLastTwoYears()
+            .getAllMatchesForLastYear()
             .filter { it.actualOutcome != null }
 
         if (completedMatches.isEmpty()) {

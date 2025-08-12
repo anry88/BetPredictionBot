@@ -33,7 +33,6 @@ fun initDatabase(dbPath: String) {
     }
     Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
     transaction { runManualMigration() }
-    DatabaseService.matches.backfillMissingMatchCounts()
     logger.info("Database initialized (manual migration done).")
 }
 
@@ -217,8 +216,8 @@ fun createLeagueTableIfNeeded(tableName: String) {
             modelAwayWinProb REAL,
             modelExpectedHomeGoals REAL,
             modelExpectedAwayGoals REAL,
-            homeMatchesLastTwoYears INTEGER,
-            awayMatchesLastTwoYears INTEGER
+            homeMatchesLastYear INTEGER,
+            awayMatchesLastYear INTEGER
         );
     """.trimIndent())
 }
@@ -252,8 +251,8 @@ fun addMissingColumnsForLeague(tableName: String) {
     addColumnIfNotExists(tableName, "modelAwayWinProb", "DOUBLE")
     addColumnIfNotExists(tableName, "modelExpectedHomeGoals", "DOUBLE")
     addColumnIfNotExists(tableName, "modelExpectedAwayGoals", "DOUBLE")
-    addColumnIfNotExists(tableName, "homeMatchesLastTwoYears", "INTEGER")
-    addColumnIfNotExists(tableName, "awayMatchesLastTwoYears", "INTEGER")
+    addColumnIfNotExists(tableName, "homeMatchesLastYear", "INTEGER")
+    addColumnIfNotExists(tableName, "awayMatchesLastYear", "INTEGER")
 }
 
 object DatabaseService {

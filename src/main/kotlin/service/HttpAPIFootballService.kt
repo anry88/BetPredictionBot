@@ -105,8 +105,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val awayTeamName = match.teams.away.name
                 val teams = "$homeTeamName vs. $awayTeamName"
 
-                val homeMatchesCount = DatabaseService.matches.getTeamMatchesCountLastTwoYears(homeTeamName)
-                val awayMatchesCount = DatabaseService.matches.getTeamMatchesCountLastTwoYears(awayTeamName)
+                val homeMatchesCount = DatabaseService.matches.getTeamMatchesCountLastYear(homeTeamName)
+                val awayMatchesCount = DatabaseService.matches.getTeamMatchesCountLastYear(awayTeamName)
 
                 val matchInfo = MatchInfo(
                     fixtureId = fixtureId,
@@ -130,8 +130,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     modelAwayWinProb = null,
                     modelExpectedHomeGoals = null,
                     modelExpectedAwayGoals = null,
-                    homeMatchesLastTwoYears = homeMatchesCount,
-                    awayMatchesLastTwoYears = awayMatchesCount
+                    homeMatchesLastYear = homeMatchesCount,
+                    awayMatchesLastYear = awayMatchesCount
                 )
 
                 // Проверяем, существует ли матч в базе данных

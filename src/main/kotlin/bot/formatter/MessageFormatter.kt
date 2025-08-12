@@ -189,7 +189,7 @@ $analysis""".trimIndent()
         val minOdds = config?.minOdds ?: 0.0
         val profitCheck = if (odds >= minOdds) "✅" else "❌"
         val dataEnough =
-            (matchInfo.homeMatchesLastTwoYears ?: 0) > 5 && (matchInfo.awayMatchesLastTwoYears ?: 0) > 5
+            (matchInfo.homeMatchesLastYear ?: 0) > 5 && (matchInfo.awayMatchesLastYear ?: 0) > 5
         val dataCheck = if (dataEnough) "✅" else "❌"
 
         val probabilityLine = when {
