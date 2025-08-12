@@ -10,11 +10,10 @@ import service.addMissingColumnsForLeague
 import service.StrategyService
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.and
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -704,7 +703,7 @@ class MatchRepository {
                 val awayPattern = "% vs. $team"
                 val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
                     (leagueTable.datetime greaterEq twoYearsAgo)
-                count += leagueTable.select { condition }.count()
+                count += leagueTable.select { condition }.count().toInt()
             }
         }
         return count
@@ -716,9 +715,11 @@ class MatchRepository {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
                 addMissingColumnsForLeague(leagueName)
-                val condition = (leagueTable.homeMatchesLastTwoYears.isNull() or leagueTable.awayMatchesLastTwoYears.isNull()) and
+                val condition = with(SqlExpressionBuilder) {
+                    (leagueTable.homeMatchesLastTwoYears.isNull() or leagueTable.awayMatchesLastTwoYears.isNull()) and
                         leagueTable.predictedOutcome.isNotNull() and
                         (leagueTable.datetime greaterEq now)
+                }
                 leagueTable.select { condition }
                     .forEach { row ->
                         val teams = row[leagueTable.teams].split(" vs. ")
@@ -746,7 +747,7 @@ class MatchRepository {
             val awayPattern = "% vs. ${'$'}team"
             val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
                     (leagueTable.datetime greaterEq twoYearsAgo)
-            count += leagueTable.select { condition }.count()
+            count += leagueTable.select { condition }.count().toInt()
         }
         return count
     }
