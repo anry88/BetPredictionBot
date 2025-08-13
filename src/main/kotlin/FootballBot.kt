@@ -98,6 +98,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         "/getLeaguePredictability",
         "/getjsonl",
         "/uploadmodeldata",
+        "/updatePastMatches",
         "/addPastResults"
     )
 
@@ -586,6 +587,9 @@ Available actions:
                 }
                 chatId == adminChatId && messageText == "/uploadmodeldata" -> {
                     adminCommands.handleUploadModelData(chatId)
+                }
+                chatId == adminChatId && messageText == "/updatePastMatches" -> {
+                    adminCommands.handleUpdatePastMatches(chatId)
                 }
                 chatId == adminChatId && messageText.startsWith("/addPastResults") -> {
                     handleAddPastResultsCommand(chatId, messageText.removePrefix("/addPastResults ").trim())

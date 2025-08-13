@@ -8,6 +8,7 @@ import org.telegram.telegrambots.meta.api.methods.send.SendDocument
 import org.telegram.telegrambots.meta.api.objects.InputFile
 import service.DatabaseService
 import service.ModelDataUploader
+import service.HttpAPIFootballService
 import java.io.File
 
 class AdminCommands(private val bot: FootballBot) {
@@ -43,6 +44,15 @@ class AdminCommands(private val bot: FootballBot) {
             } else {
                 bot.sendMessage(chatId, "Model data upload failed.")
             }
+        }
+    }
+
+    fun handleUpdatePastMatches(chatId: String) {
+        bot.sendMessage(chatId, "Starting past matches update...")
+        CoroutineScope(Dispatchers.IO).launch {
+            val footballService = HttpAPIFootballService(bot)
+            footballService.updatePastMatches()
+            bot.sendMessage(chatId, "Past matches update finished.")
         }
     }
 }
