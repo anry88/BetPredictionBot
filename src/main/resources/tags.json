@@ -54,7 +54,10 @@
         "Denmark Superliga": "#DenmarkSuperliga",
         "Norway Eliteserien": "#NorwayEliteserien",
         "Sweden Allsvenskan": "#SwedenAllsvenskan",
-        "African Nations Championship": "#AfricanNationsChampionship"
+        "African Nations Championship": "#AfricanNationsChampionship",
+        "AFC Champions League": "#AFCChampionsLeague",
+        "AFC Cup": "#AFCCup",
+        "AFC Challenge League": "#AFCChallengeLeague"
     },
     "teams": {
         "Kazakhstan": "#Kazakhstan",
@@ -1119,6 +1122,11 @@
         "Hottin": "#Hottin",
         "Al Karama": "#AlKarama",
         "Bashundhara Kings": "#BashundharaKings",
-        "Sepahan FC": "#SepahanFC"
+        "Sepahan FC": "#SepahanFC",
+        "Manila Digger": "#ManilaDigger",
+        "Regar-TadAZ": "#RegarTadAZ",
+        "Ahal": "#Ahal",
+        "Goa": "#Goa",
+        "Al Seeb": "#AlSeeb"
     }
 }
