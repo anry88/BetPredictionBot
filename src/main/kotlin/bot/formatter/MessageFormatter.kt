@@ -186,7 +186,12 @@ $analysis""".trimIndent()
         } else false
 
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
-        val minOdds = config?.minOdds ?: 0.0
+
+        val minOdds = if (drawAlt) {
+            3.1
+        } else {
+            config?.minOdds ?: 0.0
+        }
         val profitCheck = if (odds >= minOdds) "✅" else "❌"
         val dataEnough =
             (matchInfo.homeMatchesLastYear ?: 0) > 5 && (matchInfo.awayMatchesLastYear ?: 0) > 5

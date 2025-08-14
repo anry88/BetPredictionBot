@@ -36,8 +36,13 @@ object StrategyService {
         val isFromLocalModel = match.modelHomeWinProb != null
         val isPremiumSelection = if (Config.getProperty("test")?.toBoolean() == true) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
 
-        // Берём «привычные» odds (из поля match.odds)
-        val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
+        // Берём коэффициент на соответствующий исход
+        val oddsValue = when (config.outcomeType) {
+            "HomeWin" -> match.homeWinOdds?.toDoubleOrNull()
+            "Draw" -> match.drawOdds?.toDoubleOrNull()
+            "AwayWin" -> match.awayWinOdds?.toDoubleOrNull()
+            else -> match.odds?.toDoubleOrNull()
+        } ?: 0.0
 
         if (isPremiumSelection && isFromLocalModel) {
             when (config.outcomeType) {
