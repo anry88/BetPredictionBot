@@ -176,25 +176,45 @@ $analysis""".trimIndent()
             "AwayWin" -> matchInfo.awayWinOdds?.toDoubleOrNull() ?: 0.0
             else -> matchInfo.odds?.toDoubleOrNull() ?: 0.0
         }
-        val drawAlt = if (outcomeType == "Draw") {
+
+        val (drawHighProb, drawBalancedProb) = if (outcomeType == "Draw") {
             val homeProb = matchInfo.modelHomeWinProb ?: 0.0
             val drawProb = matchInfo.modelDrawProb ?: 0.0
             val awayProb = matchInfo.modelAwayWinProb ?: 0.0
             val xgDiff = (matchInfo.modelExpectedHomeGoals ?: 0.0) - (matchInfo.modelExpectedAwayGoals ?: 0.0)
-            probability <= 0.4 && homeProb <= 0.4 && awayProb <= 0.4 && odds > 3.1 &&
+
+            val highProb = drawProb > minProb
+            val balanced = homeProb <= 0.4 && drawProb <= 0.4 && awayProb <= 0.4 &&
                 kotlin.math.abs(xgDiff) <= 0.1
-        } else false
+            highProb to balanced
+        } else false to false
+
+        val drawHighProfit = drawHighProb && odds > (config?.minOdds ?: 0.0)
+        val drawBalancedProfit = drawBalancedProb && odds > 3.1
+        val drawFallbackProfit = !drawHighProb && !drawBalancedProb &&
+            odds > kotlin.math.max(3.1, config?.minOdds ?: 0.0)
 
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
-        val minOdds = config?.minOdds ?: 0.0
-        val profitCheck = if (odds >= minOdds) "✅" else "❌"
+
+        val profitCheck = if (outcomeType == "Draw") {
+            when {
+                drawHighProfit -> "✅"
+                drawBalancedProfit -> "✅"
+                drawFallbackProfit -> "✅"
+                else -> "❌"
+            }
+        } else {
+            if (odds >= (config?.minOdds ?: 0.0)) "✅" else "❌"
+        }
+
         val dataEnough =
             (matchInfo.homeMatchesLastYear ?: 0) > 5 && (matchInfo.awayMatchesLastYear ?: 0) > 5
         val dataCheck = if (dataEnough) "✅" else "❌"
 
         val probabilityLine = when {
             probability == 0.0 -> "- Probability ❌ no data available"
-            drawAlt && probability < minProb -> "- Probability < 40%, diff xG < 0.1 ✅"
+            drawBalancedProb -> "- Probability < 40%, diff xG < 0.1 ✅"
+            drawHighProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
             probability >= minProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
             else -> "- Probability >= ${(minProb * 100).toInt()}% ❌"
         }

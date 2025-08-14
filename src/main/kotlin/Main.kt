@@ -141,6 +141,12 @@ class InviteLinkCleanupJob : Job {
     }
 }
 
+class CommandUsageCleanupJob : Job {
+    override fun execute(context: JobExecutionContext?) {
+        DatabaseService.commandUsage.clearOldEntries()
+    }
+}
+
 fun main() {
     val logger = LoggerFactory.getLogger("Main")
     val botsApi = TelegramBotsApi(DefaultBotSession::class.java)
@@ -318,6 +324,15 @@ fun main() {
             .repeatForever())
         .build()
 
+    val commandUsageCleanupJob = JobBuilder.newJob(CommandUsageCleanupJob::class.java)
+        .withIdentity("commandUsageCleanupJob", "group1")
+        .build()
+
+    val commandUsageCleanupTrigger = TriggerBuilder.newTrigger()
+        .withIdentity("commandUsageCleanupTrigger", "group1")
+        .withSchedule(CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 0, 0))
+        .build()
+
     // Schedule the jobs
     scheduler.scheduleJob(job, dailyTrigger)
     scheduler.scheduleJob(updateMatchesJob, updateMatchesTrigger)
@@ -335,6 +350,7 @@ fun main() {
     scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
 //    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(inviteLinkCleanupJob, inviteLinkCleanupTrigger)
+    scheduler.scheduleJob(commandUsageCleanupJob, commandUsageCleanupTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
     logger.info("Scheduled UpdateMatchesJob to run at every hour")
@@ -349,4 +365,5 @@ fun main() {
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
     logger.info("Executed UploadModelDataJob every monday at 1:00")
     logger.info("Scheduled InviteLinkCleanupJob to run every hour")
+    logger.info("Scheduled CommandUsageCleanupJob to run on the 1st of every month")
 }

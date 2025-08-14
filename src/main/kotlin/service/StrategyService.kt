@@ -36,8 +36,13 @@ object StrategyService {
         val isFromLocalModel = match.modelHomeWinProb != null
         val isPremiumSelection = if (Config.getProperty("test")?.toBoolean() == true) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
 
-        // Берём «привычные» odds (из поля match.odds)
-        val oddsValue = match.odds?.toDoubleOrNull() ?: 0.0
+        // Берём коэффициент на соответствующий исход
+        val oddsValue = when (config.outcomeType) {
+            "HomeWin" -> match.homeWinOdds?.toDoubleOrNull()
+            "Draw" -> match.drawOdds?.toDoubleOrNull()
+            "AwayWin" -> match.awayWinOdds?.toDoubleOrNull()
+            else -> match.odds?.toDoubleOrNull()
+        } ?: 0.0
 
         if (isPremiumSelection && isFromLocalModel) {
             when (config.outcomeType) {
@@ -49,22 +54,21 @@ object StrategyService {
                 }
 
                 "Draw" -> {
-                    if (predictedOutcome == "Draw" && oddsValue > config.minOdds) {
-                        // Проверяем основное условие - высокая вероятность ничьей
-                        if ((match.modelDrawProb ?: 0.0) > config.drawModelProb) return true
-                        
-                        // Проверяем альтернативное условие - равные шансы всех исходов
+                    if (predictedOutcome == "Draw") {
                         val homeProb = match.modelHomeWinProb ?: 0.0
                         val drawProb = match.modelDrawProb ?: 0.0
                         val awayProb = match.modelAwayWinProb ?: 0.0
                         val expectedHomeGoals = match.modelExpectedHomeGoals ?: 0.0
                         val expectedAwayGoals = match.modelExpectedAwayGoals ?: 0.0
-                        
-                        return homeProb in 0.0..0.4 &&
-                               drawProb in 0.0..0.4 &&
-                               awayProb in 0.0..0.4 &&
-                               oddsValue > 3.1 &&
-                               kotlin.math.abs(expectedHomeGoals - expectedAwayGoals) <= 0.1
+
+                        val highProbCondition = drawProb > config.drawModelProb && oddsValue > config.minOdds
+                        val balancedCondition = homeProb in 0.0..0.4 &&
+                                drawProb in 0.0..0.4 &&
+                                awayProb in 0.0..0.4 &&
+                                oddsValue > 3.1 &&
+                                kotlin.math.abs(expectedHomeGoals - expectedAwayGoals) <= 0.1
+
+                        if (highProbCondition || balancedCondition) return true
                     }
                 }
 
