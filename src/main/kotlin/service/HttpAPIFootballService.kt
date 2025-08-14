@@ -213,7 +213,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                                 existingMatch.drawOdds == null ||
                                 existingMatch.awayWinOdds == null
 
-                        if (matchDateTime.isBefore(now.plusDays(1)) && needsOdds) {
+                        if (matchDateTime.isBefore(now.plusHours(28)) && needsOdds) {
                             val oddsInfo = getOddsForFixture(
                                 existingMatch.fixtureId,
                                 existingMatch.predictedOutcome ?: "",

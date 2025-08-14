@@ -74,4 +74,16 @@ class CommandUsageRepository {
         connection.close()
         return total
     }
+
+    fun clearOldEntries() {
+        val connection = getConnection()
+        val month = currentMonth()
+        val stmt = connection.prepareStatement(
+            "DELETE FROM command_usage WHERE month < ?"
+        )
+        stmt.setString(1, month)
+        stmt.executeUpdate()
+        stmt.close()
+        connection.close()
+    }
 }
