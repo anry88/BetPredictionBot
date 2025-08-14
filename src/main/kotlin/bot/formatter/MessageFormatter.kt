@@ -177,24 +177,27 @@ $analysis""".trimIndent()
             else -> matchInfo.odds?.toDoubleOrNull() ?: 0.0
         }
 
-        val (drawHighProb, drawBalanced) = if (outcomeType == "Draw") {
+        val (drawHighProb, drawBalancedProb) = if (outcomeType == "Draw") {
             val homeProb = matchInfo.modelHomeWinProb ?: 0.0
             val drawProb = matchInfo.modelDrawProb ?: 0.0
             val awayProb = matchInfo.modelAwayWinProb ?: 0.0
             val xgDiff = (matchInfo.modelExpectedHomeGoals ?: 0.0) - (matchInfo.modelExpectedAwayGoals ?: 0.0)
 
-            val highProb = drawProb > minProb && odds > (config?.minOdds ?: 0.0)
+            val highProb = drawProb > minProb
             val balanced = homeProb <= 0.4 && drawProb <= 0.4 && awayProb <= 0.4 &&
-                odds > 3.1 && kotlin.math.abs(xgDiff) <= 0.1
+                kotlin.math.abs(xgDiff) <= 0.1
             highProb to balanced
         } else false to false
+
+        val drawHighProfit = drawHighProb && odds > (config?.minOdds ?: 0.0)
+        val drawBalancedProfit = drawBalancedProb && odds > 3.1
 
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
 
         val profitCheck = if (outcomeType == "Draw") {
             when {
-                drawHighProb -> "✅"
-                drawBalanced -> "✅"
+                drawHighProfit -> "✅"
+                drawBalancedProfit -> "✅"
                 else -> "❌"
             }
         } else {
@@ -207,7 +210,7 @@ $analysis""".trimIndent()
 
         val probabilityLine = when {
             probability == 0.0 -> "- Probability ❌ no data available"
-            drawBalanced -> "- Probability < 40%, diff xG < 0.1 ✅"
+            drawBalancedProb -> "- Probability < 40%, diff xG < 0.1 ✅"
             drawHighProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
             else -> "- Probability >= ${(minProb * 100).toInt()}% ❌"
         }
