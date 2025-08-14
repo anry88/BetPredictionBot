@@ -212,6 +212,7 @@ $analysis""".trimIndent()
             probability == 0.0 -> "- Probability ❌ no data available"
             drawBalancedProb -> "- Probability < 40%, diff xG < 0.1 ✅"
             drawHighProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
+            probability >= minProb -> "- Probability >= ${(minProb * 100).toInt()}% ✅"
             else -> "- Probability >= ${(minProb * 100).toInt()}% ❌"
         }
 
