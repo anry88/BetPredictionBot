@@ -191,6 +191,8 @@ $analysis""".trimIndent()
 
         val drawHighProfit = drawHighProb && odds > (config?.minOdds ?: 0.0)
         val drawBalancedProfit = drawBalancedProb && odds > 3.1
+        val drawFallbackProfit = !drawHighProb && !drawBalancedProb &&
+            odds > kotlin.math.max(3.1, config?.minOdds ?: 0.0)
 
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
 
@@ -198,6 +200,7 @@ $analysis""".trimIndent()
             when {
                 drawHighProfit -> "✅"
                 drawBalancedProfit -> "✅"
+                drawFallbackProfit -> "✅"
                 else -> "❌"
             }
         } else {
