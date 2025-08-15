@@ -327,6 +327,28 @@ class MatchRepository {
         return matches
     }
 
+    fun getUpcomingMatchesWithMessageId(): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val twentyHoursLater = now.plusHours(20)
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.select {
+                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq twentyHoursLater.format(dateTimeFormatter)) and
+                            ((leagueTable.telegramMessageId.isNotNull()) or (leagueTable.strategyTelegramMessageId.isNotNull()))
+                }.mapNotNullTo(matches) {
+                    val match = mapRowToMatchInfo(it, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    match
+                }
+            }
+        }
+        return matches
+    }
+
     fun getOngoingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val threeHoursAgo = now.minusHours(7)

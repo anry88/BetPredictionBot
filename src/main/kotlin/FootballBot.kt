@@ -1526,6 +1526,7 @@ Available actions:
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
+        updateUpcomingMatches()
         val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext8Hours()
 
         if (matches.isNotEmpty()) {
@@ -1632,6 +1633,30 @@ Available actions:
 
                 delay(10000)
             }
+        }
+    }
+
+    private suspend fun updateUpcomingMatches() {
+        val upcomingMatches = DatabaseService.matches.getUpcomingMatchesWithMessageId()
+
+        val byMessageId = upcomingMatches.filter { it.telegramMessageId != null }
+            .groupBy { it.matchType to it.telegramMessageId!! }
+        for ((key, _) in byMessageId) {
+            val (league, messageId) = key
+            val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(league, messageId)
+            val messageText = formatMatchesBatchForUpdate(matches)
+            updateMessage(channelId, messageId, messageText)
+            delay(1000)
+        }
+
+        val byStrategyId = upcomingMatches.filter { it.strategyTelegramMessageId != null }
+            .groupBy { it.matchType to it.strategyTelegramMessageId!! }
+        for ((key, _) in byStrategyId) {
+            val (league, messageId) = key
+            val matches = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(league, messageId)
+            val messageText = formatPremiumMatchesBatchForUpdate(matches)
+            updateMessage(strategyChannelId, messageId, messageText)
+            delay(1000)
         }
     }
 
