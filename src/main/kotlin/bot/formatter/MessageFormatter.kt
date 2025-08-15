@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 object MessageFormatter {
 
     private const val PREMIUM_HEADER = "\uD83D\uDD25 PREMIUM PICK \uD83D\uDD25"
-    private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
     private fun timeUntil(matchInfo: MatchInfo): String {
         return try {
@@ -50,10 +50,11 @@ Odds: $homeOdds - $drawOdds - $awayOdds
     fun formatMainUpcomingMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
         val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
         val timeLeft = timeUntil(matchInfo)
+        val timeLeftPart = if (timeLeft.isNotEmpty()) " ($timeLeft)" else ""
         return """
-${matchInfo.datetime} UTC ($timeLeft)
+${matchInfo.datetime} UTC$timeLeftPart
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}
+Outcome prediction: ${matchInfo.predictedOutcome}
 Score prediction: ${matchInfo.predictedScore}$testData
 $tags""".trimIndent()
     }
@@ -63,7 +64,7 @@ $tags""".trimIndent()
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}
+Outcome prediction: ${matchInfo.predictedOutcome}
 Score prediction: ${matchInfo.predictedScore}
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
 $tags #Live""".trimIndent()
@@ -76,7 +77,7 @@ $tags #Live""".trimIndent()
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}$emoji
+Outcome prediction: ${matchInfo.predictedOutcome}$emoji
 Score prediction: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
 $tags""".trimIndent()
@@ -98,11 +99,12 @@ $tags""".trimIndent()
     fun formatPremiumUpcomingMatch(matchInfo: MatchInfo): String {
         val probability = predictedOutcomeProbability(matchInfo)
         val timeLeft = timeUntil(matchInfo)
+        val timeLeftPart = if (timeLeft.isNotEmpty()) " ($timeLeft)" else ""
         return """
 $PREMIUM_HEADER
-${matchInfo.datetime} UTC ($timeLeft)
+${matchInfo.datetime} UTC$timeLeftPart
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}
+Outcome prediction: ${matchInfo.predictedOutcome}
 Score prediction: ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
@@ -114,7 +116,7 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}
+Outcome prediction: ${matchInfo.predictedOutcome}
 Score prediction: ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
@@ -130,7 +132,7 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}$emoji
+Outcome prediction: ${matchInfo.predictedOutcome}$emoji
 Score prediction: ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
@@ -147,10 +149,11 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
             ""
         }
         val timeLeft = timeUntil(matchInfo)
+        val timeLeftPart = if (timeLeft.isNotEmpty()) " ($timeLeft)" else ""
         return """
-${premiumHeader}${matchInfo.datetime} $timezone ($timeLeft)
+${premiumHeader}${matchInfo.datetime} $timezone$timeLeftPart
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}
+Outcome prediction: ${matchInfo.predictedOutcome}
 Score prediction: ${matchInfo.predictedScore}
 $testData
 $analysis""".trimIndent()
@@ -169,7 +172,7 @@ $analysis""".trimIndent()
         return """
 ${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
-Outcome: ${matchInfo.predictedOutcome}$emoji
+Outcome prediction: ${matchInfo.predictedOutcome}$emoji
 Score prediction: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 $testData

@@ -2085,7 +2085,7 @@ Available actions:
                 }
                 append("${index + 1}. $league$flag\n")
                 append("${match.teams}\n")
-                append("Outcome: $prediction\n")
+                append("Outcome prediction: $prediction\n")
                 append("ROI: $sign${"%.2f".format(roi)}% | Odds: ${match.odds}\n\n")
             }
             val sign = if (stats.strategyRoi >= 0) "+" else ""
