@@ -328,7 +328,7 @@ class MatchRepository {
     }
 
     fun getUpcomingMatchesWithMessageId(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneId.of("UTC"))
         val twentyHoursLater = now.plusHours(20)
         val matches = mutableListOf<MatchInfo>()
         transaction {
