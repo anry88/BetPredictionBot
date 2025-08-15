@@ -21,7 +21,7 @@ object MessageFormatter {
             val duration = Duration.between(now, matchTime)
             val hours = duration.toHours()
             val minutes = duration.minusHours(hours).toMinutes()
-            "in ${'$'}{hours}h ${'$'}{minutes}m"
+            "in ${hours}h ${minutes}m"
         } catch (e: Exception) {
             ""
         }
