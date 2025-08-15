@@ -1636,11 +1636,12 @@ Available actions:
     }
 
     suspend fun updateLiveMatches() {
-        val matchesToUpdate = DatabaseService.matches.getOngoingMatches()
+        val ongoingMatches = DatabaseService.matches.getOngoingMatches()
+        val upcomingMatches = DatabaseService.matches.getUpcomingMatchesWithMessageId()
         val updatedByMessageId = mutableMapOf<String, MutableList<MatchInfo>>()
         val updatedByStrategyId = mutableMapOf<String, MutableList<MatchInfo>>()
 
-        for (match in matchesToUpdate) {
+        for (match in ongoingMatches) {
             val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null) {
                 DatabaseService.matches.updateMatchResult(updatedMatchInfo)
@@ -1654,6 +1655,16 @@ Available actions:
                 }
             }
             delay(1000)
+        }
+
+        for (match in upcomingMatches) {
+            match.telegramMessageId?.let { id ->
+                updatedByMessageId.getOrPut(id) { mutableListOf() }.add(match)
+            }
+
+            match.strategyTelegramMessageId?.let { id ->
+                updatedByStrategyId.getOrPut(id) { mutableListOf() }.add(match)
+            }
         }
 
         for ((messageId, list) in updatedByMessageId) {
@@ -2059,7 +2070,7 @@ Available actions:
                 }
                 append("${index + 1}. $league$flag\n")
                 append("${match.teams}\n")
-                append("Prediction: $prediction\n")
+                append("Predicted outcome: $prediction\n")
                 append("ROI: $sign${"%.2f".format(roi)}% | Odds: ${match.odds}\n\n")
             }
             val sign = if (stats.strategyRoi >= 0) "+" else ""

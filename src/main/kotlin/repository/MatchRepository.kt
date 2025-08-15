@@ -14,6 +14,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -323,6 +324,27 @@ class MatchRepository {
                     ensureMatchCounts(match, leagueTable)
                     match
                 }
+        }
+        return matches
+    }
+
+    fun getUpcomingMatchesWithMessageId(): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.select {
+                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                    leagueTable.actualOutcome.isNull() and
+                    ((leagueTable.telegramMessageId.isNotNull()) or (leagueTable.strategyTelegramMessageId.isNotNull()))
+                }.mapNotNullTo(matches) {
+                    val match = mapRowToMatchInfo(it, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    match
+                }
+            }
         }
         return matches
     }
