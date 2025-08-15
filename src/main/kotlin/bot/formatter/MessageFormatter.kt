@@ -4,10 +4,37 @@ import dto.MatchInfo
 import dto.LeagueConfig
 import dto.outcomeStrategyConfigs
 import service.StrategyService
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 object MessageFormatter {
 
     private const val PREMIUM_HEADER = "\uD83D\uDD25 PREMIUM PICK \uD83D\uDD25"
+    private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+    private fun timeUntil(datetime: String, zone: ZoneId): String {
+        return try {
+            val matchTime = LocalDateTime.parse(datetime, dateTimeFormatter)
+            val now = LocalDateTime.now(zone)
+            val duration = Duration.between(now, matchTime)
+            if (duration.isNegative) {
+                "started"
+            } else {
+                val days = duration.toDays()
+                val hours = duration.toHours() % 24
+                val minutes = duration.toMinutes() % 60
+                val parts = mutableListOf<String>()
+                if (days > 0) parts.add("${days}d")
+                if (hours > 0 || days > 0) parts.add("${hours}h")
+                parts.add("${minutes}m")
+                "in ${parts.joinToString(" ")}"
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     private fun formatTestData(matchInfo: MatchInfo): String {
         val homeProb = matchInfo.modelHomeWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
@@ -31,10 +58,12 @@ Odds: $homeOdds - $drawOdds - $awayOdds
     // --- Main channel ---
     fun formatMainUpcomingMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
         val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+        val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of("UTC"))
         return """
-${matchInfo.datetime} UTC
+${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$testData
+Predicted outcome: ${matchInfo.predictedOutcome}
+Predicted score: ${matchInfo.predictedScore}$testData
 $tags""".trimIndent()
     }
 
@@ -43,7 +72,8 @@ $tags""".trimIndent()
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
+Predicted outcome: ${matchInfo.predictedOutcome}
+Predicted score: ${matchInfo.predictedScore}
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'$testData
 $tags #Live""".trimIndent()
     }
@@ -55,7 +85,8 @@ $tags #Live""".trimIndent()
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
+Predicted outcome: ${matchInfo.predictedOutcome}$emoji
+Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
 $tags""".trimIndent()
     }
@@ -75,11 +106,13 @@ $tags""".trimIndent()
 
     fun formatPremiumUpcomingMatch(matchInfo: MatchInfo): String {
         val probability = predictedOutcomeProbability(matchInfo)
+        val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of("UTC"))
         return """
 $PREMIUM_HEADER
-${matchInfo.datetime} UTC
+${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
+Predicted outcome: ${matchInfo.predictedOutcome} (${"%.2f".format(probability)}%)
+Predicted score: ${matchInfo.predictedScore}
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
     }
@@ -90,7 +123,8 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore} (${"%.2f".format(probability)}%)
+Predicted outcome: ${matchInfo.predictedOutcome} (${"%.2f".format(probability)}%)
+Predicted score: ${matchInfo.predictedScore}
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 #Live
@@ -105,7 +139,8 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji (${"%.2f".format(probability)}%)
+Predicted outcome: ${matchInfo.predictedOutcome}$emoji (${"%.2f".format(probability)}%)
+Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
@@ -120,10 +155,12 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
         } else {
             ""
         }
+        val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of(timezone))
         return """
-${premiumHeader}${matchInfo.datetime} $timezone
+${premiumHeader}${matchInfo.datetime} $timezone (${timeLeft})
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}
+Predicted outcome: ${matchInfo.predictedOutcome}
+Predicted score: ${matchInfo.predictedScore}
 $testData
 $analysis""".trimIndent()
     }
@@ -141,7 +178,8 @@ $analysis""".trimIndent()
         return """
 ${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
-Prediction: ${matchInfo.predictedOutcome} ${matchInfo.predictedScore}$emoji
+Predicted outcome: ${matchInfo.predictedOutcome}$emoji
+Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 $testData
 $analysis""".trimIndent()
