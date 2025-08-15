@@ -204,7 +204,7 @@ $analysis""".trimIndent()
                 else -> "❌"
             }
         } else {
-            if (odds >= (config?.minOdds ?: 0.0)) "✅" else "❌"
+            if (odds > (config?.minOdds ?: 0.0)) "✅" else "❌"
         }
 
         val dataEnough =
