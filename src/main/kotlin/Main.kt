@@ -198,7 +198,7 @@ fun main() {
     val updateMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateMatchesTrigger", "group1")
         .withSchedule(
-            CronScheduleBuilder.cronSchedule("0 5 9,21 * * ?")  // Каждый день в 09:05 и 21:05
+            CronScheduleBuilder.cronSchedule("0 5 * * * ?")  // На 5-й минуте каждого часа
         )
         .build()
 
@@ -353,7 +353,7 @@ fun main() {
     scheduler.scheduleJob(commandUsageCleanupJob, commandUsageCleanupTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
-    logger.info("Scheduled UpdateMatchesJob to run daily at 09:05 and 21:05")
+    logger.info("Scheduled UpdateMatchesJob to run at every hour")
     logger.info("Scheduled UpdateLeaguePredictabilityJob to run daily at 08:00")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")

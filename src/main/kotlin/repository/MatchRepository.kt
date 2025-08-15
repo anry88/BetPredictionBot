@@ -255,18 +255,17 @@ class MatchRepository {
         return matches
     }
 
-    fun getMatchesWithoutMessageIdForNext20Hours(): List<MatchInfo> {
+    fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val startTime = now.plusHours(5)
-        val endTime = now.plusHours(17)
+        val eightHoursLater = now.plusHours(5)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.select {
-                    (leagueTable.datetime greaterEq startTime.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq endTime.format(dateTimeFormatter)) and
+                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq eightHoursLater.format(dateTimeFormatter)) and
                             (leagueTable.telegramMessageId.isNull())
                 }.mapNotNullTo(matchesToSend) {
                     val match = mapRowToMatchInfo(it, leagueTable)
@@ -280,15 +279,14 @@ class MatchRepository {
 
     fun getLeagueMatchesWithoutMessageIdForNext20Hours(leagueName: String): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val startTime = now.plusHours(5)
-        val endTime = now.plusHours(17)
+        val twentyHoursLater = now.plusHours(17)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
             addMissingColumnsForLeague(leagueName)
             leagueTable.select {
-                (leagueTable.datetime greaterEq startTime.format(dateTimeFormatter)) and
-                        (leagueTable.datetime lessEq endTime.format(dateTimeFormatter)) and
+                (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                        (leagueTable.datetime lessEq twentyHoursLater.format(dateTimeFormatter)) and
                         (leagueTable.telegramMessageId.isNull())
             }.mapNotNullTo(matchesToSend) {
                 val match = mapRowToMatchInfo(it, leagueTable)
@@ -297,50 +295,6 @@ class MatchRepository {
             }
         }
         return matchesToSend
-    }
-
-    fun getUpcomingMatchesWithMessageIdForNext20Hours(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val endTime = now.plusHours(17)
-        val matchesToUpdate = mutableListOf<MatchInfo>()
-        transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                addMissingColumnsForLeague(leagueName)
-                leagueTable.select {
-                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq endTime.format(dateTimeFormatter)) and
-                            (leagueTable.telegramMessageId.isNotNull())
-                }.mapNotNullTo(matchesToUpdate) {
-                    val match = mapRowToMatchInfo(it, leagueTable)
-                    ensureMatchCounts(match, leagueTable)
-                    match
-                }
-            }
-        }
-        return matchesToUpdate
-    }
-
-    fun getUpcomingMatchesWithStrategyMessageIdForNext20Hours(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
-        val endTime = now.plusHours(17)
-        val matchesToUpdate = mutableListOf<MatchInfo>()
-        transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                addMissingColumnsForLeague(leagueName)
-                leagueTable.select {
-                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq endTime.format(dateTimeFormatter)) and
-                            (leagueTable.strategyTelegramMessageId.isNotNull())
-                }.mapNotNullTo(matchesToUpdate) {
-                    val match = mapRowToMatchInfo(it, leagueTable)
-                    ensureMatchCounts(match, leagueTable)
-                    match
-                }
-            }
-        }
-        return matchesToUpdate
     }
 
     fun getMatchesByLeagueAndTelegramMessageId(leagueName: String, messageId: String): List<MatchInfo> {
