@@ -45,6 +45,7 @@ class UpdateLiveMatchesJob : Job {
     override fun execute(context: JobExecutionContext?) {
         val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
         runBlocking {
+            footballBot.updateUpcomingMatches()
             footballBot.updateLiveMatches()
         }
     }
@@ -198,7 +199,7 @@ fun main() {
     val updateMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateMatchesTrigger", "group1")
         .withSchedule(
-            CronScheduleBuilder.cronSchedule("0 5 * * * ?")  // На 5-й минуте каждого часа
+            CronScheduleBuilder.cronSchedule("0 5 9,21 * * ?")  // В 09:05 и 21:05 каждый день
         )
         .build()
 
@@ -353,7 +354,7 @@ fun main() {
     scheduler.scheduleJob(commandUsageCleanupJob, commandUsageCleanupTrigger)
 
     logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
-    logger.info("Scheduled UpdateMatchesJob to run at every hour")
+    logger.info("Scheduled UpdateMatchesJob to run daily at 09:05 and 21:05")
     logger.info("Scheduled UpdateLeaguePredictabilityJob to run daily at 08:00")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
@@ -362,7 +363,7 @@ fun main() {
     logger.info("Scheduled SendWeeklyTopMatchesJob to run every Monday at 08:35")
     logger.info("Scheduled SendDailyPremiumSummaryJob to run daily at 08:45")
     logger.info("Executed FetchMatchesJob immediately upon startup")
-    logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
+    logger.info("Executed UpdateLiveMatchesJob immediately upon startup to refresh matches every 10 minutes")
     logger.info("Executed UploadModelDataJob every monday at 1:00")
     logger.info("Scheduled InviteLinkCleanupJob to run every hour")
     logger.info("Scheduled CommandUsageCleanupJob to run on the 1st of every month")

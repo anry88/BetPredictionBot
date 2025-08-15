@@ -1636,7 +1636,7 @@ Available actions:
         }
     }
 
-    private suspend fun updateUpcomingMatches() {
+    suspend fun updateUpcomingMatches() {
         val upcomingMatches = DatabaseService.matches.getUpcomingMatchesWithMessageId()
 
         val byMessageId = upcomingMatches.filter { it.telegramMessageId != null }
