@@ -1526,7 +1526,7 @@ Available actions:
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
-        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext8Hours()
+        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext20Hours()
 
         if (matches.isNotEmpty()) {
             val matchesByLeague = matches.groupBy { it.matchType }
@@ -1636,11 +1636,11 @@ Available actions:
     }
 
     suspend fun updateLiveMatches() {
-        val matchesToUpdate = DatabaseService.matches.getOngoingMatches()
+        val liveMatches = DatabaseService.matches.getOngoingMatches()
         val updatedByMessageId = mutableMapOf<String, MutableList<MatchInfo>>()
         val updatedByStrategyId = mutableMapOf<String, MutableList<MatchInfo>>()
 
-        for (match in matchesToUpdate) {
+        for (match in liveMatches) {
             val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null) {
                 DatabaseService.matches.updateMatchResult(updatedMatchInfo)
@@ -1656,6 +1656,7 @@ Available actions:
             delay(1000)
         }
 
+        val processedMessageIds = mutableSetOf<String>()
         for ((messageId, list) in updatedByMessageId) {
             val league = list.first().matchType
             val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(league, messageId)
@@ -1664,9 +1665,11 @@ Available actions:
                 }
             val messageText = formatMatchesBatchForUpdate(matches)
             updateMessage(channelId, messageId, messageText)
+            processedMessageIds.add(messageId)
             delay(10000)
         }
 
+        val processedStrategyIds = mutableSetOf<String>()
         for ((messageId, list) in updatedByStrategyId) {
             val league = list.first().matchType
             val matches = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(league, messageId)
@@ -1674,6 +1677,29 @@ Available actions:
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
             val messageText = formatPremiumMatchesBatchForUpdate(matches)
+            updateMessage(strategyChannelId, messageId, messageText)
+            processedStrategyIds.add(messageId)
+            delay(10000)
+        }
+
+        val upcomingByMessageId = DatabaseService.matches.getUpcomingMatchesWithMessageIdForNext20Hours()
+            .groupBy { it.telegramMessageId!! }
+        for ((messageId, matches) in upcomingByMessageId) {
+            if (processedMessageIds.contains(messageId)) continue
+            val league = matches.first().matchType
+            val messageMatches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(league, messageId)
+            val messageText = formatMatchesBatchForUpdate(messageMatches)
+            updateMessage(channelId, messageId, messageText)
+            delay(10000)
+        }
+
+        val upcomingByStrategyId = DatabaseService.matches.getUpcomingMatchesWithStrategyMessageIdForNext20Hours()
+            .groupBy { it.strategyTelegramMessageId!! }
+        for ((messageId, matches) in upcomingByStrategyId) {
+            if (processedStrategyIds.contains(messageId)) continue
+            val league = matches.first().matchType
+            val messageMatches = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(league, messageId)
+            val messageText = formatPremiumMatchesBatchForUpdate(messageMatches)
             updateMessage(strategyChannelId, messageId, messageText)
             delay(10000)
         }
@@ -2059,7 +2085,7 @@ Available actions:
                 }
                 append("${index + 1}. $league$flag\n")
                 append("${match.teams}\n")
-                append("Prediction: $prediction\n")
+                append("Outcome: $prediction\n")
                 append("ROI: $sign${"%.2f".format(roi)}% | Odds: ${match.odds}\n\n")
             }
             val sign = if (stats.strategyRoi >= 0) "+" else ""
