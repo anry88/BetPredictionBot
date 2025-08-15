@@ -198,7 +198,7 @@ fun main() {
     val updateMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateMatchesTrigger", "group1")
         .withSchedule(
-            CronScheduleBuilder.cronSchedule("0 5 * * * ?")  // На 5-й минуте каждого часа
+            CronScheduleBuilder.cronSchedule("0 5 0,4,8,12,16,20 * * ?")  // На 5-й минуте каждого 4-го часа
         )
         .build()
 
