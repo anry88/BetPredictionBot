@@ -128,7 +128,7 @@ ${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome} (${"%.2f".format(probability)}%)
 Predicted score: ${matchInfo.predictedScore}
-Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
     }
 
@@ -141,7 +141,7 @@ ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome} (${"%.2f".format(probability)}%)
 Predicted score: ${matchInfo.predictedScore}
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
-Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 #Live
 """.trimIndent()
     }
@@ -157,7 +157,7 @@ ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}$emoji (${"%.2f".format(probability)}%)
 Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
-Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
     }
 
@@ -176,6 +176,7 @@ ${premiumHeader}${matchInfo.datetime} $timezone (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}
 Predicted score: ${matchInfo.predictedScore}
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $testData
 $analysis""".trimIndent()
     }
@@ -195,6 +196,7 @@ ${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}$emoji
 Predicted score: ${matchInfo.predictedScore}
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 $testData
 $analysis""".trimIndent()
