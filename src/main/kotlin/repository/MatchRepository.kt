@@ -225,7 +225,6 @@ class MatchRepository {
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.selectAll().forEach { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                        .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                     if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                         val match = mapRowToMatchInfo(row, leagueTable)
                         ensureMatchCounts(match, leagueTable)
@@ -246,7 +245,6 @@ class MatchRepository {
             addMissingColumnsForLeague(leagueName)
             leagueTable.selectAll().forEach { row ->
                 val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
                 if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
                     val match = mapRowToMatchInfo(row, leagueTable)
                     ensureMatchCounts(match, leagueTable)
