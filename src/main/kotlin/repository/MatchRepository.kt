@@ -259,7 +259,7 @@ class MatchRepository {
 
     fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
-        val eightHoursLater = now.plusHours(5)
+        val eightHoursLater = now.plusHours(8)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
@@ -281,7 +281,7 @@ class MatchRepository {
 
     fun getLeagueMatchesWithoutMessageIdForNext20Hours(leagueName: String): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
-        val twentyHoursLater = now.plusHours(17)
+        val twentyHoursLater = now.plusHours(20)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
