@@ -622,7 +622,7 @@ Available actions:
                             Metrics.commandCounter.labels(
                                 "/getaccuracy",
                                 userId,
-                                adminCommandNames.contains("/getaccuracy").toString()
+                                false.toString()
                             ).inc()
                             val days = param.removePrefix("getaccuracy_").toIntOrNull()
                             if (days != null) {
@@ -635,7 +635,7 @@ Available actions:
                             Metrics.commandCounter.labels(
                                 "/leagueupcoming",
                                 userId,
-                                adminCommandNames.contains("/leagueupcoming").toString()
+                                false.toString()
                             ).inc()
                             val league = param.removePrefix("leagueupcoming_").replace('_', ' ')
                             val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
@@ -650,7 +650,7 @@ Available actions:
                                     Metrics.commandCounter.labels(
                                         "/subscribe",
                                         userId,
-                                        adminCommandNames.contains("/subscribe").toString()
+                                        false.toString()
                                     ).inc()
                                     generalCommands.handleSubscriptionMenu(chatId, userId)
                                 } else {
