@@ -228,12 +228,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun showJobsMenu(chatId: String) {
         val markup = InlineKeyboardMarkup()
         val rows = listOf(
-            listOf(InlineKeyboardButton("Create Job").apply { callbackData = "jobs_create" }),
-            listOf(InlineKeyboardButton("Edit Job").apply { callbackData = "jobs_edit" }),
-            listOf(InlineKeyboardButton("Delete Job").apply { callbackData = "jobs_delete" })
+            listOf(InlineKeyboardButton("Create Task").apply { callbackData = "jobs_create" }),
+            listOf(InlineKeyboardButton("Edit Task").apply { callbackData = "jobs_edit" }),
+            listOf(InlineKeyboardButton("Delete Task").apply { callbackData = "jobs_delete" })
         )
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Job management:")
+        val message = SendMessage(chatId, "Task management: create automatic bot commands")
         message.replyMarkup = markup
         execute(message)
     }
@@ -280,7 +280,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun showEditJobs(chatId: String, userId: String) {
         val jobs = DatabaseService.jobs.getJobsByUser(userId)
         if (jobs.isEmpty()) {
-            sendMessage(chatId, "No jobs to edit.")
+            sendMessage(chatId, "No tasks to edit.")
             return
         }
         val markup = InlineKeyboardMarkup()
@@ -292,7 +292,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             )
         }
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Select job to edit:")
+        val message = SendMessage(chatId, "Select task to edit:")
         message.replyMarkup = markup
         execute(message)
     }
@@ -300,7 +300,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private fun showDeleteJobs(chatId: String, userId: String) {
         val jobs = DatabaseService.jobs.getJobsByUser(userId)
         if (jobs.isEmpty()) {
-            sendMessage(chatId, "No jobs to delete.")
+            sendMessage(chatId, "No tasks to delete.")
             return
         }
         val markup = InlineKeyboardMarkup()
@@ -312,7 +312,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             )
         }
         markup.keyboard = rows
-        val message = SendMessage(chatId, "Select job to delete:")
+        val message = SendMessage(chatId, "Select task to delete:")
         message.replyMarkup = markup
         execute(message)
     }
@@ -350,7 +350,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 Metrics.commandCounter.labels(command, userId, isAdminCommand.toString()).inc()
                 when (command) {
                     "/paysupport" -> Metrics.refundOperationCounter.labels("init").inc()
-                    "/myjobs" -> Metrics.jobOperationCounter.labels("menu").inc()
+                    "/tasks" -> Metrics.jobOperationCounter.labels("menu").inc()
                     "/confirm" -> Metrics.jobOperationCounter.labels("confirm").inc()
                     "/cancel" -> Metrics.jobOperationCounter.labels("cancel").inc()
                     "/refundapprove" -> Metrics.refundOperationCounter.labels("approve").inc()
@@ -437,7 +437,7 @@ Available actions:
                     JobCreationState.WAITING_JOB_TIME -> {
                         val job = pendingJobs[userId]
                         if (job == null) {
-                            sendMessage(chatId, "No job in progress. Use /myjobs to create one.")
+                            sendMessage(chatId, "No task in progress. Use /tasks to create one.")
                         } else {
                             try {
                                 val time = java.time.LocalTime.parse(messageText.trim())
@@ -583,7 +583,7 @@ Available actions:
                     handleGetAccuracyCommand(chatId, messageText)
                 }
 
-                messageText == "/myjobs" -> {
+                messageText == "/tasks" -> {
                     showJobsMenu(chatId)
                 }
 
@@ -1398,7 +1398,7 @@ Available actions:
         commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
         commands.add(BotCommand("/premiumrecent", "Get premium matches from the last 24 hours"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
-        commands.add(BotCommand("/myjobs", "Manage scheduled jobs"))
+        commands.add(BotCommand("/tasks", "Manage scheduled tasks"))
         commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
         commands.add(BotCommand("/paysupport", "Request a refund"))
 
@@ -2083,7 +2083,7 @@ Available actions:
         val job = pendingJobs[userId]
         if (job != null) {
             if (job.nextRun == 0L) {
-                sendMessage(chatId, "Please set time for the job before confirming.")
+                sendMessage(chatId, "Please set time for the task before confirming.")
                 return
             }
             pendingJobs.remove(userId)
@@ -2094,9 +2094,9 @@ Available actions:
             }
             editingJobs.remove(userId)
             jobCreationStates.remove(userId)
-            sendMessage(chatId, "Job scheduled.")
+            sendMessage(chatId, "Task scheduled.")
         } else {
-            sendMessage(chatId, "No pending job to confirm.")
+            sendMessage(chatId, "No pending task to confirm.")
         }
     }
 
@@ -2104,9 +2104,9 @@ Available actions:
         if (pendingJobs.remove(userId) != null) {
             editingJobs.remove(userId)
             jobCreationStates.remove(userId)
-            sendMessage(chatId, "Job creation cancelled.")
+            sendMessage(chatId, "Task creation cancelled.")
         } else {
-            sendMessage(chatId, "No pending job to cancel.")
+            sendMessage(chatId, "No pending task to cancel.")
         }
     }
 
