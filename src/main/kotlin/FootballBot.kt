@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -41,6 +42,7 @@ import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -2163,11 +2165,26 @@ Available actions:
         }
     }
 
+    private fun enrichWithLiveData(matches: List<MatchInfo>): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        return matches.map { match ->
+            val matchTime = LocalDateTime.parse(match.datetime, dateTimeFormatter)
+            if (matchTime.isBefore(now)) {
+                runCatching {
+                    runBlocking { footballService.getLiveMatchInfo(match.fixtureId) }
+                }.getOrNull() ?: match
+            } else {
+                match
+            }
+        }
+    }
+
     private fun sendUpcomingMatches(chatId: String, userId: String) {
         val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
-            val converted = adjustMatchesTimezone(upcomingMatches, zone)
+            val enriched = enrichWithLiveData(upcomingMatches)
+            val converted = adjustMatchesTimezone(enriched, zone)
             val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
                 val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
@@ -2180,7 +2197,8 @@ Available actions:
         val (zone, label) = userTimezone(userId)
         val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
         if (matches.isNotEmpty()) {
-            val converted = adjustMatchesTimezone(matches, zone)
+            val enriched = enrichWithLiveData(matches)
+            val converted = adjustMatchesTimezone(enriched, zone)
             val messages = buildMatchMessages(converted, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
             messages.forEach { (text, _) -> sendMessage(chatId, text) }
         }

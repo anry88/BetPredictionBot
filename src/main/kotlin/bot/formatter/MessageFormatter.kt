@@ -171,11 +171,12 @@ Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
             ""
         }
         val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of(timezone))
+        val currentLine = matchInfo.elapsed?.let { "\nCurrent: ${matchInfo.actualScore} ${it}'" } ?: ""
         return """
 ${premiumHeader}${matchInfo.datetime} $timezone (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}
-Predicted score: ${matchInfo.predictedScore}
+Predicted score: ${matchInfo.predictedScore}$currentLine
 Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $testData
 $analysis""".trimIndent()
