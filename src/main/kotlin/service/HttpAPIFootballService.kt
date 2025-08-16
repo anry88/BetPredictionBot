@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 class HttpAPIFootballService(private val footballBot: FootballBot) {
@@ -183,7 +183,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         DatabaseService.matches.updateMatchPredictions(matchInfo)
 
                         val matchDateTime = LocalDateTime.parse(matchInfo.datetime, formatterMatchDate)
-                        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+                        val now = LocalDateTime.now(ZoneOffset.UTC)
                         if (matchDateTime.isBefore(now.plusHours(28))) {
                             val oddsInfo = getOddsForFixture(
                                 matchInfo.fixtureId,
@@ -208,7 +208,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     val existingMatch = DatabaseService.matches.getMatchInfoByFixtureId(matchInfo.fixtureId)
                     if (existingMatch != null) {
                         val matchDateTime = LocalDateTime.parse(existingMatch.datetime, formatterMatchDate)
-                        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+                        val now = LocalDateTime.now(ZoneOffset.UTC)
                         val needsOdds = existingMatch.homeWinOdds == null ||
                                 existingMatch.drawOdds == null ||
                                 existingMatch.awayWinOdds == null

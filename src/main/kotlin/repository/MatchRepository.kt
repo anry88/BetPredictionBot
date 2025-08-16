@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 object Leagues : Table() {
@@ -215,7 +216,7 @@ class MatchRepository {
     }
 
     fun getUpcomingMatches(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val tomorrow = now.plusDays(1)
         val allUpcomingMatches = mutableListOf<MatchInfo>()
         transaction {
@@ -237,7 +238,7 @@ class MatchRepository {
     }
 
     fun getUpcomingMatchesForLeague(leagueName: String): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val tomorrow = now.plusDays(1)
         val matches = mutableListOf<MatchInfo>()
         transaction {
@@ -257,7 +258,7 @@ class MatchRepository {
     }
 
     fun getMatchesWithoutMessageIdForNext8Hours(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val eightHoursLater = now.plusHours(5)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
@@ -279,7 +280,7 @@ class MatchRepository {
     }
 
     fun getLeagueMatchesWithoutMessageIdForNext20Hours(leagueName: String): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val twentyHoursLater = now.plusHours(17)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
@@ -329,7 +330,7 @@ class MatchRepository {
     }
 
     fun getUpcomingMatchesWithMessageId(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val matches = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
@@ -350,7 +351,7 @@ class MatchRepository {
     }
 
     fun getOngoingMatches(): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val threeHoursAgo = now.minusHours(7)
         val actualNow = now.minusHours(3)
         val matchesToUpdate = mutableListOf<MatchInfo>()
@@ -369,7 +370,7 @@ class MatchRepository {
     }
 
     fun getMatchesFromLastDaysWithoutResult(days: Int): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneId.of("UTC+3"))
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val startDate = now.minusDays(days.toLong())
         val matchesToUpdate = mutableListOf<MatchInfo>()
         transaction {
