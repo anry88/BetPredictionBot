@@ -57,14 +57,21 @@ Odds: $homeOdds - $drawOdds - $awayOdds
 
     // --- Main channel ---
     fun formatMainUpcomingMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
-        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
         val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of("UTC"))
-        return """
+        val isPremium = outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }
+        return if (isPremium) {
+            """${PREMIUM_HEADER}
 ${matchInfo.datetime} UTC (${timeLeft})
+${matchInfo.teams}
+$tags""".trimIndent()
+        } else {
+            val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+            """${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}
 Predicted score: ${matchInfo.predictedScore}$testData
 $tags""".trimIndent()
+        }
     }
 
     fun formatMainLiveMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
