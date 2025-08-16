@@ -619,6 +619,11 @@ Available actions:
                     val param = messageText.removePrefix("/start").trim()
                     when {
                         param.startsWith("getaccuracy_") -> {
+                            Metrics.commandCounter.labels(
+                                "/getaccuracy",
+                                userId,
+                                false.toString()
+                            ).inc()
                             val days = param.removePrefix("getaccuracy_").toIntOrNull()
                             if (days != null) {
                                 sendAccuracyStats(chatId, days)
@@ -627,8 +632,36 @@ Available actions:
                             }
                         }
                         param.startsWith("leagueupcoming_") -> {
+                            Metrics.commandCounter.labels(
+                                "/leagueupcoming",
+                                userId,
+                                false.toString()
+                            ).inc()
                             val league = param.removePrefix("leagueupcoming_").replace('_', ' ')
-                            sendUpcomingMatchesForLeague(chatId, userId, league)
+                            val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+                            val isAdmin = userId == adminChatId || chatId == adminChatId
+                            if (!isPremium && !isAdmin) {
+                                val used = DatabaseService.commandUsage.getTotalUsage(userId)
+                                if (used >= 10) {
+                                    sendMessage(
+                                        chatId,
+                                        "Monthly limit of 10 uses reached. Subscribe to remove the limit."
+                                    )
+                                    Metrics.commandCounter.labels(
+                                        "/subscribe",
+                                        userId,
+                                        false.toString()
+                                    ).inc()
+                                    generalCommands.handleSubscriptionMenu(chatId, userId)
+                                } else {
+                                    val total = DatabaseService.commandUsage.incrementUsage(userId, "leagueupcoming")
+                                    val remaining = 10 - total
+                                    sendMessage(chatId, "You have $remaining uses left this month.")
+                                    sendUpcomingMatchesForLeague(chatId, userId, league)
+                                }
+                            } else {
+                                sendUpcomingMatchesForLeague(chatId, userId, league)
+                            }
                         }
                         else -> {
                             generalCommands.handleStart(chatId)
