@@ -94,6 +94,8 @@ $tags #Live""".trimIndent()
             """$PREMIUM_HEADER
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
+Predicted outcome: ${matchInfo.predictedOutcome}$emoji
+Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
 $tags""".trimIndent()
         } else {
