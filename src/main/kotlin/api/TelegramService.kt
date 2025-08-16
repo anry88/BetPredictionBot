@@ -9,5 +9,10 @@ interface TelegramService {
         replyMarkup: InlineKeyboardMarkup? = null
     ): Int?
 
-    fun updateMessage(chatId: String, messageId: String, text: String)
+    fun updateMessage(
+        chatId: String,
+        messageId: String,
+        text: String,
+        replyMarkup: InlineKeyboardMarkup? = null
+    )
 }

@@ -157,7 +157,11 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = chatId
         message.text = text
-        val markup = if (chatId == channelId) replyMarkup ?: createStartMarkup() else replyMarkup
+        val markup = if (chatId == channelId || chatId == strategyChannelId) {
+            replyMarkup ?: createStartMarkup()
+        } else {
+            replyMarkup
+        }
         markup?.let { message.replyMarkup = it }
 
         return try {
@@ -169,12 +173,23 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    override fun updateMessage(chatId: String, messageId: String, text: String) {
+    override fun updateMessage(
+        chatId: String,
+        messageId: String,
+        text: String,
+        replyMarkup: InlineKeyboardMarkup?
+    ) {
         try {
             val editMessage = EditMessageText()
             editMessage.chatId = chatId
             editMessage.messageId = messageId.toInt()
             editMessage.text = text
+            val markup = if (chatId == channelId || chatId == strategyChannelId) {
+                replyMarkup ?: createStartMarkup()
+            } else {
+                replyMarkup
+            }
+            markup?.let { editMessage.replyMarkup = it }
 
             execute(editMessage)
             logger.info("Message with ID $messageId updated successfully")
@@ -1285,7 +1300,11 @@ Available actions:
         if (!parseMode.isNullOrBlank()) {
             message.parseMode = parseMode
         }
-        val markup = if (chatId == channelId) replyMarkup ?: createStartMarkup() else replyMarkup
+        val markup = if (chatId == channelId || chatId == strategyChannelId) {
+            replyMarkup ?: createStartMarkup()
+        } else {
+            replyMarkup
+        }
         markup?.let { message.replyMarkup = it }
 
         try {
@@ -1731,7 +1750,15 @@ Available actions:
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
             val messageText = formatMatchesBatchForUpdate(matches)
-            updateMessage(channelId, messageId, messageText)
+            val hasPremium = matches.any { m ->
+                outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
+            }
+            val markup = if (hasPremium) {
+                createLeagueUpcomingMarkup(league)
+            } else {
+                null
+            }
+            updateMessage(channelId, messageId, messageText, markup)
             delay(10000)
         }
 
@@ -2291,7 +2318,15 @@ Available actions:
         if (matchInfo.telegramMessageId != null) {
             val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
             val messageText = formatMatchesBatchForUpdate(matches)
-            updateMessage(channelId, matchInfo.telegramMessageId!!, messageText)
+            val hasPremium = matches.any { m ->
+                outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
+            }
+            val markup = if (hasPremium) {
+                createLeagueUpcomingMarkup(matchInfo.matchType)
+            } else {
+                null
+            }
+            updateMessage(channelId, matchInfo.telegramMessageId!!, messageText, markup)
         }
         // Update message in the strategy channel
         if (matchInfo.strategyTelegramMessageId != null) {
