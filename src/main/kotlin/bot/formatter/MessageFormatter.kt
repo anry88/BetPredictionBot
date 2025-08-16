@@ -89,13 +89,21 @@ $tags #Live""".trimIndent()
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
-        return """
+        val isPremium = outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }
+        return if (isPremium) {
+            """$PREMIUM_HEADER
 ${matchInfo.datetime} UTC
+${matchInfo.teams}
+Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
+$tags""".trimIndent()
+        } else {
+            """${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}$emoji
 Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
 $tags""".trimIndent()
+        }
     }
 
     // --- Premium channel ---

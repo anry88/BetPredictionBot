@@ -1219,9 +1219,10 @@ Available actions:
 
     private fun formatMatchesBatchForUpdate(matches: List<MatchInfo>): String {
         return formatMatchesBatch(matches) { match ->
+            val isPremium = outcomeStrategyConfigs.any { config -> StrategyService.isMatchFitsStrategy(match, config) }
             when {
                 match.actualOutcome != null -> formatMatchInfoWithResult(match)
-                match.elapsed != null -> formatLiveMatch(match)
+                match.elapsed != null && !isPremium -> formatLiveMatch(match)
                 else -> formatMatchInfo(match)
             }
         }
