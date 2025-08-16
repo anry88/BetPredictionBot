@@ -159,10 +159,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val message = SendMessage()
         message.chatId = chatId
         message.text = text
-        val markup = if (chatId == channelId || chatId == strategyChannelId) {
-            replyMarkup ?: createStartMarkup()
-        } else {
-            replyMarkup
+        val markup = when (chatId) {
+            channelId -> replyMarkup ?: createStartMarkup()
+            strategyChannelId -> null
+            else -> replyMarkup
         }
         markup?.let { message.replyMarkup = it }
 
@@ -186,10 +186,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             editMessage.chatId = chatId
             editMessage.messageId = messageId.toInt()
             editMessage.text = text
-            val markup = if (chatId == channelId || chatId == strategyChannelId) {
-                replyMarkup ?: createStartMarkup()
-            } else {
-                replyMarkup
+            val markup = when (chatId) {
+                channelId -> replyMarkup ?: createStartMarkup()
+                strategyChannelId -> null
+                else -> replyMarkup
             }
             markup?.let { editMessage.replyMarkup = it }
 
@@ -1302,10 +1302,10 @@ Available actions:
         if (!parseMode.isNullOrBlank()) {
             message.parseMode = parseMode
         }
-        val markup = if (chatId == channelId || chatId == strategyChannelId) {
-            replyMarkup ?: createStartMarkup()
-        } else {
-            replyMarkup
+        val markup = when (chatId) {
+            channelId -> replyMarkup ?: createStartMarkup()
+            strategyChannelId -> null
+            else -> replyMarkup
         }
         markup?.let { message.replyMarkup = it }
 
