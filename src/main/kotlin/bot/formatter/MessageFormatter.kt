@@ -57,14 +57,21 @@ Odds: $homeOdds - $drawOdds - $awayOdds
 
     // --- Main channel ---
     fun formatMainUpcomingMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
-        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
         val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of("UTC"))
-        return """
+        val isPremium = outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }
+        return if (isPremium) {
+            """${PREMIUM_HEADER}
 ${matchInfo.datetime} UTC (${timeLeft})
+${matchInfo.teams}
+$tags""".trimIndent()
+        } else {
+            val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+            """${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}
 Predicted score: ${matchInfo.predictedScore}$testData
 $tags""".trimIndent()
+        }
     }
 
     fun formatMainLiveMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
@@ -82,13 +89,21 @@ $tags #Live""".trimIndent()
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
         val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
-        return """
+        val isPremium = outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }
+        return if (isPremium) {
+            """$PREMIUM_HEADER
 ${matchInfo.datetime} UTC
+${matchInfo.teams}
+Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
+$tags""".trimIndent()
+        } else {
+            """${matchInfo.datetime} UTC
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}$emoji
 Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}$testData
 $tags""".trimIndent()
+        }
     }
 
     // --- Premium channel ---
@@ -113,7 +128,7 @@ ${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome} (${"%.2f".format(probability)}%)
 Predicted score: ${matchInfo.predictedScore}
-Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
     }
 
@@ -126,7 +141,7 @@ ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome} (${"%.2f".format(probability)}%)
 Predicted score: ${matchInfo.predictedScore}
 Current: ${matchInfo.actualScore} ${matchInfo.elapsed}'
-Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 #Live
 """.trimIndent()
     }
@@ -142,7 +157,7 @@ ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}$emoji (${"%.2f".format(probability)}%)
 Predicted score: ${matchInfo.predictedScore}
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
-Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 """.trimIndent()
     }
 
@@ -156,11 +171,13 @@ Odds: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
             ""
         }
         val timeLeft = timeUntil(matchInfo.datetime, ZoneId.of(timezone))
+        val currentLine = matchInfo.elapsed?.let { "\nCurrent: ${matchInfo.actualScore} ${it}'" } ?: ""
         return """
 ${premiumHeader}${matchInfo.datetime} $timezone (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}
-Predicted score: ${matchInfo.predictedScore}
+Predicted score: ${matchInfo.predictedScore}$currentLine
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $testData
 $analysis""".trimIndent()
     }
@@ -180,6 +197,7 @@ ${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}$emoji
 Predicted score: ${matchInfo.predictedScore}
+Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 $testData
 $analysis""".trimIndent()

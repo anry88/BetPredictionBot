@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.telegram.telegrambots.bots.TelegramLongPollingBot
@@ -41,6 +42,7 @@ import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -61,7 +63,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
     private val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
 
-    private val mainChannelFooter = "\n\n\uD83D\uDC49 @topPrediction_bot - check for more!"
+    private val botUsername = "topPrediction_bot"
 
     private val TELEGRAM_MESSAGE_LIMIT = 4096
 
@@ -149,11 +151,20 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return "MatchPredictionBot"
     }
 
-    override fun sendMessageAndGetId(chatId: String, text: String): Int? {
-        val messageText = if (chatId == channelId) text + mainChannelFooter else text
+    override fun sendMessageAndGetId(
+        chatId: String,
+        text: String,
+        replyMarkup: InlineKeyboardMarkup?
+    ): Int? {
         val message = SendMessage()
         message.chatId = chatId
-        message.text = messageText
+        message.text = text
+        val markup = when (chatId) {
+            channelId -> replyMarkup ?: createStartMarkup()
+            strategyChannelId -> null
+            else -> replyMarkup
+        }
+        markup?.let { message.replyMarkup = it }
 
         return try {
             val sentMessage = execute(message)
@@ -164,13 +175,23 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         }
     }
 
-    override fun updateMessage(chatId: String, messageId: String, text: String) {
+    override fun updateMessage(
+        chatId: String,
+        messageId: String,
+        text: String,
+        replyMarkup: InlineKeyboardMarkup?
+    ) {
         try {
-            val newText = if (chatId == channelId) text + mainChannelFooter else text
             val editMessage = EditMessageText()
             editMessage.chatId = chatId
             editMessage.messageId = messageId.toInt()
-            editMessage.text = newText
+            editMessage.text = text
+            val markup = when (chatId) {
+                channelId -> replyMarkup ?: createStartMarkup()
+                strategyChannelId -> null
+                else -> replyMarkup
+            }
+            markup?.let { editMessage.replyMarkup = it }
 
             execute(editMessage)
             logger.info("Message with ID $messageId updated successfully")
@@ -594,8 +615,25 @@ Available actions:
                 chatId == adminChatId && messageText.startsWith("/addPastResults") -> {
                     handleAddPastResultsCommand(chatId, messageText.removePrefix("/addPastResults ").trim())
                 }
-                messageText == "/start" -> {
-                    generalCommands.handleStart(chatId)
+                messageText.startsWith("/start") -> {
+                    val param = messageText.removePrefix("/start").trim()
+                    when {
+                        param.startsWith("getaccuracy_") -> {
+                            val days = param.removePrefix("getaccuracy_").toIntOrNull()
+                            if (days != null) {
+                                sendAccuracyStats(chatId, days)
+                            } else {
+                                generalCommands.handleStart(chatId)
+                            }
+                        }
+                        param.startsWith("leagueupcoming_") -> {
+                            val league = param.removePrefix("leagueupcoming_").replace('_', ' ')
+                            sendUpcomingMatchesForLeague(chatId, userId, league)
+                        }
+                        else -> {
+                            generalCommands.handleStart(chatId)
+                        }
+                    }
                 }
 
                 messageText == "/help" -> {
@@ -1198,9 +1236,10 @@ Available actions:
 
     private fun formatMatchesBatchForUpdate(matches: List<MatchInfo>): String {
         return formatMatchesBatch(matches) { match ->
+            val isPremium = outcomeStrategyConfigs.any { config -> StrategyService.isMatchFitsStrategy(match, config) }
             when {
                 match.actualOutcome != null -> formatMatchInfoWithResult(match)
-                match.elapsed != null -> formatLiveMatch(match)
+                match.elapsed != null && !isPremium -> formatLiveMatch(match)
                 else -> formatMatchInfo(match)
             }
         }
@@ -1229,17 +1268,46 @@ Available actions:
         return "This is a response to: $messageText"
     }
 
-    fun sendMessage(chatId: String, text: String, parseMode: String? = "Markdown") {
-        val footer = if (chatId == channelId) {
-            if (parseMode == "Markdown") mainChannelFooter.replace("_", "\\_") else mainChannelFooter
-        } else ""
-        val finalText = text + footer
+    private fun createStartMarkup(): InlineKeyboardMarkup {
+        val button = InlineKeyboardButton("Open bot").apply {
+            url = "https://t.me/$botUsername?start=start"
+        }
+        return InlineKeyboardMarkup(listOf(listOf(button)))
+    }
+
+    private fun createGetAccuracyMarkup(days: Int): InlineKeyboardMarkup {
+        val button = InlineKeyboardButton("More stats").apply {
+            url = "https://t.me/$botUsername?start=getaccuracy_${days}"
+        }
+        return InlineKeyboardMarkup(listOf(listOf(button)))
+    }
+
+    private fun createLeagueUpcomingMarkup(league: String): InlineKeyboardMarkup {
+        val param = league.replace(" ", "_")
+        val button = InlineKeyboardButton("More matches").apply {
+            url = "https://t.me/$botUsername?start=leagueupcoming_${param}"
+        }
+        return InlineKeyboardMarkup(listOf(listOf(button)))
+    }
+
+    fun sendMessage(
+        chatId: String,
+        text: String,
+        parseMode: String? = "Markdown",
+        replyMarkup: InlineKeyboardMarkup? = null
+    ) {
         val message = SendMessage()
         message.chatId = chatId
-        message.text = finalText
+        message.text = text
         if (!parseMode.isNullOrBlank()) {
             message.parseMode = parseMode
         }
+        val markup = when (chatId) {
+            channelId -> replyMarkup ?: createStartMarkup()
+            strategyChannelId -> null
+            else -> replyMarkup
+        }
+        markup?.let { message.replyMarkup = it }
 
         try {
             execute(message)
@@ -1249,11 +1317,13 @@ Available actions:
         }
     }
 
-    fun sendMultipartMessage(chatId: String, text: String, parseMode: String? = "Markdown") {
-        val footerLength = if (chatId == channelId) {
-            if (parseMode == "Markdown") mainChannelFooter.replace("_", "\\_").length else mainChannelFooter.length
-        } else 0
-        val chunkSize = TELEGRAM_MESSAGE_LIMIT - footerLength
+    fun sendMultipartMessage(
+        chatId: String,
+        text: String,
+        parseMode: String? = "Markdown",
+        replyMarkup: InlineKeyboardMarkup? = null
+    ) {
+        val chunkSize = TELEGRAM_MESSAGE_LIMIT
 
         var remaining = text
         while (remaining.length > chunkSize) {
@@ -1269,7 +1339,7 @@ Available actions:
         }
 
         if (remaining.isNotEmpty()) {
-            sendMessage(chatId, remaining, parseMode)
+            sendMessage(chatId, remaining, parseMode, replyMarkup)
         }
     }
 
@@ -1600,7 +1670,15 @@ Available actions:
                     formatter = { formatMatchInfo(it) }
                 )
                 for ((text, batch) in leagueMessages) {
-                    val msgId = sendMessageAndGetId(channelId, text)
+                    val hasPremium = batch.any { m ->
+                        outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
+                    }
+                    val markup = if (hasPremium) {
+                        createLeagueUpcomingMarkup(league)
+                    } else {
+                        null
+                    }
+                    val msgId = sendMessageAndGetId(channelId, text, markup)
                     if (msgId != null) {
                         batch.forEach { match ->
                             val updated = match.copy(telegramMessageId = msgId.toString())
@@ -1674,7 +1752,15 @@ Available actions:
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
             val messageText = formatMatchesBatchForUpdate(matches)
-            updateMessage(channelId, messageId, messageText)
+            val hasPremium = matches.any { m ->
+                outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
+            }
+            val markup = if (hasPremium) {
+                createLeagueUpcomingMarkup(league)
+            } else {
+                null
+            }
+            updateMessage(channelId, messageId, messageText, markup)
             delay(10000)
         }
 
@@ -1700,7 +1786,6 @@ Available actions:
 
     fun sendWeeklyPredictionAccuracyMessage() {
         val stats = DatabaseService.matches.getStatisticsForPeriod(days = 7)
-        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(7))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -1709,7 +1794,6 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-        """.trimIndent() + leagueText + """
 
         ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
@@ -1719,13 +1803,12 @@ Available actions:
             "No matches were played in the last week."
         }
 
-        sendMultipartMessage(channelId, messageText)
+        sendMessage(channelId, messageText, replyMarkup = createGetAccuracyMarkup(7))
         logger.info("Weekly prediction accuracy message sent successfully")
     }
 
     fun sendMonthlyPredictionAccuracyMessage() {
         val stats = DatabaseService.matches.getStatisticsForPeriod(getDaysInLastMonth())
-        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(getDaysInLastMonth()))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -1734,7 +1817,6 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-        """.trimIndent() + leagueText + """
 
         ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
@@ -1744,13 +1826,12 @@ Available actions:
             "No matches were played in the last month."
         }
 
-        sendMultipartMessage(channelId, messageText)
+        sendMessage(channelId, messageText, replyMarkup = createGetAccuracyMarkup(30))
         logger.info("Monthly prediction accuracy message sent successfully")
     }
 
     fun sendYearlyPredictionAccuracyMessage() {
         val stats = DatabaseService.matches.getStatisticsForPeriod(days = 365)
-        val leagueText = formatLeagueStats(getLeagueStatsForPeriod(365))
 
         val messageText = if (stats.totalMatches > 0) {
             """
@@ -1759,7 +1840,6 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-        """.trimIndent() + leagueText + """
 
         ✨ **Selected matches for the Premium channel:**
         - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
@@ -1769,7 +1849,7 @@ Available actions:
             "No matches were played in the last week."
         }
 
-        sendMultipartMessage(channelId, messageText)
+        sendMessage(channelId, messageText, replyMarkup = createGetAccuracyMarkup(365))
         logger.info("Yearly prediction accuracy message sent successfully")
     }
 
@@ -2085,11 +2165,26 @@ Available actions:
         }
     }
 
+    private fun enrichWithLiveData(matches: List<MatchInfo>): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        return matches.map { match ->
+            val matchTime = LocalDateTime.parse(match.datetime, dateTimeFormatter)
+            if (matchTime.isBefore(now)) {
+                runCatching {
+                    runBlocking { footballService.getLiveMatchInfo(match.fixtureId) }
+                }.getOrNull() ?: match
+            } else {
+                match
+            }
+        }
+    }
+
     private fun sendUpcomingMatches(chatId: String, userId: String) {
         val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
-            val converted = adjustMatchesTimezone(upcomingMatches, zone)
+            val enriched = enrichWithLiveData(upcomingMatches)
+            val converted = adjustMatchesTimezone(enriched, zone)
             val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
                 val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
@@ -2102,7 +2197,8 @@ Available actions:
         val (zone, label) = userTimezone(userId)
         val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
         if (matches.isNotEmpty()) {
-            val converted = adjustMatchesTimezone(matches, zone)
+            val enriched = enrichWithLiveData(matches)
+            val converted = adjustMatchesTimezone(enriched, zone)
             val messages = buildMatchMessages(converted, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
             messages.forEach { (text, _) -> sendMessage(chatId, text) }
         }
@@ -2240,7 +2336,15 @@ Available actions:
         if (matchInfo.telegramMessageId != null) {
             val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
             val messageText = formatMatchesBatchForUpdate(matches)
-            updateMessage(channelId, matchInfo.telegramMessageId!!, messageText)
+            val hasPremium = matches.any { m ->
+                outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
+            }
+            val markup = if (hasPremium) {
+                createLeagueUpcomingMarkup(matchInfo.matchType)
+            } else {
+                null
+            }
+            updateMessage(channelId, matchInfo.telegramMessageId!!, messageText, markup)
         }
         // Update message in the strategy channel
         if (matchInfo.strategyTelegramMessageId != null) {
