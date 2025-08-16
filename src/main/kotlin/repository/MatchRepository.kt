@@ -352,17 +352,19 @@ class MatchRepository {
 
     fun getOngoingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
-        val threeHoursAgo = now.minusHours(7)
-        val actualNow = now.minusHours(3)
+        val threeHoursAgo = now.minusHours(3)
         val matchesToUpdate = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
                 addMissingColumnsForLeague(leagueName)
-                leagueTable.selectAll().mapNotNullTo(matchesToUpdate) {
-                    val matchDateTime = LocalDateTime.parse(it[leagueTable.datetime], dateTimeFormatter)
-                    val isWithinTimeWindow = matchDateTime.isAfter(threeHoursAgo) && matchDateTime.isBefore(actualNow)
-                    if (isWithinTimeWindow) mapRowToMatchInfo(it, leagueTable) else null
+                leagueTable.select {
+                    (leagueTable.datetime greaterEq threeHoursAgo.format(dateTimeFormatter)) and
+                    (leagueTable.datetime lessEq now.format(dateTimeFormatter)) and
+                    leagueTable.actualOutcome.isNull() and
+                    ((leagueTable.telegramMessageId.isNotNull()) or (leagueTable.strategyTelegramMessageId.isNotNull()))
+                }.mapNotNullTo(matchesToUpdate) {
+                    mapRowToMatchInfo(it, leagueTable)
                 }
             }
         }
