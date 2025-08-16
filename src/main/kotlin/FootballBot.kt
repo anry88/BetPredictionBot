@@ -62,8 +62,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val strategyChannelId: String =
         Config.getProperty("strategy.channel.id") ?: throw IllegalStateException("Strategy Channel ChatID not found")
     private val isTest: Boolean = Config.getProperty("test")?.toBoolean() ?: false
-
-    private val botUsername = "topPrediction_bot"
+    private val botUsername: String =
+        Config.getProperty("bot.name") ?: "topPrediction_bot"
 
     private val TELEGRAM_MESSAGE_LIMIT = 4096
 
@@ -1276,7 +1276,7 @@ Available actions:
     }
 
     private fun createGetAccuracyMarkup(days: Int): InlineKeyboardMarkup {
-        val button = InlineKeyboardButton("More stats").apply {
+        val button = InlineKeyboardButton("More statistics").apply {
             url = "https://t.me/$botUsername?start=getaccuracy_${days}"
         }
         return InlineKeyboardMarkup(listOf(listOf(button)))
@@ -1284,7 +1284,7 @@ Available actions:
 
     private fun createLeagueUpcomingMarkup(league: String): InlineKeyboardMarkup {
         val param = league.replace(" ", "_")
-        val button = InlineKeyboardButton("More matches").apply {
+        val button = InlineKeyboardButton("Reveal premium pick").apply {
             url = "https://t.me/$botUsername?start=leagueupcoming_${param}"
         }
         return InlineKeyboardMarkup(listOf(listOf(button)))
