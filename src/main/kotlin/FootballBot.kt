@@ -928,7 +928,8 @@ Available actions:
         val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
-            val converted = adjustMatchesTimezone(upcomingMatches, zone)
+            val enriched = enrichWithLiveData(upcomingMatches)
+            val converted = adjustMatchesTimezone(enriched, zone)
             val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
                 val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
@@ -971,7 +972,8 @@ Available actions:
         leagues.forEach { league ->
             val matches = DatabaseService.matches.getUpcomingMatchesForLeague(league)
             if (matches.isNotEmpty()) {
-                val converted = adjustMatchesTimezone(matches, zone)
+                val enriched = enrichWithLiveData(matches)
+                val converted = adjustMatchesTimezone(enriched, zone)
                 val messages = buildMatchMessages(converted, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
                 messages.forEach { (text, _) -> sendMessage(chatId, text) }
                 found = true
@@ -1005,7 +1007,8 @@ Available actions:
         }
 
         if (premiumMatches.isNotEmpty()) {
-            val converted = adjustMatchesTimezone(premiumMatches, zone)
+            val enriched = enrichWithLiveData(premiumMatches)
+            val converted = adjustMatchesTimezone(enriched, zone)
             val matchesByLeague = converted.groupBy { it.matchType }
             for ((_, matches) in matchesByLeague) {
                 val messages = buildMatchMessages(matches, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)

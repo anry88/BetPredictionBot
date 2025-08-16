@@ -218,6 +218,7 @@ class MatchRepository {
     fun getUpcomingMatches(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
         val tomorrow = now.plusDays(1)
+        val threeHoursAgo = now.minusHours(3)
         val allUpcomingMatches = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
@@ -225,8 +226,10 @@ class MatchRepository {
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.selectAll().forEach { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                        .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                    if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
+                    val hasResult = row[leagueTable.actualOutcome] != null
+                    val isUpcoming = matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)
+                    val isOngoing = matchDateTime.isAfter(threeHoursAgo) && matchDateTime.isBefore(now) && !hasResult
+                    if (isUpcoming || isOngoing) {
                         val match = mapRowToMatchInfo(row, leagueTable)
                         ensureMatchCounts(match, leagueTable)
                         allUpcomingMatches.add(match)
@@ -240,14 +243,17 @@ class MatchRepository {
     fun getUpcomingMatchesForLeague(leagueName: String): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
         val tomorrow = now.plusDays(1)
+        val threeHoursAgo = now.minusHours(3)
         val matches = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
             addMissingColumnsForLeague(leagueName)
             leagueTable.selectAll().forEach { row ->
                 val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                    .atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("UTC+3")).toLocalDateTime()
-                if (matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)) {
+                val hasResult = row[leagueTable.actualOutcome] != null
+                val isUpcoming = matchDateTime.isAfter(now) && matchDateTime.isBefore(tomorrow)
+                val isOngoing = matchDateTime.isAfter(threeHoursAgo) && matchDateTime.isBefore(now) && !hasResult
+                if (isUpcoming || isOngoing) {
                     val match = mapRowToMatchInfo(row, leagueTable)
                     ensureMatchCounts(match, leagueTable)
                     matches.add(match)
