@@ -732,14 +732,18 @@ class MatchRepository {
     }
 
     fun getAllMatchesForLastYear(): List<MatchInfo> {
+        return getAllMatchesForLastYears(1)
+    }
+
+    fun getAllMatchesForLastYears(years: Long): List<MatchInfo> {
         val allMatches = mutableListOf<MatchInfo>()
-        val oneYearAgo = LocalDateTime.now().minusYears(1)
+        val cutoff = LocalDateTime.now().minusYears(years)
         transaction {
             transactionLeagueTables().forEach { tableName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
                 leagueTable.selectAll().mapNotNullTo(allMatches) { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                    if (matchDateTime.isAfter(oneYearAgo)) mapRowToMatchInfo(row, leagueTable) else null
+                    if (matchDateTime.isAfter(cutoff)) mapRowToMatchInfo(row, leagueTable) else null
                 }
             }
         }
