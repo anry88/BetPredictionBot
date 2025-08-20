@@ -104,6 +104,26 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         "/addPastResults"
     )
 
+    private val knownCommands = adminCommandNames + setOf(
+        "/start",
+        "/help",
+        "/subscribe",
+        "/freepremiumlinks",
+        "/upcomingmatches",
+        "/leagueupcoming",
+        "/premiummatches",
+        "/recentmatches",
+        "/leaguerecent",
+        "/premiumrecent",
+        "/getaccuracy",
+        "/tasks",
+        "/settimezone",
+        "/paysupport",
+        "/confirm",
+        "/cancel",
+        "/createInviteLink"
+    )
+
     private enum class JobCreationState {
         WAITING_LEAGUE_UPCOMING_FILTER,
         WAITING_LEAGUE_RECENT_FILTER,
@@ -347,7 +367,9 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
                 val params = parts.getOrNull(1) ?: ""
                 val isAdminCommand = adminCommandNames.contains(command)
                 logger.info("User $userId executed command $command ${if (params.isNotBlank()) "with params '$params'" else ""}")
-                Metrics.commandCounter.labels(command, userId, isAdminCommand.toString()).inc()
+                if (knownCommands.contains(command)) {
+                    Metrics.commandCounter.labels(command, userId, isAdminCommand.toString()).inc()
+                }
                 when (command) {
                     "/paysupport" -> Metrics.refundOperationCounter.labels("init").inc()
                     "/tasks" -> Metrics.jobOperationCounter.labels("menu").inc()
@@ -703,9 +725,9 @@ Available actions:
                 }
 
                 else -> {
-                    val responseText = processMessage(messageText)
-                    val message = SendMessage(chatId, responseText)
-                    execute(message)
+                    sendMessage(chatId, "Unknown command. Here is the list of available commands:")
+                    generalCommands.handleHelp(chatId, chatId == adminChatId)
+                    Metrics.commandCounter.labels("/help", userId, false.toString()).inc()
                 }
             }
         } else if (update.hasPreCheckoutQuery()) {
@@ -1300,9 +1322,6 @@ Available actions:
         }
     }
 
-    private fun processMessage(messageText: String): String {
-        return "This is a response to: $messageText"
-    }
 
     private fun createStartMarkup(): InlineKeyboardMarkup {
         val button = InlineKeyboardButton("Open bot").apply {
