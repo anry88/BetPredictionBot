@@ -1324,7 +1324,7 @@ Available actions:
 
 
     private fun createStartMarkup(): InlineKeyboardMarkup {
-        val button = InlineKeyboardButton("Open bot").apply {
+        val button = InlineKeyboardButton("Get detailed information").apply {
             url = "https://t.me/$botUsername?start=start"
         }
         return InlineKeyboardMarkup(listOf(listOf(button)))
@@ -1339,7 +1339,7 @@ Available actions:
 
     private fun createLeagueUpcomingMarkup(league: String): InlineKeyboardMarkup {
         val param = league.replace(" ", "_")
-        val button = InlineKeyboardButton("Reveal premium pick").apply {
+        val button = InlineKeyboardButton("Get detailed information").apply {
             url = "https://t.me/$botUsername?start=leagueupcoming_${param}"
         }
         return InlineKeyboardMarkup(listOf(listOf(button)))
@@ -1725,14 +1725,7 @@ Available actions:
                     formatter = { formatMatchInfo(it) }
                 )
                 for ((text, batch) in leagueMessages) {
-                    val hasPremium = batch.any { m ->
-                        outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
-                    }
-                    val markup = if (hasPremium) {
-                        createLeagueUpcomingMarkup(league)
-                    } else {
-                        null
-                    }
+                    val markup = createLeagueUpcomingMarkup(league)
                     val msgId = sendMessageAndGetId(channelId, text, markup)
                     if (msgId != null) {
                         batch.forEach { match ->
@@ -1753,7 +1746,7 @@ Available actions:
                         includeTags = false
                     )
                     for ((text, batch) in strategyMessages) {
-                        val msgId = sendMessageAndGetId(strategyChannelId, text)
+                        val msgId = sendMessageAndGetId(strategyChannelId, text, null)
                         if (msgId != null) {
                             batch.forEach { match ->
                                 val updated = match.copy(strategyTelegramMessageId = msgId.toString())
@@ -1807,14 +1800,7 @@ Available actions:
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
             val messageText = formatMatchesBatchForUpdate(matches)
-            val hasPremium = matches.any { m ->
-                outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
-            }
-            val markup = if (hasPremium) {
-                createLeagueUpcomingMarkup(league)
-            } else {
-                null
-            }
+            val markup = createLeagueUpcomingMarkup(league)
             updateMessage(channelId, messageId, messageText, markup)
             delay(10000)
         }
@@ -1826,7 +1812,7 @@ Available actions:
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
             val messageText = formatPremiumMatchesBatchForUpdate(matches)
-            updateMessage(strategyChannelId, messageId, messageText)
+            updateMessage(strategyChannelId, messageId, messageText, null)
             delay(10000)
         }
     }
@@ -2391,21 +2377,14 @@ Available actions:
         if (matchInfo.telegramMessageId != null) {
             val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
             val messageText = formatMatchesBatchForUpdate(matches)
-            val hasPremium = matches.any { m ->
-                outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(m, config) }
-            }
-            val markup = if (hasPremium) {
-                createLeagueUpcomingMarkup(matchInfo.matchType)
-            } else {
-                null
-            }
+            val markup = createLeagueUpcomingMarkup(matchInfo.matchType)
             updateMessage(channelId, matchInfo.telegramMessageId!!, messageText, markup)
         }
         // Update message in the strategy channel
         if (matchInfo.strategyTelegramMessageId != null) {
             val matches = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(matchInfo.matchType, matchInfo.strategyTelegramMessageId!!)
             val strategyMessageText = formatPremiumMatchesBatchForUpdate(matches)
-            updateMessage(strategyChannelId, matchInfo.strategyTelegramMessageId!!, strategyMessageText)
+            updateMessage(strategyChannelId, matchInfo.strategyTelegramMessageId!!, strategyMessageText, null)
         }
     }
 
