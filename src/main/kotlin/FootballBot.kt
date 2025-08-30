@@ -180,7 +180,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         message.chatId = chatId
         message.text = text
         val markup = when (chatId) {
-            channelId -> replyMarkup ?: createStartMarkup()
             strategyChannelId -> null
             else -> replyMarkup
         }
@@ -207,7 +206,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             editMessage.messageId = messageId.toInt()
             editMessage.text = text
             val markup = when (chatId) {
-                channelId -> replyMarkup ?: createStartMarkup()
                 strategyChannelId -> null
                 else -> replyMarkup
             }
@@ -1322,14 +1320,6 @@ Available actions:
         }
     }
 
-
-    private fun createStartMarkup(): InlineKeyboardMarkup {
-        val button = InlineKeyboardButton("Get detailed information").apply {
-            url = "https://t.me/$botUsername?start=start"
-        }
-        return InlineKeyboardMarkup(listOf(listOf(button)))
-    }
-
     private fun createGetAccuracyMarkup(days: Int): InlineKeyboardMarkup {
         val button = InlineKeyboardButton("More statistics").apply {
             url = "https://t.me/$botUsername?start=getaccuracy_${days}"
@@ -1358,7 +1348,6 @@ Available actions:
             message.parseMode = parseMode
         }
         val markup = when (chatId) {
-            channelId -> replyMarkup ?: createStartMarkup()
             strategyChannelId -> null
             else -> replyMarkup
         }
