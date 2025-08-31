@@ -39,7 +39,7 @@ import repository.SubscriptionPlan
 import repository.SubscriptionType
 import repository.ScheduledJob
 import repository.MatchPoll
-import org.telegram.telegrambots.meta.api.methods.send.SendPoll
+import org.telegram.telegrambots.meta.api.methods.polls.SendPoll
 import org.telegram.telegrambots.meta.api.methods.polls.StopPoll
 import org.telegram.telegrambots.meta.api.objects.polls.Poll
 import java.io.File
@@ -209,15 +209,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         if (teams.size != 2) return
         val home = teams[0].trim()
         val away = teams[1].trim()
-        val poll = SendPoll()
-        poll.chatId = channelId
-        poll.question = "$home vs $away"
-        val options = listOf(
+        val options = mutableListOf(
             "$home win" + if (match.predictedOutcome == home) " (AI)" else "",
             "Draw" + if (match.predictedOutcome == "Draw") " (AI)" else "",
             "$away win" + if (match.predictedOutcome == away) " (AI)" else ""
         )
-        poll.options = options
+        val poll = SendPoll(channelId, "$home vs $away", options)
         poll.isAnonymous = false
         val sent = execute(poll)
         val pollMessageId = sent.messageId.toString()
@@ -263,7 +260,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val markup = InlineKeyboardMarkup()
         val button = InlineKeyboardButton("View poll").apply { url = pollUrl }
         markup.keyboard = listOf(listOf(button))
-        sendMessage(channelId, text, markup)
+        sendMessage(channelId, text, replyMarkup = markup)
         DatabaseService.polls.markPollClosed(match.fixtureId)
     }
 
