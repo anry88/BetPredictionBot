@@ -210,12 +210,12 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val home = teams[0].trim()
         val away = teams[1].trim()
         val options = mutableListOf(
-            "$home win" + if (match.predictedOutcome == home) " (AI)" else "",
-            "Draw" + if (match.predictedOutcome == "Draw") " (AI)" else "",
-            "$away win" + if (match.predictedOutcome == away) " (AI)" else ""
+            "$home win" + if (match.predictedOutcome == home) " (AI prediction)" else "",
+            "Draw" + if (match.predictedOutcome == "Draw") " (AI prediction)" else "",
+            "$away win" + if (match.predictedOutcome == away) " (AI prediction)" else ""
         )
         val poll = SendPoll(channelId, "$home vs $away", options)
-        poll.isAnonymous = false
+        poll.isAnonymous = true
         val sent = execute(poll)
         val pollMessageId = sent.messageId.toString()
         val pollId = sent.poll?.id ?: ""
