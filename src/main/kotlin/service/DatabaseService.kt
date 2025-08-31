@@ -13,6 +13,7 @@ import repository.UserSettingsRepository
 import repository.ScheduledJobRepository
 import repository.PaymentRepository
 import repository.RefundRequestRepository
+import repository.MatchPollRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -163,6 +164,16 @@ private fun runManualMigration() {
     """.trimIndent())
 
     execSql("""
+        CREATE TABLE IF NOT EXISTS match_polls (
+            fixture_id TEXT PRIMARY KEY,
+            poll_message_id TEXT,
+            poll_id TEXT,
+            poll_date TEXT,
+            closed INTEGER DEFAULT 0
+        );
+    """.trimIndent())
+
+    execSql("""
         CREATE TABLE IF NOT EXISTS payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
@@ -265,4 +276,5 @@ object DatabaseService {
     val jobs = ScheduledJobRepository()
     val payments = PaymentRepository()
     val refunds = RefundRequestRepository()
+    val polls = MatchPollRepository()
 }

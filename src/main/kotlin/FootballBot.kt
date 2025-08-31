@@ -38,6 +38,10 @@ import service.StarsPaymentService
 import repository.SubscriptionPlan
 import repository.SubscriptionType
 import repository.ScheduledJob
+import repository.MatchPoll
+import org.telegram.telegrambots.meta.api.methods.send.SendPoll
+import org.telegram.telegrambots.meta.api.methods.polls.StopPoll
+import org.telegram.telegrambots.meta.api.objects.polls.Poll
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -76,6 +80,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private val leagueTags: Map<String, String>
     private val teamTags: Map<String, String>
+    private val topTeams: List<String>
 
     // Загружаем конфигурацию лиг из файла
     private val leaguesConfig: List<LeagueConfig>
@@ -137,15 +142,22 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         return json.decodeFromString(leaguesJson)
     }
 
+    private fun loadTopTeams(): List<String> {
+        val data = javaClass.getResource("/top_teams.json")?.readText() ?: "[]"
+        return json.decodeFromString(data)
+    }
+
     init {
         Config.getProperty("admin.chat.id")?.let { sendMessage(it, "Bot has been started") }
         initDatabase("predictions.db") // Используем правильный путь к вашему файлу базы данных
         setCommands()
         val tags = loadTags()
         leagueTags = tags.first
-       teamTags = tags.second
+        teamTags = tags.second
         leaguesConfig = loadLeaguesConfig()
+        topTeams = loadTopTeams()
         startScheduledJobs()
+        startPollJobs()
     }
 
     private fun userTimezone(userId: String): Pair<String, String> {
@@ -161,6 +173,102 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             val converted = dt.atZone(ZoneId.of("UTC")).withZoneSameInstant(zoneId).format(dateTimeFormatter)
             it.copy(datetime = converted)
         }
+    }
+
+    private fun isTopMatch(match: MatchInfo): Boolean {
+        val teams = match.teams.split(" vs. ")
+        if (teams.size != 2) return false
+        val homeIndex = topTeams.indexOf(teams[0].trim())
+        val awayIndex = topTeams.indexOf(teams[1].trim())
+        return homeIndex >= 0 && awayIndex >= 0
+    }
+
+    private fun matchPriority(match: MatchInfo): Int {
+        val teams = match.teams.split(" vs. ")
+        val homeIndex = topTeams.indexOf(teams[0].trim())
+        val awayIndex = topTeams.indexOf(teams[1].trim())
+        return minOf(homeIndex, awayIndex)
+    }
+
+    private fun scheduleTopMatchPoll(matches: List<MatchInfo>) {
+        val candidates = matches.filter { isTopMatch(it) && !isPremiumMatch(it) }
+        if (candidates.isEmpty()) return
+        val sorted = candidates.sortedBy { matchPriority(it) }
+        for (match in sorted) {
+            val date = match.datetime.substring(0, 10)
+            if (!DatabaseService.polls.existsPollForDate(date)) {
+                DatabaseService.polls.addPoll(match.fixtureId, date)
+                break
+            }
+        }
+    }
+
+    private fun createMatchPoll(fixtureId: String) {
+        val match = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId) ?: return
+        val teams = match.teams.split(" vs. ")
+        if (teams.size != 2) return
+        val home = teams[0].trim()
+        val away = teams[1].trim()
+        val poll = SendPoll()
+        poll.chatId = channelId
+        poll.question = "$home vs $away"
+        val options = listOf(
+            "$home win" + if (match.predictedOutcome == home) " (AI)" else "",
+            "Draw" + if (match.predictedOutcome == "Draw") " (AI)" else "",
+            "$away win" + if (match.predictedOutcome == away) " (AI)" else ""
+        )
+        poll.options = options
+        poll.isAnonymous = false
+        val sent = execute(poll)
+        val pollMessageId = sent.messageId.toString()
+        val pollId = sent.poll?.id ?: ""
+        DatabaseService.polls.markPollPosted(fixtureId, pollMessageId, pollId)
+    }
+
+    private fun finalizePoll(match: MatchInfo, pollInfo: MatchPoll) {
+        val stop = StopPoll()
+        stop.chatId = channelId
+        stop.messageId = pollInfo.pollMessageId?.toInt() ?: return
+        val result: Poll = execute(stop)
+        val options = result.options
+        val homeVotes = options.getOrNull(0)?.voterCount ?: 0
+        val drawVotes = options.getOrNull(1)?.voterCount ?: 0
+        val awayVotes = options.getOrNull(2)?.voterCount ?: 0
+        val winnerIndex = listOf(homeVotes, drawVotes, awayVotes).withIndex().maxByOrNull { it.value }?.index ?: -1
+        val teams = match.teams.split(" vs. ")
+        val home = teams.getOrNull(0)?.trim() ?: ""
+        val away = teams.getOrNull(1)?.trim() ?: ""
+        val pollWinner = when (winnerIndex) {
+            0 -> home
+            1 -> "Draw"
+            2 -> away
+            else -> ""
+        }
+        val modelCorrect = match.predictedOutcome == match.actualOutcome
+        val pollCorrect = pollWinner == match.actualOutcome
+        val conclusion = when {
+            pollCorrect && modelCorrect -> "Everyone guessed the outcome."
+            pollCorrect && !modelCorrect -> "You guessed it, but the model didn't."
+            !pollCorrect && modelCorrect -> "The model was right, but the community wasn't."
+            else -> "Nobody guessed the outcome."
+        }
+        val pollUrl = "https://t.me/c/${channelId.removePrefix("-100")}/${pollInfo.pollMessageId}"
+        val text = """Poll results for $home vs $away:\n" +
+                "$home win: $homeVotes\n" +
+                "Draw: $drawVotes\n" +
+                "$away win: $awayVotes\n" +
+                "Model predicted: ${match.predictedOutcome}\n" +
+                "Actual result: ${match.actualOutcome}\n" +
+                conclusion
+        val markup = InlineKeyboardMarkup()
+        val button = InlineKeyboardButton("View poll").apply { url = pollUrl }
+        markup.keyboard = listOf(listOf(button))
+        sendMessage(channelId, text, markup)
+        DatabaseService.polls.markPollClosed(match.fixtureId)
+    }
+
+    private fun isPremiumMatch(match: MatchInfo): Boolean {
+        return outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(match, it) }
     }
 
     override fun getBotToken(): String {
@@ -1647,6 +1755,7 @@ Available actions:
             for ((league, leagueMatches) in matchesByLeague) {
                 val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext20Hours(league).toMutableList()
                 if (leagueBatch.isEmpty()) continue
+                scheduleTopMatchPoll(leagueBatch)
 
                 val iterator = leagueBatch.iterator()
                 while (iterator.hasNext()) {
@@ -1760,6 +1869,11 @@ Available actions:
             val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null) {
                 DatabaseService.matches.updateMatchResult(updatedMatchInfo)
+
+                val poll = DatabaseService.polls.getPollByFixtureId(updatedMatchInfo.fixtureId)
+                if (poll != null && !poll.closed && updatedMatchInfo.actualOutcome != null) {
+                    finalizePoll(updatedMatchInfo, poll)
+                }
 
                 updatedMatchInfo.telegramMessageId?.let { id ->
                     updatedByMessageId.getOrPut(id) { mutableListOf() }.add(updatedMatchInfo)
@@ -2111,11 +2225,39 @@ Available actions:
                     val jobs = DatabaseService.jobs.getDueJobs()
                     jobs.forEach { job ->
                         executeScheduledJob(job)
-                        val next = job.nextRun + job.intervalSeconds
-                        DatabaseService.jobs.updateNextRun(job.id, next)
+                        if (job.intervalSeconds > 0) {
+                            val next = job.nextRun + job.intervalSeconds
+                            DatabaseService.jobs.updateNextRun(job.id, next)
+                        } else {
+                            DatabaseService.jobs.deleteJob(job.id)
+                        }
                     }
                 } catch (e: Exception) {
                     logger.error("Error processing scheduled jobs", e)
+                }
+                delay(60_000)
+            }
+        }
+    }
+
+    private fun startPollJobs() {
+        CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                try {
+                    val polls = DatabaseService.polls.getPendingPolls()
+                    val now = System.currentTimeMillis() / 1000
+                    polls.forEach { poll ->
+                        val match = DatabaseService.matches.getMatchInfoByFixtureId(poll.fixtureId)
+                        if (match != null) {
+                            val matchTime = LocalDateTime.parse(match.datetime, dateTimeFormatter)
+                            val pollTime = matchTime.minusHours(2).toEpochSecond(ZoneOffset.UTC)
+                            if (now >= pollTime) {
+                                createMatchPoll(poll.fixtureId)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.error("Error processing poll jobs", e)
                 }
                 delay(60_000)
             }
