@@ -798,6 +798,7 @@ class MatchRepository {
             "scheduled_jobs",
             "payments",
             "refund_requests",
+            "match_polls",
             "sqlite_sequence"
         )
         val names = mutableListOf<String>()
