@@ -197,7 +197,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         for (match in sorted) {
             val date = match.datetime.substring(0, 10)
             if (!DatabaseService.polls.existsPollForDate(date)) {
-                DatabaseService.polls.addPoll(match.fixtureId, date)
+                DatabaseService.polls.addPoll(match.fixtureId, date, match.teams)
                 break
             }
         }

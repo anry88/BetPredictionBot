@@ -169,9 +169,12 @@ private fun runManualMigration() {
             poll_message_id TEXT,
             poll_id TEXT,
             poll_date TEXT,
+            teams TEXT,
             closed INTEGER DEFAULT 0
         );
     """.trimIndent())
+
+    addColumnIfNotExists("match_polls", "teams", "TEXT")
 
     execSql("""
         CREATE TABLE IF NOT EXISTS payments (
