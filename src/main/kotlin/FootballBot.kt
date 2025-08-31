@@ -253,7 +253,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
             else -> "Nobody guessed the outcome."
         }
         val pollUrl = "https://t.me/c/${channelId.removePrefix("-100")}/${pollInfo.pollMessageId}"
-        val text = """Poll results for $home vs $away:\n" +
+        val text = "Poll results for $home vs $away:\n" +
                 "$home win: $homeVotes\n" +
                 "Draw: $drawVotes\n" +
                 "$away win: $awayVotes\n" +
