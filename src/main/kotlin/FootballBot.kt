@@ -2559,20 +2559,20 @@ Available actions:
         val messageBuilder = StringBuilder()
         messageBuilder.append("📊 **League Predictability Data**\n\n")
         leagueStatsList.sortedBy { it.leagueName }.forEach { stats ->
-            val leagueInfo = """
-        **${stats.leagueName}**
-        - Overall Accuracy: ${stats.accuracy}%
-        - ROI: ${stats.roi}%
-        - Strategy Accuracy: ${stats.strategyAccuracy}%
-        - Strategy ROI: ${stats.strategyRoi}%
-        - Home Win Accuracy: ${stats.homeWinAccuracy}%
-        - Home Win ROI: ${stats.homeWinRoi}%
-        - Draw Accuracy: ${stats.drawAccuracy}%
-        - Draw ROI: ${stats.drawRoi}%
-        - Away Win Accuracy: ${stats.awayWinAccuracy}%
-        - Away Win ROI: ${stats.awayWinRoi}%
-        
-    """.trimIndent()
+            val leagueInfo = buildString {
+                appendLine("**${stats.leagueName}**")
+                appendLine("- Overall Accuracy: ${stats.accuracy}%")
+                appendLine("- ROI: ${stats.roi}%")
+                appendLine("- Strategy Accuracy: ${stats.strategyAccuracy}%")
+                appendLine("- Strategy ROI: ${stats.strategyRoi}%")
+                appendLine("- Home Win Accuracy: ${stats.homeWinAccuracy}%")
+                appendLine("- Home Win ROI: ${stats.homeWinRoi}%")
+                appendLine("- Draw Accuracy: ${stats.drawAccuracy}%")
+                appendLine("- Draw ROI: ${stats.drawRoi}%")
+                appendLine("- Away Win Accuracy: ${stats.awayWinAccuracy}%")
+                appendLine("- Away Win ROI: ${stats.awayWinRoi}%")
+                appendLine()
+            }
 
             // Проверяем, если сообщение превышает лимит по длине, добавляем его в список и начинаем новое
             if (messageBuilder.length + leagueInfo.length > 4000) {
