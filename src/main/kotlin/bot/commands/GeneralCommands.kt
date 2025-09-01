@@ -112,11 +112,21 @@ class GeneralCommands(private val bot: FootballBot) {
                 statusLines += "Do not share it with others"
             }
         }
-        val statusText = if (statusLines.isEmpty()) {
-            "Choose a subscription plan:"
-        } else {
-            statusLines.joinToString(separator = "\n", postfix = "\n\nChoose a subscription plan:")
+        val introText = """
+            We offer two subscription types:
+            • Premium Channel – access to a private channel with predictions only for premium matches.
+            • Bot Premium – includes Premium Channel access and unlimited use of premium bot features (three commands + ability to schedule automatic forecast delivery at your preferred time).
+        """.trimIndent()
+
+        val statusText = buildString {
+            if (statusLines.isNotEmpty()) {
+                append(statusLines.joinToString("\n"))
+                append("\n\n")
+            }
+            append(introText)
+            append("\nChoose a subscription plan:")
         }
+
         bot.showSubscriptionOptions(chatId, statusText)
     }
 
