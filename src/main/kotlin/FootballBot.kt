@@ -913,34 +913,47 @@ Available actions:
                 DatabaseService.users.getActiveUserCountLast24Hours()
             )
             DatabaseService.payments.addPayment(userId, payment)
-            val newExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, type, months)
-            val expiryDate = java.time.Instant.ofEpochSecond(newExpiry).atZone(java.time.ZoneId.of("UTC")).toLocalDate()
-            if (type == SubscriptionType.CHANNEL) {
-                val alreadyMember = inviteHandler.isUserInChannel(update.message.from.id)
-                val link = inviteHandler.ensurePersonalInviteLink(update.message.from.id, newExpiry)
-                if (alreadyMember) {
-                    if (link == null) {
-                        sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate.")
-                    } else {
-                        sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate. You are already in the premium channel.")
-                    }
+            val botExpiry = if (type == SubscriptionType.BOT) {
+                DatabaseService.subscriptions.addOrUpdateSubscription(userId, SubscriptionType.BOT, months)
+            } else null
+            val channelExpiry = DatabaseService.subscriptions.addOrUpdateSubscription(userId, SubscriptionType.CHANNEL, months)
+            val expiryDate = java.time.Instant.ofEpochSecond(botExpiry ?: channelExpiry)
+                .atZone(java.time.ZoneId.of("UTC"))
+                .toLocalDate()
+            val alreadyMember = inviteHandler.isUserInChannel(update.message.from.id)
+            val link = inviteHandler.ensurePersonalInviteLink(update.message.from.id, channelExpiry)
+            if (alreadyMember) {
+                if (link == null) {
+                    val base = "Subscription active until $expiryDate."
+                    val text = if (type == SubscriptionType.BOT) "$base Bot premium features are now enabled." else base
+                    sendMessage(update.message.chatId.toString(), text)
                 } else {
-                    if (link != null) {
-                        val text = buildString {
-                            append("Subscription active until $expiryDate\n")
-                            append("Use this personal link to join the premium channel:\n")
-                            append(link)
-                            append("\nPlease do not share it with others.")
-                        }
-                        sendMessage(update.message.chatId.toString(), text)
-                    } else {
-                        sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate. Failed to create invite link, please contact the admin.")
-                    }
+                    val base = "Subscription active until $expiryDate. You are already in the premium channel."
+                    val text = if (type == SubscriptionType.BOT) "$base Bot premium features are now enabled." else base
+                    sendMessage(update.message.chatId.toString(), text)
                 }
             } else {
-                sendMessage(update.message.chatId.toString(), "Subscription active until $expiryDate")
+                if (link != null) {
+                    val text = buildString {
+                        append("Subscription active until $expiryDate\n")
+                        append("Use this personal link to join the premium channel:\n")
+                        append(link)
+                        append("\nPlease do not share it with others.")
+                        if (type == SubscriptionType.BOT) {
+                            append("\nBot premium features are now enabled.")
+                        }
+                    }
+                    sendMessage(update.message.chatId.toString(), text)
+                } else {
+                    val base = "Subscription active until $expiryDate. Failed to create invite link, please contact the admin."
+                    val text = if (type == SubscriptionType.BOT) "$base Bot premium features are now enabled." else base
+                    sendMessage(update.message.chatId.toString(), text)
+                }
             }
-            sendMessage(adminChatId, "User $payerInfo (id $userId) purchased ${type.name.lowercase()} subscription for $months month(s)")
+            sendMessage(
+                adminChatId,
+                "User $payerInfo (id $userId) purchased ${type.name.lowercase()} subscription for $months month(s)"
+            )
         } else if (update.hasChatJoinRequest()) {
             logger.info("Received chat join request: ${update.chatJoinRequest}")
             inviteHandler.handleChatJoinRequest(update.chatJoinRequest)
