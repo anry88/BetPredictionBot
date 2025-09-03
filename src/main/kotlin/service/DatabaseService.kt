@@ -93,10 +93,12 @@ private fun runManualMigration() {
             created_at INTEGER NOT NULL,
             expires_at INTEGER NOT NULL,
             is_active BOOLEAN DEFAULT 1,
-            owner_id TEXT
+            owner_id TEXT,
+            chat_id TEXT
         );
     """.trimIndent())
     addColumnIfNotExists("invite_links", "owner_id", "TEXT")
+    addColumnIfNotExists("invite_links", "chat_id", "TEXT")
 
     execSql("""
         CREATE TABLE IF NOT EXISTS invite_subscribers (

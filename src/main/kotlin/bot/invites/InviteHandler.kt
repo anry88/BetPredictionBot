@@ -31,7 +31,13 @@ class InviteHandler(private val bot: FootballBot,
             createChatInviteLink.createsJoinRequest = true
 
             val inviteLink = bot.execute(createChatInviteLink)
-            DatabaseService.invites.createInviteLink(inviteLink.inviteLink, 1, expiresAt, userId.toString())
+            DatabaseService.invites.createInviteLink(
+                inviteLink.inviteLink,
+                1,
+                expiresAt,
+                strategyChannelId,
+                userId.toString()
+            )
             inviteLink.inviteLink
         } catch (e: Exception) {
             logger.error("Error creating personal invite link", e)
@@ -107,7 +113,13 @@ class InviteHandler(private val bot: FootballBot,
 
             val inviteLink = bot.execute(createChatInviteLink)
 
-            val inviteLinkId = DatabaseService.invites.createInviteLink(inviteLink.inviteLink, maxSubscribers, expireInstant.epochSecond, null)
+            val inviteLinkId = DatabaseService.invites.createInviteLink(
+                inviteLink.inviteLink,
+                maxSubscribers,
+                expireInstant.epochSecond,
+                strategyChannelId,
+                null
+            )
             if (inviteLinkId > 0) {
                 val response = """
                     <b>New premium channel invite link created</b>
