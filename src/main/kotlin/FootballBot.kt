@@ -743,6 +743,14 @@ Available actions:
                 messageText.startsWith("/start") -> {
                     val param = messageText.removePrefix("/start").trim()
                     when {
+                        param.startsWith("matchdetails_") -> {
+                            val messageId = param.removePrefix("matchdetails_")
+                            if (messageId.isBlank()) {
+                                generalCommands.handleStart(chatId)
+                            } else {
+                                handleMatchDetailsCommand(chatId, userId, messageId)
+                            }
+                        }
                         param.startsWith("getaccuracy_") -> {
                             Metrics.commandCounter.labels(
                                 "/getaccuracy",
@@ -1330,6 +1338,14 @@ Available actions:
         return MessageFormatter.formatDirectCompletedMatch(matchInfo, league, timezone)
     }
 
+    private fun formatDetailedMatchInfo(matchInfo: MatchInfo, timezone: String): String {
+        return if (matchInfo.actualOutcome != null) {
+            formatMatchInfoWithResultDetailed(matchInfo, timezone)
+        } else {
+            formatUpcomingMatchInfo(matchInfo, timezone)
+        }
+    }
+
 
     private fun formatLiveMatch(matchInfo: MatchInfo): String {
         val tags = getTeamTags(matchInfo.teams)
@@ -1445,10 +1461,15 @@ Available actions:
         return InlineKeyboardMarkup(listOf(listOf(button)))
     }
 
-    private fun createLeagueUpcomingMarkup(league: String): InlineKeyboardMarkup {
-        val param = league.replace(" ", "_")
+    private fun createLeagueUpcomingMarkup(league: String, messageId: String? = null): InlineKeyboardMarkup {
+        val startParam = if (messageId.isNullOrBlank()) {
+            val param = league.replace(" ", "_")
+            "leagueupcoming_${param}"
+        } else {
+            "matchdetails_${messageId}"
+        }
         val button = InlineKeyboardButton("Get detailed information").apply {
-            url = "https://t.me/$botUsername?start=leagueupcoming_${param}"
+            url = "https://t.me/$botUsername?start=${startParam}"
         }
         return InlineKeyboardMarkup(listOf(listOf(button)))
     }
@@ -1836,10 +1857,13 @@ Available actions:
                     val markup = createLeagueUpcomingMarkup(league)
                     val msgId = sendMessageAndGetId(channelId, text, markup)
                     if (msgId != null) {
+                        val messageId = msgId.toString()
                         batch.forEach { match ->
-                            val updated = match.copy(telegramMessageId = msgId.toString())
+                            val updated = match.copy(telegramMessageId = messageId)
                             DatabaseService.matches.updateMatchMessageId(updated)
                         }
+                        val updatedMarkup = createLeagueUpcomingMarkup(league, messageId)
+                        updateMessage(channelId, messageId, text, updatedMarkup)
                     }
                 }
 
@@ -1913,7 +1937,7 @@ Available actions:
                     list.find { it.fixtureId == dbMatch.fixtureId } ?: dbMatch
                 }
             val messageText = formatMatchesBatchForUpdate(matches)
-            val markup = createLeagueUpcomingMarkup(league)
+            val markup = createLeagueUpcomingMarkup(league, messageId)
             updateMessage(channelId, messageId, messageText, markup)
             delay(10000)
         }
@@ -2386,6 +2410,39 @@ Available actions:
         }
     }
 
+    private fun handleMatchDetailsCommand(chatId: String, userId: String, messageId: String) {
+        val isAdmin = userId == adminChatId || chatId == adminChatId
+        Metrics.commandCounter.labels("/matchdetails", userId, isAdmin.toString()).inc()
+
+        val matches = DatabaseService.matches.getMatchesByTelegramMessageId(messageId)
+        if (matches.isEmpty()) {
+            sendMessage(chatId, "No matches found for this post.")
+            return
+        }
+
+        val hasActiveMatches = matches.any { it.actualOutcome == null }
+        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
+
+        if (hasActiveMatches && !isPremium && !isAdmin) {
+            val used = DatabaseService.commandUsage.getTotalUsage(userId)
+            if (used >= 10) {
+                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
+                Metrics.commandCounter.labels("/subscribe", userId, false.toString()).inc()
+                generalCommands.handleSubscriptionMenu(chatId, userId)
+                return
+            }
+            val total = DatabaseService.commandUsage.incrementUsage(userId, "matchdetails")
+            val remaining = 10 - total
+            sendMessage(chatId, "You have $remaining uses left this month.")
+        }
+
+        val (zone, label) = userTimezone(userId)
+        val enriched = enrichWithLiveData(matches)
+        val converted = adjustMatchesTimezone(enriched, zone)
+        val messages = buildMatchMessages(converted, formatter = { formatDetailedMatchInfo(it, label) }, includeTags = false)
+        messages.forEach { (text, _) -> sendMessage(chatId, text) }
+    }
+
     private fun sendRecentMatches(chatId: String, userId: String) {
         val (zone, label) = userTimezone(userId)
         val recentMatches = DatabaseService.matches.getLastMatches(1)
@@ -2518,7 +2575,7 @@ Available actions:
         if (matchInfo.telegramMessageId != null) {
             val matches = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(matchInfo.matchType, matchInfo.telegramMessageId!!)
             val messageText = formatMatchesBatchForUpdate(matches)
-            val markup = createLeagueUpcomingMarkup(matchInfo.matchType)
+            val markup = createLeagueUpcomingMarkup(matchInfo.matchType, matchInfo.telegramMessageId!!)
             updateMessage(channelId, matchInfo.telegramMessageId!!, messageText, markup)
         }
         // Update message in the strategy channel

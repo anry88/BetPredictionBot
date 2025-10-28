@@ -322,6 +322,23 @@ class MatchRepository {
         return matches
     }
 
+    fun getMatchesByTelegramMessageId(messageId: String): List<MatchInfo> {
+        val matches = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.select { leagueTable.telegramMessageId eq messageId }
+                    .mapNotNullTo(matches) {
+                        val match = mapRowToMatchInfo(it, leagueTable)
+                        ensureMatchCounts(match, leagueTable)
+                        match
+                    }
+            }
+        }
+        return matches
+    }
+
     fun getMatchesByLeagueAndStrategyMessageId(leagueName: String, messageId: String): List<MatchInfo> {
         val matches = mutableListOf<MatchInfo>()
         transaction {
