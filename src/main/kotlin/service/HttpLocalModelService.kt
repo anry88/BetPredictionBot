@@ -39,7 +39,9 @@ object HttpLocalModelService {
         val draw: Double,
         val awayWin: Double,
         val expectedHomeGoals: Double,
-        val expectedAwayGoals: Double
+        val expectedAwayGoals: Double,
+        val homeMatchesLastYear: Int? = null,
+        val awayMatchesLastYear: Int? = null
     )
 
     /**
@@ -68,6 +70,13 @@ object HttpLocalModelService {
                 matchInfo.modelAwayWinProb = data.awayWin
                 matchInfo.modelExpectedHomeGoals = data.expectedHomeGoals
                 matchInfo.modelExpectedAwayGoals = data.expectedAwayGoals
+
+                if (data.homeMatchesLastYear != null) {
+                    matchInfo.homeMatchesLastYear = data.homeMatchesLastYear
+                }
+                if (data.awayMatchesLastYear != null) {
+                    matchInfo.awayMatchesLastYear = data.awayMatchesLastYear
+                }
 
                 // Округляем ожидаемые голы
                 var roundedHomeGoals = kotlin.math.round(data.expectedHomeGoals).toInt()
