@@ -190,6 +190,8 @@ class MatchRepository {
             it[modelAwayWinProb] = matchInfo.modelAwayWinProb
             it[modelExpectedHomeGoals] = matchInfo.modelExpectedHomeGoals
             it[modelExpectedAwayGoals] = matchInfo.modelExpectedAwayGoals
+            it[homeMatchesLastYear] = matchInfo.homeMatchesLastYear
+            it[awayMatchesLastYear] = matchInfo.awayMatchesLastYear
         }
     }
 
