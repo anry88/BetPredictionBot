@@ -1,0 +1,8 @@
+# Data Model Notes (DTOs)
+
+These files are data-only; they define the shapes used by services and repositories.
+
+- `ApiFootballModels.kt`: Serialization models mirroring API-Football responses (fixtures, leagues, odds, teams, scores).
+- `MatchInfo.kt`: Core match DTO exchanged between services, repositories, and bot formatting (ids, datetime, predicted/actual results, odds, Telegram message references, and model probabilities).
+- `JsonlMatch.kt`: Minimal match projection for exporting training data to the local model.
+- `PeriodStats.kt`, `LeagueStats.kt`, `OutcomeStrategyConfig.kt`, `TagsData.kt`, `LeagueConfig.kt`, `OddsInfo.kt`, `BookmakerInfo.kt`: Support structures for stats aggregation, strategy filtering, tagging, league metadata, and bookmaker odds.
