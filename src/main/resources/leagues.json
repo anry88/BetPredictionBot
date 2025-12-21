@@ -59,5 +59,6 @@
   {"leagueId": 19, "season": 2024, "description": "World African Nations Championship", "premiumSelection": true},
   {"leagueId": 17, "season": 2025, "description": "World AFC Champions League", "premiumSelection": false},
   {"leagueId": 18, "season": 2025, "description": "World AFC Cup", "premiumSelection": false},
-  {"leagueId": 1132, "season": 2025, "description": "World AFC Challenge League", "premiumSelection": false}
+  {"leagueId": 1132, "season": 2025, "description": "World AFC Challenge League", "premiumSelection": false},
+  {"leagueId": 6, "season": 2025, "description": "World Africa Cup of Nations", "premiumSelection": true}
 ]
