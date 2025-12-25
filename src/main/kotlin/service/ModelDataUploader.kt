@@ -59,7 +59,12 @@ object ModelDataUploader {
                     bookmakerName = match.bookmakerName,
                     homeWinOdds = match.homeWinOdds,
                     drawOdds = match.drawOdds,
-                    awayWinOdds = match.awayWinOdds
+                    awayWinOdds = match.awayWinOdds,
+                    modelHomeWinProb = match.modelHomeWinProb,
+                    modelDrawProb = match.modelDrawProb,
+                    modelAwayWinProb = match.modelAwayWinProb,
+                    modelExpectedHomeGoals = match.modelExpectedHomeGoals,
+                    modelExpectedAwayGoals = match.modelExpectedAwayGoals
                 )
                 val line = Json.encodeToString(jsonlMatch)
                 writer.write(line)
