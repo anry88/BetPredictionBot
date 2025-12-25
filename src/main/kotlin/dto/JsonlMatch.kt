@@ -17,6 +17,10 @@ data class JsonlMatch(
     val bookmakerName: String?,
     val homeWinOdds: String?,
     val drawOdds: String?,
-    val awayWinOdds: String?
+    val awayWinOdds: String?,
+    val modelHomeWinProb: Double? = null,
+    val modelDrawProb: Double? = null,
+    val modelAwayWinProb: Double? = null,
+    val modelExpectedHomeGoals: Double? = null,
+    val modelExpectedAwayGoals: Double? = null
 )
-
