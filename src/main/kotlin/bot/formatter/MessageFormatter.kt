@@ -42,6 +42,14 @@ object MessageFormatter {
         val drawProb = matchInfo.modelDrawProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
         val awayProb = matchInfo.modelAwayWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
 
+        val calibratedHomeProb = matchInfo.calibratedHomeWinProb?.times(100)?.let { "%.2f%%".format(it) }
+        val calibratedDrawProb = matchInfo.calibratedDrawProb?.times(100)?.let { "%.2f%%".format(it) }
+        val calibratedAwayProb = matchInfo.calibratedAwayWinProb?.times(100)?.let { "%.2f%%".format(it) }
+        val calibrationLine = if (calibratedHomeProb != null && calibratedDrawProb != null && calibratedAwayProb != null) {
+            val applied = matchInfo.calibrationApplied ?: false
+            "\nCalibrated: $calibratedHomeProb - $calibratedDrawProb - $calibratedAwayProb (applied: $applied)"
+        } else ""
+
         val homeXg = matchInfo.modelExpectedHomeGoals?.let { "%.2f".format(it) } ?: "0"
         val awayXg = matchInfo.modelExpectedAwayGoals?.let { "%.2f".format(it) } ?: "0"
 
@@ -53,6 +61,7 @@ object MessageFormatter {
 Probabilities: $homeProb - $drawProb - $awayProb
 Expected Goals: $homeXg : $awayXg
 Odds: $homeOdds - $drawOdds - $awayOdds
+${calibrationLine.trimStart()}
 """.trimIndent()
     }
 

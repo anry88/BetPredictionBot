@@ -1316,7 +1316,11 @@ Available actions:
             modelDrawProb = match.modelDrawProb,
             modelAwayWinProb = match.modelAwayWinProb,
             modelExpectedHomeGoals = match.modelExpectedHomeGoals,
-            modelExpectedAwayGoals = match.modelExpectedAwayGoals
+            modelExpectedAwayGoals = match.modelExpectedAwayGoals,
+            calibratedHomeWinProb = match.calibratedHomeWinProb,
+            calibratedDrawProb = match.calibratedDrawProb,
+            calibratedAwayWinProb = match.calibratedAwayWinProb,
+            calibrationApplied = match.calibrationApplied
         )
         val json = Json { prettyPrint = false }
         return json.encodeToString(jsonlMatch)

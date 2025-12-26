@@ -50,6 +50,10 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val modelAwayWinProb = double("modelAwayWinProb").nullable()
     val modelExpectedHomeGoals = double("modelExpectedHomeGoals").nullable()
     val modelExpectedAwayGoals = double("modelExpectedAwayGoals").nullable()
+    val calibratedHomeWinProb = double("calibratedHomeWinProb").nullable()
+    val calibratedDrawProb = double("calibratedDrawProb").nullable()
+    val calibratedAwayWinProb = double("calibratedAwayWinProb").nullable()
+    val calibrationApplied = bool("calibrationApplied").nullable()
     val homeMatchesLastYear = integer("homeMatchesLastYear").nullable()
     val awayMatchesLastYear = integer("awayMatchesLastYear").nullable()
 
@@ -123,6 +127,10 @@ class MatchRepository {
                     it[actualScore] = match.actualScore
                     it[odds] = match.odds ?: ""
                     it[telegramMessageId] = match.telegramMessageId
+                    it[calibratedHomeWinProb] = match.calibratedHomeWinProb
+                    it[calibratedDrawProb] = match.calibratedDrawProb
+                    it[calibratedAwayWinProb] = match.calibratedAwayWinProb
+                    it[calibrationApplied] = match.calibrationApplied
                     it[homeMatchesLastYear] = match.homeMatchesLastYear
                     it[awayMatchesLastYear] = match.awayMatchesLastYear
                 }
@@ -181,6 +189,7 @@ class MatchRepository {
 
     fun updateMatchPredictions(matchInfo: MatchInfo) = transaction {
         val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+        addMissingColumnsForLeague(matchInfo.matchType)
         leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
             it[predictedOutcome] = matchInfo.predictedOutcome
             it[predictedScore] = matchInfo.predictedScore
@@ -190,6 +199,10 @@ class MatchRepository {
             it[modelAwayWinProb] = matchInfo.modelAwayWinProb
             it[modelExpectedHomeGoals] = matchInfo.modelExpectedHomeGoals
             it[modelExpectedAwayGoals] = matchInfo.modelExpectedAwayGoals
+            it[calibratedHomeWinProb] = matchInfo.calibratedHomeWinProb
+            it[calibratedDrawProb] = matchInfo.calibratedDrawProb
+            it[calibratedAwayWinProb] = matchInfo.calibratedAwayWinProb
+            it[calibrationApplied] = matchInfo.calibrationApplied
             it[homeMatchesLastYear] = matchInfo.homeMatchesLastYear
             it[awayMatchesLastYear] = matchInfo.awayMatchesLastYear
         }
@@ -419,6 +432,7 @@ class MatchRepository {
         transaction {
             for (leagueName in listOfLeagues) {
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
                 val result = leagueTable.select { leagueTable.fixtureId eq fixtureId }
                     .mapNotNull { mapRowToMatchInfo(it, leagueTable) }
                     .singleOrNull()
@@ -433,6 +447,7 @@ class MatchRepository {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
                 leagueTable.select {
                     (leagueTable.datetime lessEq date.format(dateFormatter)) and
                             leagueTable.actualOutcome.isNull()
@@ -449,6 +464,7 @@ class MatchRepository {
         transaction {
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
                 leagueTable.selectAll().mapNotNullTo(matches) { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                         .atZone(ZoneId.of("UTC"))
@@ -471,6 +487,7 @@ class MatchRepository {
         val matches = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            addMissingColumnsForLeague(leagueName)
             leagueTable.selectAll().mapNotNullTo(matches) { row ->
                 val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                     .atZone(ZoneId.of("UTC"))
@@ -760,6 +777,7 @@ class MatchRepository {
         transaction {
             transactionLeagueTables().forEach { tableName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
+                addMissingColumnsForLeague(tableName)
                 leagueTable.selectAll().mapNotNullTo(allMatches) { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
                     if (matchDateTime.isAfter(cutoff)) mapRowToMatchInfo(row, leagueTable) else null
@@ -776,6 +794,7 @@ class MatchRepository {
         var count = 0
         transactionLeagueTables().forEach { tableName ->
             val leagueTable = LeagueTableFactory.getTableForLeague(tableName)
+            addMissingColumnsForLeague(tableName)
             val homePattern = "$team vs.%"
             val awayPattern = "% vs. $team"
             val condition = ((leagueTable.teams like homePattern) or (leagueTable.teams like awayPattern)) and
@@ -855,6 +874,10 @@ class MatchRepository {
             modelAwayWinProb = row[leagueTable.modelAwayWinProb],
             modelExpectedHomeGoals = row[leagueTable.modelExpectedHomeGoals],
             modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals],
+            calibratedHomeWinProb = row[leagueTable.calibratedHomeWinProb],
+            calibratedDrawProb = row[leagueTable.calibratedDrawProb],
+            calibratedAwayWinProb = row[leagueTable.calibratedAwayWinProb],
+            calibrationApplied = row[leagueTable.calibrationApplied],
             homeMatchesLastYear = row[leagueTable.homeMatchesLastYear],
             awayMatchesLastYear = row[leagueTable.awayMatchesLastYear]
         )

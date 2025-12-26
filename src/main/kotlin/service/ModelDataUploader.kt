@@ -64,7 +64,11 @@ object ModelDataUploader {
                     modelDrawProb = match.modelDrawProb,
                     modelAwayWinProb = match.modelAwayWinProb,
                     modelExpectedHomeGoals = match.modelExpectedHomeGoals,
-                    modelExpectedAwayGoals = match.modelExpectedAwayGoals
+                    modelExpectedAwayGoals = match.modelExpectedAwayGoals,
+                    calibratedHomeWinProb = match.calibratedHomeWinProb,
+                    calibratedDrawProb = match.calibratedDrawProb,
+                    calibratedAwayWinProb = match.calibratedAwayWinProb,
+                    calibrationApplied = match.calibrationApplied
                 )
                 val line = Json.encodeToString(jsonlMatch)
                 writer.write(line)
