@@ -1,10 +1,12 @@
 package service
 
+import Config
+import dto.LeagueConfig
 import dto.MatchInfo
 import dto.OutcomeStrategyConfig
-import dto.LeagueConfig
-import Config
+import dto.OutcomeType
 import kotlinx.serialization.json.Json
+import kotlin.math.abs
 
 object StrategyService {
     private val json = Json {
@@ -20,66 +22,66 @@ object StrategyService {
         return json.decodeFromString(leaguesJson)
     }
 
+    fun getModelPreferredOutcome(match: MatchInfo): OutcomeType? {
+        val homeProb = match.modelHomeWinProb ?: return null
+        val drawProb = match.modelDrawProb ?: return null
+        val awayProb = match.modelAwayWinProb ?: return null
+
+        return when {
+            homeProb >= drawProb && homeProb >= awayProb -> OutcomeType.HomeWin
+            drawProb >= homeProb && drawProb >= awayProb -> OutcomeType.Draw
+            else -> OutcomeType.AwayWin
+        }
+    }
+
+    fun getOutcomeProbability(match: MatchInfo, outcomeType: OutcomeType): Double? {
+        return when (outcomeType) {
+            OutcomeType.HomeWin -> match.modelHomeWinProb
+            OutcomeType.Draw -> match.modelDrawProb
+            OutcomeType.AwayWin -> match.modelAwayWinProb
+        }
+    }
+
+    fun getOutcomeOdds(match: MatchInfo, outcomeType: OutcomeType): Double? {
+        return when (outcomeType) {
+            OutcomeType.HomeWin -> match.homeWinOdds?.toDoubleOrNull()
+            OutcomeType.Draw -> match.drawOdds?.toDoubleOrNull()
+            OutcomeType.AwayWin -> match.awayWinOdds?.toDoubleOrNull()
+        }
+    }
+
     fun isMatchFitsStrategy(match: MatchInfo, config: OutcomeStrategyConfig): Boolean {
         val teams = match.teams.split(" vs. ")
         if (teams.size != 2) return false
-
-        val homeTeam = teams[0].trim()
-        val awayTeam = teams[1].trim()
-        val predictedOutcome = match.predictedOutcome ?: return false
 
         val homeCount = match.homeMatchesLastYear ?: 0
         val awayCount = match.awayMatchesLastYear ?: 0
         if (homeCount <= 5 || awayCount <= 5) return false
 
-        // Если у матча есть modelHomeWinProb != null, значит прогноз от модели
+        val preferredOutcome = getModelPreferredOutcome(match) ?: return false
+        if (preferredOutcome != config.outcomeType) return false
+
         val isFromLocalModel = match.modelHomeWinProb != null
-        val isPremiumSelection = if (Config.getProperty("test")?.toBoolean() == true) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
+        val isPremiumSelection =
+            if (Config.getProperty("test")?.toBoolean() == true) true else leaguesConfig.any { it.description == match.matchType && it.premiumSelection }
+        if (!isPremiumSelection || !isFromLocalModel) return false
 
-        // Берём коэффициент на соответствующий исход
-        val oddsValue = when (config.outcomeType) {
-            "HomeWin" -> match.homeWinOdds?.toDoubleOrNull()
-            "Draw" -> match.drawOdds?.toDoubleOrNull()
-            "AwayWin" -> match.awayWinOdds?.toDoubleOrNull()
-            else -> match.odds?.toDoubleOrNull()
-        } ?: 0.0
+        val oddsValue = getOutcomeOdds(match, config.outcomeType) ?: return false
+        if (oddsValue < config.minOdds || oddsValue > config.maxOdds) return false
 
-        if (isPremiumSelection && isFromLocalModel) {
-            when (config.outcomeType) {
-                "HomeWin" -> {
-                    if (predictedOutcome == homeTeam &&
-                        (match.modelHomeWinProb ?: 0.0) > config.homeWinModelProb &&
-                        oddsValue > config.minOdds
-                    ) return true
-                }
+        val probability = getOutcomeProbability(match, config.outcomeType) ?: return false
+        if (probability < config.minProb) return false
+        config.maxProb?.let { if (probability > it) return false }
 
-                "Draw" -> {
-                    if (predictedOutcome == "Draw") {
-                        val homeProb = match.modelHomeWinProb ?: 0.0
-                        val drawProb = match.modelDrawProb ?: 0.0
-                        val awayProb = match.modelAwayWinProb ?: 0.0
-                        val expectedHomeGoals = match.modelExpectedHomeGoals ?: 0.0
-                        val expectedAwayGoals = match.modelExpectedAwayGoals ?: 0.0
-
-                        val highProbCondition = drawProb > config.drawModelProb && oddsValue > config.minOdds
-                        val balancedCondition = homeProb in 0.0..0.4 &&
-                                drawProb in 0.0..0.4 &&
-                                awayProb in 0.0..0.4 &&
-                                oddsValue > 3.1 &&
-                                kotlin.math.abs(expectedHomeGoals - expectedAwayGoals) <= 0.1
-
-                        if (highProbCondition || balancedCondition) return true
-                    }
-                }
-
-                "AwayWin" -> {
-                    if (predictedOutcome == awayTeam &&
-                        (match.modelAwayWinProb ?: 0.0) > config.awayWinModelProb &&
-                        oddsValue > config.minOdds
-                    ) return true
-                }
-            }
+        if (config.outcomeType == OutcomeType.Draw) {
+            val expectedHomeGoals = match.modelExpectedHomeGoals ?: return false
+            val expectedAwayGoals = match.modelExpectedAwayGoals ?: return false
+            val xgDiff = abs(expectedHomeGoals - expectedAwayGoals)
+            val xgTotal = expectedHomeGoals + expectedAwayGoals
+            config.maxXgDiff?.let { if (xgDiff > it) return false }
+            config.maxXgTotal?.let { if (xgTotal > it) return false }
         }
-        return false
+
+        return true
     }
-} 
+}

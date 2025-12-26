@@ -1,46 +1,37 @@
-// In a new file or an existing one, e.g., dto/OutcomeStrategyConfig.kt
 package dto
 
+enum class OutcomeType {
+    HomeWin,
+    Draw,
+    AwayWin
+}
+
 data class OutcomeStrategyConfig(
-    val outcomeType: String,            // "HomeWin", "Draw", or "AwayWin"
-    val roiThreshold: Double,
-    val accuracyThreshold: Double,
+    val outcomeType: OutcomeType,
     val minOdds: Double,
     val maxOdds: Double,
-    val homeWinModelProb: Double,
-    val drawModelProb: Double,
-    val awayWinModelProb: Double
+    val minProb: Double,
+    val maxProb: Double? = null,
+    val maxXgDiff: Double? = null,
+    val maxXgTotal: Double? = null
 )
-// In FootballBot.kt or a configuration file
+
 val outcomeStrategyConfigs = listOf(
+    // Rule A: Away
     OutcomeStrategyConfig(
-        outcomeType = "HomeWin",
-        roiThreshold = 5.0,
-        accuracyThreshold = 60.0,
-        minOdds = 1.45,
-        maxOdds = 2.20,
-        homeWinModelProb = 0.7,
-        drawModelProb = 0.0,
-        awayWinModelProb = 0.0
+        outcomeType = OutcomeType.AwayWin,
+        minOdds = 1.80,
+        maxOdds = 2.50,
+        minProb = 0.55,
+        maxProb = 0.62
     ),
+    // Rule B: Draw
     OutcomeStrategyConfig(
-        outcomeType = "Draw",
-        roiThreshold = 20.0,
-        accuracyThreshold = 30.0,
+        outcomeType = OutcomeType.Draw,
         minOdds = 2.80,
         maxOdds = 5.50,
-        homeWinModelProb = 0.0,
-        drawModelProb = 0.4,
-        awayWinModelProb = 0.0
-    ),
-    OutcomeStrategyConfig(
-        outcomeType = "AwayWin",
-        roiThreshold = 10.0,
-        accuracyThreshold = 60.0,
-        minOdds = 1.70,
-        maxOdds = 2.50,
-        homeWinModelProb = 0.0,
-        drawModelProb = 0.0,
-        awayWinModelProb = 0.6
+        minProb = 0.36,
+        maxXgDiff = 0.10,
+        maxXgTotal = 1.60
     )
 )
