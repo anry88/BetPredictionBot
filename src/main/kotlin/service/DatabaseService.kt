@@ -232,6 +232,10 @@ fun createLeagueTableIfNeeded(tableName: String) {
             modelAwayWinProb REAL,
             modelExpectedHomeGoals REAL,
             modelExpectedAwayGoals REAL,
+            calibratedHomeWinProb REAL,
+            calibratedDrawProb REAL,
+            calibratedAwayWinProb REAL,
+            calibrationApplied BOOLEAN,
             homeMatchesLastYear INTEGER,
             awayMatchesLastYear INTEGER
         );
@@ -267,6 +271,10 @@ fun addMissingColumnsForLeague(tableName: String) {
     addColumnIfNotExists(tableName, "modelAwayWinProb", "DOUBLE")
     addColumnIfNotExists(tableName, "modelExpectedHomeGoals", "DOUBLE")
     addColumnIfNotExists(tableName, "modelExpectedAwayGoals", "DOUBLE")
+    addColumnIfNotExists(tableName, "calibratedHomeWinProb", "DOUBLE")
+    addColumnIfNotExists(tableName, "calibratedDrawProb", "DOUBLE")
+    addColumnIfNotExists(tableName, "calibratedAwayWinProb", "DOUBLE")
+    addColumnIfNotExists(tableName, "calibrationApplied", "BOOLEAN")
     addColumnIfNotExists(tableName, "homeMatchesLastYear", "INTEGER")
     addColumnIfNotExists(tableName, "awayMatchesLastYear", "INTEGER")
 }
