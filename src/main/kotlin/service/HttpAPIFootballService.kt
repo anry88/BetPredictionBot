@@ -180,6 +180,12 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         matchInfo.modelAwayWinProb = finalPrediction.modelAwayWinProb
                         matchInfo.modelExpectedHomeGoals = finalPrediction.modelExpectedHomeGoals
                         matchInfo.modelExpectedAwayGoals = finalPrediction.modelExpectedAwayGoals
+                        matchInfo.calibratedExpectedHomeGoals = finalPrediction.calibratedExpectedHomeGoals
+                        matchInfo.calibratedExpectedAwayGoals = finalPrediction.calibratedExpectedAwayGoals
+                        matchInfo.calibratedHomeWinProb = finalPrediction.calibratedHomeWinProb
+                        matchInfo.calibratedDrawProb = finalPrediction.calibratedDrawProb
+                        matchInfo.calibratedAwayWinProb = finalPrediction.calibratedAwayWinProb
+                        matchInfo.calibrationApplied = finalPrediction.calibrationApplied
                         DatabaseService.matches.updateMatchPredictions(matchInfo)
 
                         val matchDateTime = LocalDateTime.parse(matchInfo.datetime, formatterMatchDate)

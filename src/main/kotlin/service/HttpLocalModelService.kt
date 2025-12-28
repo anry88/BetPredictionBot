@@ -40,6 +40,8 @@ object HttpLocalModelService {
         val awayWin: Double,
         val expectedHomeGoals: Double,
         val expectedAwayGoals: Double,
+        val calibratedExpectedHomeGoals: Double? = null,
+        val calibratedExpectedAwayGoals: Double? = null,
         val calibratedHomeWin: Double? = null,
         val calibratedDraw: Double? = null,
         val calibratedAwayWin: Double? = null,
@@ -74,6 +76,8 @@ object HttpLocalModelService {
                 matchInfo.modelAwayWinProb = data.awayWin
                 matchInfo.modelExpectedHomeGoals = data.expectedHomeGoals
                 matchInfo.modelExpectedAwayGoals = data.expectedAwayGoals
+                matchInfo.calibratedExpectedHomeGoals = data.calibratedExpectedHomeGoals
+                matchInfo.calibratedExpectedAwayGoals = data.calibratedExpectedAwayGoals
                 matchInfo.calibratedHomeWinProb = data.calibratedHomeWin
                 matchInfo.calibratedDrawProb = data.calibratedDraw
                 matchInfo.calibratedAwayWinProb = data.calibratedAwayWin

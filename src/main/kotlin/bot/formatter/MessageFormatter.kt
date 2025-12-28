@@ -52,6 +52,11 @@ object MessageFormatter {
 
         val homeXg = matchInfo.modelExpectedHomeGoals?.let { "%.2f".format(it) } ?: "0"
         val awayXg = matchInfo.modelExpectedAwayGoals?.let { "%.2f".format(it) } ?: "0"
+        val calibratedHomeXg = matchInfo.calibratedExpectedHomeGoals?.let { "%.2f".format(it) }
+        val calibratedAwayXg = matchInfo.calibratedExpectedAwayGoals?.let { "%.2f".format(it) }
+        val calibratedXgLine = if (calibratedHomeXg != null && calibratedAwayXg != null) {
+            "\nCalibrated Expected Goals: $calibratedHomeXg : $calibratedAwayXg"
+        } else ""
 
         val homeOdds = matchInfo.homeWinOdds ?: "0"
         val drawOdds = matchInfo.drawOdds ?: "0"
@@ -59,7 +64,7 @@ object MessageFormatter {
 
         return """
 Probabilities: $homeProb - $drawProb - $awayProb
-Expected Goals: $homeXg : $awayXg
+Expected Goals: $homeXg : $awayXg$calibratedXgLine
 Odds: $homeOdds - $drawOdds - $awayOdds
 ${calibrationLine.trimStart()}
 """.trimIndent()
