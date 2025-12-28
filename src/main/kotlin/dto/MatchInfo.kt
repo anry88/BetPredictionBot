@@ -22,6 +22,8 @@ data class MatchInfo(
     var modelAwayWinProb: Double?,
     var modelExpectedHomeGoals: Double?,
     var modelExpectedAwayGoals: Double?,
+    var calibratedExpectedHomeGoals: Double? = null,
+    var calibratedExpectedAwayGoals: Double? = null,
     var calibratedHomeWinProb: Double? = null,
     var calibratedDrawProb: Double? = null,
     var calibratedAwayWinProb: Double? = null,

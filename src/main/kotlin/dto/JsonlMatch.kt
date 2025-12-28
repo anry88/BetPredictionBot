@@ -23,6 +23,8 @@ data class JsonlMatch(
     val modelAwayWinProb: Double? = null,
     val modelExpectedHomeGoals: Double? = null,
     val modelExpectedAwayGoals: Double? = null,
+    val calibratedExpectedHomeGoals: Double? = null,
+    val calibratedExpectedAwayGoals: Double? = null,
     val calibratedHomeWinProb: Double? = null,
     val calibratedDrawProb: Double? = null,
     val calibratedAwayWinProb: Double? = null,

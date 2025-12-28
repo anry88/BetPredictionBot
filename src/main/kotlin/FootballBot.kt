@@ -1317,6 +1317,8 @@ Available actions:
             modelAwayWinProb = match.modelAwayWinProb,
             modelExpectedHomeGoals = match.modelExpectedHomeGoals,
             modelExpectedAwayGoals = match.modelExpectedAwayGoals,
+            calibratedExpectedHomeGoals = match.calibratedExpectedHomeGoals,
+            calibratedExpectedAwayGoals = match.calibratedExpectedAwayGoals,
             calibratedHomeWinProb = match.calibratedHomeWinProb,
             calibratedDrawProb = match.calibratedDrawProb,
             calibratedAwayWinProb = match.calibratedAwayWinProb,

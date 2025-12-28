@@ -50,6 +50,8 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val modelAwayWinProb = double("modelAwayWinProb").nullable()
     val modelExpectedHomeGoals = double("modelExpectedHomeGoals").nullable()
     val modelExpectedAwayGoals = double("modelExpectedAwayGoals").nullable()
+    val calibratedExpectedHomeGoals = double("calibratedExpectedHomeGoals").nullable()
+    val calibratedExpectedAwayGoals = double("calibratedExpectedAwayGoals").nullable()
     val calibratedHomeWinProb = double("calibratedHomeWinProb").nullable()
     val calibratedDrawProb = double("calibratedDrawProb").nullable()
     val calibratedAwayWinProb = double("calibratedAwayWinProb").nullable()
@@ -199,6 +201,8 @@ class MatchRepository {
             it[modelAwayWinProb] = matchInfo.modelAwayWinProb
             it[modelExpectedHomeGoals] = matchInfo.modelExpectedHomeGoals
             it[modelExpectedAwayGoals] = matchInfo.modelExpectedAwayGoals
+            it[calibratedExpectedHomeGoals] = matchInfo.calibratedExpectedHomeGoals
+            it[calibratedExpectedAwayGoals] = matchInfo.calibratedExpectedAwayGoals
             it[calibratedHomeWinProb] = matchInfo.calibratedHomeWinProb
             it[calibratedDrawProb] = matchInfo.calibratedDrawProb
             it[calibratedAwayWinProb] = matchInfo.calibratedAwayWinProb
@@ -874,6 +878,8 @@ class MatchRepository {
             modelAwayWinProb = row[leagueTable.modelAwayWinProb],
             modelExpectedHomeGoals = row[leagueTable.modelExpectedHomeGoals],
             modelExpectedAwayGoals = row[leagueTable.modelExpectedAwayGoals],
+            calibratedExpectedHomeGoals = row[leagueTable.calibratedExpectedHomeGoals],
+            calibratedExpectedAwayGoals = row[leagueTable.calibratedExpectedAwayGoals],
             calibratedHomeWinProb = row[leagueTable.calibratedHomeWinProb],
             calibratedDrawProb = row[leagueTable.calibratedDrawProb],
             calibratedAwayWinProb = row[leagueTable.calibratedAwayWinProb],
