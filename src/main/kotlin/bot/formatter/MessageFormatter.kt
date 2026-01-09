@@ -134,10 +134,12 @@ ${calibrationLine.trimStart()}
             return matchInfo.predictedScore
         }
 
+        val homeGoals = matchInfo.modelExpectedHomeGoals
+        val awayGoals = matchInfo.modelExpectedAwayGoals
         val baseScore = when {
-            matchInfo.modelExpectedHomeGoals != null && matchInfo.modelExpectedAwayGoals != null -> {
-                val home = kotlin.math.round(matchInfo.modelExpectedHomeGoals).toInt()
-                val away = kotlin.math.round(matchInfo.modelExpectedAwayGoals).toInt()
+            homeGoals != null && awayGoals != null -> {
+                val home = kotlin.math.round(homeGoals).toInt()
+                val away = kotlin.math.round(awayGoals).toInt()
                 home to away
             }
 
