@@ -85,6 +85,102 @@ ${calibrationLine.trimStart()}
         }
     }
 
+    private fun parsePredictedScore(score: String?): Pair<Int, Int>? {
+        val parts = score?.split(":")?.map { it.trim() } ?: return null
+        if (parts.size != 2) return null
+        val home = parts[0].toIntOrNull() ?: return null
+        val away = parts[1].toIntOrNull() ?: return null
+        return home to away
+    }
+
+    private fun outcomeTypeFromPrediction(matchInfo: MatchInfo): OutcomeType? {
+        val score = parsePredictedScore(matchInfo.predictedScore)
+        if (score != null) {
+            val (home, away) = score
+            return when {
+                home > away -> OutcomeType.HomeWin
+                away > home -> OutcomeType.AwayWin
+                else -> OutcomeType.Draw
+            }
+        }
+
+        val predictedOutcome = matchInfo.predictedOutcome?.trim() ?: return null
+        val teams = matchInfo.teams.split(" vs. ")
+        val homeTeam = teams.getOrNull(0)?.trim()
+        val awayTeam = teams.getOrNull(1)?.trim()
+
+        return when {
+            predictedOutcome.equals("Draw", ignoreCase = true) -> OutcomeType.Draw
+            homeTeam != null && predictedOutcome.equals(homeTeam, ignoreCase = true) -> OutcomeType.HomeWin
+            awayTeam != null && predictedOutcome.equals(awayTeam, ignoreCase = true) -> OutcomeType.AwayWin
+            else -> null
+        }
+    }
+
+    private fun isPremiumSelection(matchInfo: MatchInfo): Boolean {
+        return outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }
+    }
+
+    private fun displayOutcomeType(matchInfo: MatchInfo): OutcomeType? {
+        return if (isPremiumSelection(matchInfo)) {
+            strategyOutcomeType(matchInfo) ?: outcomeTypeFromPrediction(matchInfo)
+        } else {
+            outcomeTypeFromPrediction(matchInfo)
+        }
+    }
+
+    private fun adjustedPredictedScore(matchInfo: MatchInfo, outcomeType: OutcomeType?): String? {
+        if (!isPremiumSelection(matchInfo) || outcomeType == null) {
+            return matchInfo.predictedScore
+        }
+
+        val baseScore = when {
+            matchInfo.modelExpectedHomeGoals != null && matchInfo.modelExpectedAwayGoals != null -> {
+                val home = kotlin.math.round(matchInfo.modelExpectedHomeGoals).toInt()
+                val away = kotlin.math.round(matchInfo.modelExpectedAwayGoals).toInt()
+                home to away
+            }
+
+            else -> parsePredictedScore(matchInfo.predictedScore)
+        }
+
+        if (baseScore == null) {
+            return matchInfo.predictedScore
+        }
+
+        var (home, away) = baseScore
+        val matchesOutcome = when (outcomeType) {
+            OutcomeType.HomeWin -> home > away
+            OutcomeType.Draw -> home == away
+            OutcomeType.AwayWin -> away > home
+        }
+        if (matchesOutcome && matchInfo.predictedScore != null) {
+            return matchInfo.predictedScore
+        }
+
+        when (outcomeType) {
+            OutcomeType.HomeWin -> {
+                if (home <= away) {
+                    if (away > 0) away -= 1 else home += 1
+                }
+            }
+
+            OutcomeType.Draw -> {
+                val maxGoals = maxOf(home, away)
+                home = maxGoals
+                away = maxGoals
+            }
+
+            OutcomeType.AwayWin -> {
+                if (away <= home) {
+                    if (home > 0) home -= 1 else away += 1
+                }
+            }
+        }
+
+        return "$home:$away"
+    }
+
     private fun strategyOutcomeType(matchInfo: MatchInfo): OutcomeType? {
         return StrategyService.getModelPreferredOutcome(matchInfo)
     }
@@ -199,10 +295,11 @@ Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
     // --- Direct messages ---
     fun formatDirectUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
-        val testData = formatTestData(matchInfo, includeCalibrated = false)
-        val outcomeType = strategyOutcomeType(matchInfo)
+        val testData = formatTestData(matchInfo, includeCalibrated = false).trimEnd()
+        val outcomeType = displayOutcomeType(matchInfo)
         val outcomeLabel = outcomeType?.let { resolveOutcomeLabel(matchInfo, it) } ?: matchInfo.predictedOutcome
-        val premiumHeader = if (outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }) {
+        val predictedScore = adjustedPredictedScore(matchInfo, outcomeType)
+        val premiumHeader = if (isPremiumSelection(matchInfo)) {
             "$PREMIUM_HEADER\n"
         } else {
             ""
@@ -213,7 +310,7 @@ Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 ${premiumHeader}${matchInfo.datetime} $timezone (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: $outcomeLabel
-Predicted score: ${matchInfo.predictedScore}$currentLine
+Predicted score: ${predictedScore}$currentLine
 Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 $testData
 $analysis""".trimIndent()
@@ -221,12 +318,13 @@ $analysis""".trimIndent()
 
     fun formatDirectCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
-        val testData = formatTestData(matchInfo, includeCalibrated = false)
-        val outcomeType = strategyOutcomeType(matchInfo)
+        val testData = formatTestData(matchInfo, includeCalibrated = false).trimEnd()
+        val outcomeType = displayOutcomeType(matchInfo)
         val outcomeLabel = outcomeType?.let { resolveOutcomeLabel(matchInfo, it) } ?: matchInfo.predictedOutcome
+        val predictedScore = adjustedPredictedScore(matchInfo, outcomeType)
         val isPredictionCorrect = outcomeLabel?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
-        val premiumHeader = if (outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }) {
+        val premiumHeader = if (isPremiumSelection(matchInfo)) {
             "$PREMIUM_HEADER\n"
         } else {
             ""
@@ -235,7 +333,7 @@ $analysis""".trimIndent()
 ${premiumHeader}${matchInfo.datetime} $timezone
 ${matchInfo.teams}
 Predicted outcome: $outcomeLabel$emoji
-Predicted score: ${matchInfo.predictedScore}
+Predicted score: ${predictedScore}
 Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
 Actual: ${matchInfo.actualOutcome} ${matchInfo.actualScore}
 $testData
@@ -243,7 +341,7 @@ $analysis""".trimIndent()
     }
 
     private fun buildPredictionAnalysis(matchInfo: MatchInfo, league: LeagueConfig?): String {
-        val outcomeType = strategyOutcomeType(matchInfo)
+        val outcomeType = displayOutcomeType(matchInfo)
         val outcomeLabel = outcomeType?.let { resolveOutcomeLabel(matchInfo, it) } ?: matchInfo.predictedOutcome ?: "Unknown"
         if (outcomeType == OutcomeType.HomeWin) {
             return """
