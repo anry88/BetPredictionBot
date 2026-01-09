@@ -5,7 +5,7 @@ Components under `bot/` help `FootballBot` format messages and handle commands.
 ## Files
 - `commands/GeneralCommands.kt` — public commands (/start, /help, subscriptions, match queries, timezone setup, etc.).
 - `commands/AdminCommands.kt` — administrative commands: DB export, user stats, refund management, match/model refresh triggers.
-- `formatter/MessageFormatter.kt` — builds text for matches, stats, and notifications (including premium/strategy messages).
+- `formatter/MessageFormatter.kt` — builds text for matches, stats, and notifications, aligning premium outcomes with strategy selection and adjusting predicted scores using expected goals when available.
 - `invites/InviteHandler.kt` — invite link workflows for channels/bot, limit checks, creation/cleanup, and validation of requested links.
 
 ## How to extend
