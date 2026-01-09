@@ -7,7 +7,7 @@ Telegram bot for football predictions. It aggregates match data, prepares recomm
 - **Bot**: `FootballBot` handles Telegram updates, commands, and payments while orchestrating broadcasts and data refreshes.
 - **Services**: the `service/` layer encapsulates network calls, database updates, model integrations, and payment flows.
 - **Persistence**: `repository/` manages SQLite tables via Exposed along with domain models and subscription state.
-- **Scheduler**: `Main.kt` boots the bot, exposes Prometheus metrics, and registers recurring Quartz jobs for match updates, accuracy messages, premium summaries, and cleanup tasks.
+- **Scheduler**: `Main.kt` boots the bot, exposes Prometheus metrics, and registers recurring Quartz jobs for match updates, accuracy messages, premium summaries, model data uploads, and cleanup tasks.
 - **Formatters/commands**: `bot/` provides command handlers, message formatting, and invite management.
 
 ## File map
@@ -25,7 +25,8 @@ Telegram bot for football predictions. It aggregates match data, prepares recomm
 1. The scheduler (`Main.kt`) calls `HttpAPIFootballService` to load upcoming/past matches and refresh odds/statuses.
 2. Results and statistics are persisted via `DatabaseService` repositories.
 3. `FootballBot` reacts to commands or schedules to select matches/strategies through `StrategyService`, formats messages with `MessageFormatter`, and sends them through the Telegram API.
-4. Prometheus metrics are exposed from `Metrics` and updated after user/message operations.
+4. `UploadModelDataJob` triggers `ModelDataUploader` to aggregate model outputs and ship them on the configured cron cadence.
+5. Prometheus metrics are exposed from `Metrics` and updated after user/message operations.
 
 ## Running and checks
 - **Configuration**: create `config.properties` with the keys used in `Config` (bot token, chat ids, API keys, etc.).
