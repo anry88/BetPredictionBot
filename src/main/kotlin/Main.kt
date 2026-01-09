@@ -302,10 +302,10 @@ fun main() {
         .usingJobData(jobDataMap)
         .build()
 
-    // CRON: запускаем каждую неделю по понедельникам в 01:00
+    // CRON: запускаем каждую неделю по понедельникам, средам, пятницам в 03:00
     val uploadModelDataTrigger = TriggerBuilder.newTrigger()
         .withIdentity("uploadModelDataTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 1, 0))
+        .withSchedule(CronScheduleBuilder.cronSchedule("0 0 3 ? * MON,WED,FRI"))
         .build()
 
     // Настройка задачи очистки истекших пригласительных ссылок
@@ -363,7 +363,7 @@ fun main() {
     logger.info("Scheduled SendDailyPremiumSummaryJob to run daily at 08:45")
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
-    logger.info("Executed UploadModelDataJob every monday at 1:00")
+    logger.info("Executed UploadModelDataJob every Monday, Wednesday, Friday at 03:00")
     logger.info("Scheduled InviteLinkCleanupJob to run every hour")
     logger.info("Scheduled CommandUsageCleanupJob to run on the 1st of every month")
 }

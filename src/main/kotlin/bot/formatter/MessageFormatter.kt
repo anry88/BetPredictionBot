@@ -37,25 +37,29 @@ object MessageFormatter {
         }
     }
 
-    private fun formatTestData(matchInfo: MatchInfo): String {
+    private fun formatTestData(matchInfo: MatchInfo, includeCalibrated: Boolean): String {
         val homeProb = matchInfo.modelHomeWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
         val drawProb = matchInfo.modelDrawProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
         val awayProb = matchInfo.modelAwayWinProb?.times(100)?.let { "%.2f%%".format(it) } ?: "0%"
 
-        val calibratedHomeProb = matchInfo.calibratedHomeWinProb?.times(100)?.let { "%.2f%%".format(it) }
-        val calibratedDrawProb = matchInfo.calibratedDrawProb?.times(100)?.let { "%.2f%%".format(it) }
-        val calibratedAwayProb = matchInfo.calibratedAwayWinProb?.times(100)?.let { "%.2f%%".format(it) }
-        val calibrationLine = if (calibratedHomeProb != null && calibratedDrawProb != null && calibratedAwayProb != null) {
-            val applied = matchInfo.calibrationApplied ?: false
-            "\nCalibrated: $calibratedHomeProb - $calibratedDrawProb - $calibratedAwayProb (applied: $applied)"
+        val calibrationLine = if (includeCalibrated) {
+            val calibratedHomeProb = matchInfo.calibratedHomeWinProb?.times(100)?.let { "%.2f%%".format(it) }
+            val calibratedDrawProb = matchInfo.calibratedDrawProb?.times(100)?.let { "%.2f%%".format(it) }
+            val calibratedAwayProb = matchInfo.calibratedAwayWinProb?.times(100)?.let { "%.2f%%".format(it) }
+            if (calibratedHomeProb != null && calibratedDrawProb != null && calibratedAwayProb != null) {
+                val applied = matchInfo.calibrationApplied ?: false
+                "\nCalibrated: $calibratedHomeProb - $calibratedDrawProb - $calibratedAwayProb (applied: $applied)"
+            } else ""
         } else ""
 
         val homeXg = matchInfo.modelExpectedHomeGoals?.let { "%.2f".format(it) } ?: "0"
         val awayXg = matchInfo.modelExpectedAwayGoals?.let { "%.2f".format(it) } ?: "0"
-        val calibratedHomeXg = matchInfo.calibratedExpectedHomeGoals?.let { "%.2f".format(it) }
-        val calibratedAwayXg = matchInfo.calibratedExpectedAwayGoals?.let { "%.2f".format(it) }
-        val calibratedXgLine = if (calibratedHomeXg != null && calibratedAwayXg != null) {
-            "\nCalibrated Expected Goals: $calibratedHomeXg : $calibratedAwayXg"
+        val calibratedXgLine = if (includeCalibrated) {
+            val calibratedHomeXg = matchInfo.calibratedExpectedHomeGoals?.let { "%.2f".format(it) }
+            val calibratedAwayXg = matchInfo.calibratedExpectedAwayGoals?.let { "%.2f".format(it) }
+            if (calibratedHomeXg != null && calibratedAwayXg != null) {
+                "\nCalibrated Expected Goals: $calibratedHomeXg : $calibratedAwayXg"
+            } else ""
         } else ""
 
         val homeOdds = matchInfo.homeWinOdds ?: "0"
@@ -95,7 +99,7 @@ ${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
 $tags""".trimIndent()
         } else {
-            val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+            val testData = if (includeTestData) "\n${formatTestData(matchInfo, includeCalibrated = true)}" else ""
             """${matchInfo.datetime} UTC (${timeLeft})
 ${matchInfo.teams}
 Predicted outcome: ${matchInfo.predictedOutcome}
@@ -105,7 +109,7 @@ $tags""".trimIndent()
     }
 
     fun formatMainLiveMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
-        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+        val testData = if (includeTestData) "\n${formatTestData(matchInfo, includeCalibrated = true)}" else ""
         return """
 ${matchInfo.datetime} UTC
 ${matchInfo.teams}
@@ -118,7 +122,7 @@ $tags #Live""".trimIndent()
     fun formatMainCompletedMatch(matchInfo: MatchInfo, tags: String, includeTestData: Boolean): String {
         val isPredictionCorrect = matchInfo.predictedOutcome?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
         val emoji = if (isPredictionCorrect) "✅" else "❌"
-        val testData = if (includeTestData) "\n${formatTestData(matchInfo)}" else ""
+        val testData = if (includeTestData) "\n${formatTestData(matchInfo, includeCalibrated = true)}" else ""
         val isPremium = outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }
         return if (isPremium) {
             """$PREMIUM_HEADER
@@ -195,7 +199,7 @@ Odds for outcome: ${matchInfo.odds} (${matchInfo.bookmakerName ?: "Default"})
     // --- Direct messages ---
     fun formatDirectUpcomingMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
-        val testData = formatTestData(matchInfo)
+        val testData = formatTestData(matchInfo, includeCalibrated = false)
         val outcomeType = strategyOutcomeType(matchInfo)
         val outcomeLabel = outcomeType?.let { resolveOutcomeLabel(matchInfo, it) } ?: matchInfo.predictedOutcome
         val premiumHeader = if (outcomeStrategyConfigs.any { StrategyService.isMatchFitsStrategy(matchInfo, it) }) {
@@ -217,7 +221,7 @@ $analysis""".trimIndent()
 
     fun formatDirectCompletedMatch(matchInfo: MatchInfo, league: LeagueConfig?, timezone: String = "UTC"): String {
         val analysis = buildPredictionAnalysis(matchInfo, league)
-        val testData = formatTestData(matchInfo)
+        val testData = formatTestData(matchInfo, includeCalibrated = false)
         val outcomeType = strategyOutcomeType(matchInfo)
         val outcomeLabel = outcomeType?.let { resolveOutcomeLabel(matchInfo, it) } ?: matchInfo.predictedOutcome
         val isPredictionCorrect = outcomeLabel?.equals(matchInfo.actualOutcome, ignoreCase = true) == true
@@ -240,14 +244,28 @@ $analysis""".trimIndent()
 
     private fun buildPredictionAnalysis(matchInfo: MatchInfo, league: LeagueConfig?): String {
         val outcomeType = strategyOutcomeType(matchInfo)
+        val outcomeLabel = outcomeType?.let { resolveOutcomeLabel(matchInfo, it) } ?: matchInfo.predictedOutcome ?: "Unknown"
+        if (outcomeType == OutcomeType.HomeWin) {
+            return """
+            Prediction Analysis:
+            - Outcome: $outcomeLabel ❌ (home win is not eligible for premium selection)
+        """.trimIndent()
+        }
+        if (outcomeType == null) {
+            return """
+            Prediction Analysis:
+            - Outcome: $outcomeLabel ❌ (unable to evaluate premium selection)
+        """.trimIndent()
+        }
         val config = outcomeStrategyConfigs.firstOrNull { it.outcomeType == outcomeType }
-        val probability = outcomeType?.let { StrategyService.getOutcomeProbability(matchInfo, it) } ?: 0.0
-        val odds = outcomeType?.let { StrategyService.getOutcomeOdds(matchInfo, it) } ?: 0.0
+        val probability = StrategyService.getOutcomeProbability(matchInfo, outcomeType) ?: 0.0
+        val odds = StrategyService.getOutcomeOdds(matchInfo, outcomeType) ?: 0.0
 
         val leagueCheck = if (league?.premiumSelection == true) "✅" else "❌"
         val dataEnough = (matchInfo.homeMatchesLastYear ?: 0) > 5 && (matchInfo.awayMatchesLastYear ?: 0) > 5
         val dataCheck = if (dataEnough) "✅" else "❌"
 
+        val outcomeLine = "- Outcome: $outcomeLabel ✅"
         val probabilityLine = when {
             probability == 0.0 -> "- Probability ❌ no data available"
             config == null -> "- Probability ✅ model-based"
@@ -276,6 +294,7 @@ $analysis""".trimIndent()
 
         return """
             Prediction Analysis:
+            $outcomeLine
             $probabilityLine
             - League predictable $leagueCheck
             - Odds within range $oddsCheck
