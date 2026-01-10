@@ -330,19 +330,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
             val fixtureInfo = getFixtureInfo(match.fixtureId)
             if (fixtureInfo?.statusShort == "PST") {
-                val oldDt = LocalDateTime.parse(match.datetime, dateTimeFormatter)
-                val newDt = LocalDateTime.parse(fixtureInfo.datetime, dateTimeFormatter)
-                val diff = kotlin.math.abs(java.time.Duration.between(oldDt, newDt).toDays())
-                if (diff <= 2) {
-                    if (match.datetime != fixtureInfo.datetime) {
-                        val updatedMatch = match.copy(datetime = fixtureInfo.datetime)
-                        DatabaseService.matches.updateMatchDatetime(updatedMatch)
-                        trackUpdatedMatch(updatedMatch)
-                    }
-                } else {
-                    DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
-                    trackRemovedMatch(match)
-                }
+                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                trackRemovedMatch(match)
             } else if (fixtureInfo?.statusShort == "CANC") {
                 DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
                 trackRemovedMatch(match)
