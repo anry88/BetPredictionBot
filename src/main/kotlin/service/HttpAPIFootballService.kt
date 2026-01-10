@@ -429,12 +429,18 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 }
 
                 val statusShort = match.fixture.status?.short
-                val elapsed = match.fixture.status?.elapsed ?: 0
+                val elapsed = match.fixture.status?.elapsed
 
-                val actualScore = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN"){
-                    "$homeGoals:$awayGoals"
-                } else {
-                    "${match.goals?.home ?: 0}:${match.goals?.away ?: 0}"
+                val actualScore = when {
+                    statusShort == "FT" || statusShort == "AET" || statusShort == "PEN" -> {
+                        "$homeGoals:$awayGoals"
+                    }
+                    statusShort == "PST" || statusShort == "CANC" -> null
+                    else -> {
+                        val liveHome = match.goals?.home
+                        val liveAway = match.goals?.away
+                        if (liveHome == null || liveAway == null) null else "$liveHome:$liveAway"
+                    }
                 }
                 val actualOutcome = if (statusShort == "FT" || statusShort == "AET" || statusShort == "PEN") {
                     winner
@@ -454,7 +460,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 return existingMatchInfo.copy(
                     actualScore = actualScore,
                     actualOutcome = actualOutcome,
-                    elapsed = elapsed,
+                    elapsed = if (statusShort == "PST" || statusShort == "CANC") null else elapsed,
                     datetime = datetime
                 )
             } else {
