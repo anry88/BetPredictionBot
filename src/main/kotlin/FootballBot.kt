@@ -1909,8 +1909,49 @@ Available actions:
         val upcomingMatches = DatabaseService.matches.getUpcomingMatchesWithMessageId()
         val updatedByMessageId = mutableMapOf<String, MutableList<MatchInfo>>()
         val updatedByStrategyId = mutableMapOf<String, MutableList<MatchInfo>>()
+        val removedMainMessages = mutableSetOf<Pair<String, String>>()
+        val removedStrategyMessages = mutableSetOf<Pair<String, String>>()
+
+        fun trackRemovedMessage(match: MatchInfo) {
+            match.telegramMessageId?.let { id ->
+                removedMainMessages.add(match.matchType to id)
+            }
+            match.strategyTelegramMessageId?.let { id ->
+                removedStrategyMessages.add(match.matchType to id)
+            }
+        }
+
+        fun handlePostponedMatch(match: MatchInfo, newDatetime: String): Boolean {
+            val oldDt = LocalDateTime.parse(match.datetime, dateTimeFormatter)
+            val updatedDt = LocalDateTime.parse(newDatetime, dateTimeFormatter)
+            val diff = kotlin.math.abs(java.time.Duration.between(oldDt, updatedDt).toDays())
+            return if (diff <= 2) {
+                if (match.datetime != newDatetime) {
+                    val updatedMatch = match.copy(datetime = newDatetime)
+                    DatabaseService.matches.updateMatchDatetime(updatedMatch)
+                    updatedMatch.telegramMessageId?.let { id ->
+                        updatedByMessageId.getOrPut(id) { mutableListOf() }.add(updatedMatch)
+                    }
+                    updatedMatch.strategyTelegramMessageId?.let { id ->
+                        updatedByStrategyId.getOrPut(id) { mutableListOf() }.add(updatedMatch)
+                    }
+                }
+                false
+            } else {
+                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                trackRemovedMessage(match)
+                true
+            }
+        }
 
         for (match in ongoingMatches) {
+            val fixtureInfo = footballService.getFixtureInfo(match.fixtureId)
+            if (fixtureInfo?.statusShort == "PST") {
+                handlePostponedMatch(match, fixtureInfo.datetime)
+                delay(1000)
+                continue
+            }
+
             val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null) {
                 DatabaseService.matches.updateMatchResult(updatedMatchInfo)
@@ -1932,6 +1973,13 @@ Available actions:
         }
 
         for (match in upcomingMatches) {
+            val fixtureInfo = footballService.getFixtureInfo(match.fixtureId)
+            if (fixtureInfo?.statusShort == "PST") {
+                handlePostponedMatch(match, fixtureInfo.datetime)
+                delay(1000)
+                continue
+            }
+
             match.telegramMessageId?.let { id ->
                 updatedByMessageId.getOrPut(id) { mutableListOf() }.add(match)
             }
@@ -1939,6 +1987,7 @@ Available actions:
             match.strategyTelegramMessageId?.let { id ->
                 updatedByStrategyId.getOrPut(id) { mutableListOf() }.add(match)
             }
+            delay(1000)
         }
 
         for ((messageId, list) in updatedByMessageId) {
@@ -1962,6 +2011,72 @@ Available actions:
             val messageText = formatPremiumMatchesBatchForUpdate(matches)
             updateMessage(strategyChannelId, messageId, messageText, null)
             delay(10000)
+        }
+
+        for ((league, msgId) in removedMainMessages) {
+            val remaining = DatabaseService.matches.getMatchesByLeagueAndTelegramMessageId(league, msgId)
+            if (remaining.isEmpty()) {
+                deleteMatchMessages(
+                    MatchInfo(
+                        fixtureId = "",
+                        datetime = "",
+                        matchType = league,
+                        teams = "",
+                        predictedOutcome = null,
+                        actualOutcome = null,
+                        predictedScore = null,
+                        actualScore = null,
+                        odds = null,
+                        bookmakerName = null,
+                        homeWinOdds = null,
+                        drawOdds = null,
+                        awayWinOdds = null,
+                        telegramMessageId = msgId,
+                        strategyTelegramMessageId = null,
+                        elapsed = null,
+                        modelHomeWinProb = null,
+                        modelDrawProb = null,
+                        modelAwayWinProb = null,
+                        modelExpectedHomeGoals = null,
+                        modelExpectedAwayGoals = null
+                    )
+                )
+            } else {
+                updateMatchMessages(remaining.first())
+            }
+        }
+
+        for ((league, msgId) in removedStrategyMessages) {
+            val remaining = DatabaseService.matches.getMatchesByLeagueAndStrategyMessageId(league, msgId)
+            if (remaining.isEmpty()) {
+                deleteMatchMessages(
+                    MatchInfo(
+                        fixtureId = "",
+                        datetime = "",
+                        matchType = league,
+                        teams = "",
+                        predictedOutcome = null,
+                        actualOutcome = null,
+                        predictedScore = null,
+                        actualScore = null,
+                        odds = null,
+                        bookmakerName = null,
+                        homeWinOdds = null,
+                        drawOdds = null,
+                        awayWinOdds = null,
+                        telegramMessageId = null,
+                        strategyTelegramMessageId = msgId,
+                        elapsed = null,
+                        modelHomeWinProb = null,
+                        modelDrawProb = null,
+                        modelAwayWinProb = null,
+                        modelExpectedHomeGoals = null,
+                        modelExpectedAwayGoals = null
+                    )
+                )
+            } else {
+                updateMatchMessages(remaining.first())
+            }
         }
     }
 
