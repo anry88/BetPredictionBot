@@ -1811,17 +1811,9 @@ Available actions:
                                 continue
                             }
                             "PST" -> {
-                                val oldDt = LocalDateTime.parse(match.datetime, dateTimeFormatter)
-                                val newDt = LocalDateTime.parse(info.datetime, dateTimeFormatter)
-                                val diff = kotlin.math.abs(java.time.Duration.between(oldDt, newDt).toDays())
-                                if (diff <= 2) {
-                                    match.datetime = info.datetime
-                                    DatabaseService.matches.updateMatchDatetime(match)
-                                } else {
-                                    DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
-                                    iterator.remove()
-                                    continue
-                                }
+                                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                                iterator.remove()
+                                continue
                             }
                         }
 
@@ -1921,33 +1913,16 @@ Available actions:
             }
         }
 
-        fun handlePostponedMatch(match: MatchInfo, newDatetime: String): Boolean {
-            val oldDt = LocalDateTime.parse(match.datetime, dateTimeFormatter)
-            val updatedDt = LocalDateTime.parse(newDatetime, dateTimeFormatter)
-            val diff = kotlin.math.abs(java.time.Duration.between(oldDt, updatedDt).toDays())
-            return if (diff <= 2) {
-                if (match.datetime != newDatetime) {
-                    val updatedMatch = match.copy(datetime = newDatetime)
-                    DatabaseService.matches.updateMatchDatetime(updatedMatch)
-                    updatedMatch.telegramMessageId?.let { id ->
-                        updatedByMessageId.getOrPut(id) { mutableListOf() }.add(updatedMatch)
-                    }
-                    updatedMatch.strategyTelegramMessageId?.let { id ->
-                        updatedByStrategyId.getOrPut(id) { mutableListOf() }.add(updatedMatch)
-                    }
-                }
-                false
-            } else {
-                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
-                trackRemovedMessage(match)
-                true
-            }
+        fun handlePostponedMatch(match: MatchInfo): Boolean {
+            DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+            trackRemovedMessage(match)
+            return true
         }
 
         for (match in ongoingMatches) {
             val fixtureInfo = footballService.getFixtureInfo(match.fixtureId)
             if (fixtureInfo?.statusShort == "PST") {
-                handlePostponedMatch(match, fixtureInfo.datetime)
+                handlePostponedMatch(match)
                 delay(1000)
                 continue
             }
@@ -1975,7 +1950,7 @@ Available actions:
         for (match in upcomingMatches) {
             val fixtureInfo = footballService.getFixtureInfo(match.fixtureId)
             if (fixtureInfo?.statusShort == "PST") {
-                handlePostponedMatch(match, fixtureInfo.datetime)
+                handlePostponedMatch(match)
                 delay(1000)
                 continue
             }
