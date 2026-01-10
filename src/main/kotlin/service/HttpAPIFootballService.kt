@@ -298,16 +298,53 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val oneDayAgo = currentDate.minusDays(1)
 
         val messagesToUpdate = mutableMapOf<Pair<String?, String?>, MatchInfo>()
+        val messagesMap = mutableSetOf<Pair<String, String>>()
+        val strategyMap = mutableSetOf<Pair<String, String>>()
+
+        fun trackRemovedMatch(matchInfo: MatchInfo) {
+            matchInfo.telegramMessageId?.let { id ->
+                messagesMap.add(matchInfo.matchType to id)
+            }
+            matchInfo.strategyTelegramMessageId?.let { id ->
+                strategyMap.add(matchInfo.matchType to id)
+            }
+        }
+
+        fun trackUpdatedMatch(matchInfo: MatchInfo) {
+            val key = matchInfo.telegramMessageId to matchInfo.strategyTelegramMessageId
+            if (key.first != null || key.second != null) {
+                messagesToUpdate.putIfAbsent(key, matchInfo)
+            }
+        }
 
         val matches = DatabaseService.matches.getMatchesFromLastDaysWithoutResult(2)
         for (match in matches) {
             val updatedMatchInfo = getLiveMatchInfo(match.fixtureId)
             if (updatedMatchInfo != null && updatedMatchInfo.actualOutcome != null) {
                 DatabaseService.matches.updateMatchResult(updatedMatchInfo)
-                val key = updatedMatchInfo.telegramMessageId to updatedMatchInfo.strategyTelegramMessageId
-                if (key.first != null || key.second != null) {
-                    messagesToUpdate.putIfAbsent(key, updatedMatchInfo)
+                trackUpdatedMatch(updatedMatchInfo)
+                delay(1000)
+                continue
+            }
+
+            val fixtureInfo = getFixtureInfo(match.fixtureId)
+            if (fixtureInfo?.statusShort == "PST") {
+                val oldDt = LocalDateTime.parse(match.datetime, dateTimeFormatter)
+                val newDt = LocalDateTime.parse(fixtureInfo.datetime, dateTimeFormatter)
+                val diff = kotlin.math.abs(java.time.Duration.between(oldDt, newDt).toDays())
+                if (diff <= 2) {
+                    if (match.datetime != fixtureInfo.datetime) {
+                        val updatedMatch = match.copy(datetime = fixtureInfo.datetime)
+                        DatabaseService.matches.updateMatchDatetime(updatedMatch)
+                        trackUpdatedMatch(updatedMatch)
+                    }
+                } else {
+                    DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                    trackRemovedMatch(match)
                 }
+            } else if (fixtureInfo?.statusShort == "CANC") {
+                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
+                trackRemovedMatch(match)
             }
             delay(1000)
         }
@@ -319,18 +356,10 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         // Delete matches older than one day with no actual result
         val matchesToDelete = DatabaseService.matches.getMatchesOlderThanOneDayWithoutResult(oneDayAgo)
-        val messagesMap = mutableSetOf<Pair<String, String>>()
-        val strategyMap = mutableSetOf<Pair<String, String>>()
 
         matchesToDelete.forEach { matchInfo ->
             DatabaseService.matches.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
-
-            matchInfo.telegramMessageId?.let { id ->
-                messagesMap.add(matchInfo.matchType to id)
-            }
-            matchInfo.strategyTelegramMessageId?.let { id ->
-                strategyMap.add(matchInfo.matchType to id)
-            }
+            trackRemovedMatch(matchInfo)
         }
 
         for ((league, msgId) in messagesMap) {
