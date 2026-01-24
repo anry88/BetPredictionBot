@@ -2473,17 +2473,7 @@ Available actions:
     }
 
     private fun enrichWithLiveData(matches: List<MatchInfo>): List<MatchInfo> {
-        val now = LocalDateTime.now(ZoneOffset.UTC)
-        return matches.map { match ->
-            val matchTime = LocalDateTime.parse(match.datetime, dateTimeFormatter)
-            if (matchTime.isBefore(now)) {
-                runCatching {
-                    runBlocking { footballService.getLiveMatchInfo(match.fixtureId) }
-                }.getOrNull() ?: match
-            } else {
-                match
-            }
-        }
+        return matches
     }
 
     private fun sendUpcomingMatches(chatId: String, userId: String) {
