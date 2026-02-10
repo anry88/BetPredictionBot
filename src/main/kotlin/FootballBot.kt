@@ -1913,21 +1913,21 @@ Available actions:
             }
         }
 
-        fun handlePostponedMatch(match: MatchInfo): Boolean {
+        fun handleUnavailableFixture(match: MatchInfo): Boolean {
             DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
             trackRemovedMessage(match)
             return true
         }
 
         for (match in ongoingMatches) {
-            val fixtureInfo = footballService.getFixtureInfo(match.fixtureId)
-            if (fixtureInfo?.statusShort == "PST") {
-                handlePostponedMatch(match)
+            val liveResult = footballService.getLiveMatchInfoWithStatus(match.fixtureId)
+            if (liveResult?.statusShort == "PST" || liveResult?.statusShort == "CANC") {
+                handleUnavailableFixture(match)
                 delay(1000)
                 continue
             }
 
-            val updatedMatchInfo = footballService.getLiveMatchInfo(match.fixtureId)
+            val updatedMatchInfo = liveResult?.matchInfo
             if (updatedMatchInfo != null) {
                 DatabaseService.matches.updateMatchResult(updatedMatchInfo)
 
@@ -1948,13 +1948,6 @@ Available actions:
         }
 
         for (match in upcomingMatches) {
-            val fixtureInfo = footballService.getFixtureInfo(match.fixtureId)
-            if (fixtureInfo?.statusShort == "PST") {
-                handlePostponedMatch(match)
-                delay(1000)
-                continue
-            }
-
             match.telegramMessageId?.let { id ->
                 updatedByMessageId.getOrPut(id) { mutableListOf() }.add(match)
             }
@@ -1962,7 +1955,6 @@ Available actions:
             match.strategyTelegramMessageId?.let { id ->
                 updatedByStrategyId.getOrPut(id) { mutableListOf() }.add(match)
             }
-            delay(1000)
         }
 
         for ((messageId, list) in updatedByMessageId) {

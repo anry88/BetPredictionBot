@@ -65,6 +65,11 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
         val awayTeam: String
     )
 
+    data class LiveMatchInfoResult(
+        val matchInfo: MatchInfo,
+        val statusShort: String?
+    )
+
     // Загружаем конфигурацию лиг из файла
     private val leaguesConfig: List<LeagueConfig> = loadLeaguesConfig()
 
@@ -320,19 +325,18 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         val matches = DatabaseService.matches.getMatchesFromLastDaysWithoutResult(2)
         for (match in matches) {
-            val updatedMatchInfo = getLiveMatchInfo(match.fixtureId)
-            if (updatedMatchInfo != null && updatedMatchInfo.actualOutcome != null) {
-                DatabaseService.matches.updateMatchResult(updatedMatchInfo)
-                trackUpdatedMatch(updatedMatchInfo)
+            val liveResult = getLiveMatchInfoWithStatus(match.fixtureId)
+            if (liveResult != null && liveResult.matchInfo.actualOutcome != null) {
+                DatabaseService.matches.updateMatchResult(liveResult.matchInfo)
+                trackUpdatedMatch(liveResult.matchInfo)
                 delay(1000)
                 continue
             }
 
-            val fixtureInfo = getFixtureInfo(match.fixtureId)
-            if (fixtureInfo?.statusShort == "PST") {
+            if (liveResult?.statusShort == "PST") {
                 DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
                 trackRemovedMatch(match)
-            } else if (fixtureInfo?.statusShort == "CANC") {
+            } else if (liveResult?.statusShort == "CANC") {
                 DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
                 trackRemovedMatch(match)
             }
@@ -414,7 +418,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     }
 
 
-    suspend fun getLiveMatchInfo(fixtureId: String): MatchInfo? {
+    suspend fun getLiveMatchInfoWithStatus(fixtureId: String): LiveMatchInfoResult? {
         // Сначала получаем текущую информацию о матче из базы данных
         val existingMatchInfo = DatabaseService.matches.getMatchInfoByFixtureId(fixtureId)
         if (existingMatchInfo == null) {
@@ -476,11 +480,14 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val datetime = parsedDateTime.format(formatterMatchDate) // Форматируем дату и время
 
                 // Возвращаем обновлённый объект
-                return existingMatchInfo.copy(
-                    actualScore = actualScore,
-                    actualOutcome = actualOutcome,
-                    elapsed = if (statusShort == "PST" || statusShort == "CANC") null else elapsed,
-                    datetime = datetime
+                return LiveMatchInfoResult(
+                    matchInfo = existingMatchInfo.copy(
+                        actualScore = actualScore,
+                        actualOutcome = actualOutcome,
+                        elapsed = if (statusShort == "PST" || statusShort == "CANC") null else elapsed,
+                        datetime = datetime
+                    ),
+                    statusShort = statusShort
                 )
             } else {
                 logger.warn("No match data found for fixtureId $fixtureId")
@@ -490,6 +497,10 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             logger.error("Failed to fetch live match info for fixtureId $fixtureId. HTTP status: ${response.status}")
             return null
         }
+    }
+
+    suspend fun getLiveMatchInfo(fixtureId: String): MatchInfo? {
+        return getLiveMatchInfoWithStatus(fixtureId)?.matchInfo
     }
 
     suspend fun getOddsForFixture(
