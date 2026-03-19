@@ -1,6 +1,4 @@
-# BetPredictionBot Case Study
-
-## Overview
+# BetPredictionBot Product Overview
 
 `BetPredictionBot` is a production-style Telegram bot for football predictions. It combines external sports data, a local prediction model, ChatGPT fallback logic, premium access flows, scheduled background jobs, and operational metrics in one Kotlin codebase.
 

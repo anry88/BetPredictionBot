@@ -5,7 +5,7 @@ AI-oriented repository guide for coding assistants and code-review tools.
 ## Documentation split
 
 - `README.md` is the human-facing project overview for clients, recruiters, and freelance marketplaces.
-- `docs/case-study.md` is the human-facing case study.
+- `docs/product-overview.md` is the human-facing product overview.
 - `docs/ai-side.md` is the deeper prediction-pipeline note.
 - `src/main/kotlin/**/README.md` and `src/main/kotlin/**/FUNCTIONS.md` are AI-reference files for code navigation.
 

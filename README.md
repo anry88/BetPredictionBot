@@ -17,7 +17,7 @@ AI-powered Telegram bot for football predictions with a local model, ChatGPT fal
 
 ![Telegram bot preview](docs/assets/telegram-chat-preview.svg)
 
-Human-facing docs live in this file and in [docs/case-study.md](docs/case-study.md). AI-oriented repository context lives in [AGENTS.md](AGENTS.md) and the markdown files under `src/main/kotlin/**`.
+Human-facing docs live in this file and in [docs/product-overview.md](docs/product-overview.md). AI-oriented repository context lives in [AGENTS.md](AGENTS.md) and the markdown files under `src/main/kotlin/**`.
 
 `BetPredictionBot` was built as a working product first. This repository is now structured to be easier to review, but the bot itself already includes the real delivery, payment, scheduling, evaluation, and monitoring flows used by the project.
 
