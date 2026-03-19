@@ -15,7 +15,7 @@ AI-powered Telegram bot for football predictions with a local model, ChatGPT fal
 **Stack**
 `Kotlin` `Telegram Bots API` `API-Football` `OpenAI` `local model API` `Quartz` `SQLite` `Exposed` `Prometheus` `Gradle`
 
-![Telegram bot preview](docs/assets/telegram-chat-preview.svg)
+![Telegram bot preview](docs/assets/telegram-chat-preview.png)
 
 Human-facing docs live in this file and in [docs/product-overview.md](docs/product-overview.md). AI-oriented repository context lives in [AGENTS.md](AGENTS.md) and the markdown files under `src/main/kotlin/**`.
 
@@ -92,23 +92,23 @@ The repository already demonstrates backend automation rather than manual operat
 
 ## Demo / screenshots
 
-The repository currently includes lightweight SVG preview assets so the README looks complete immediately. For marketplace promotion, replace them with live Telegram and Prometheus captures from your running bot.
+The repository includes real cropped screenshots from the bot flows and reporting messages so the feature set is visible directly from the README.
 
 ### Telegram bot
 
-![Telegram chat preview](docs/assets/telegram-chat-preview.svg)
+![Telegram chat preview](docs/assets/telegram-chat-preview.png)
 
 ### Prediction example
 
-![Prediction example](docs/assets/prediction-example.svg)
+![Prediction example](docs/assets/prediction-example.png)
 
 ### Premium / paid flow
 
-![Premium flow preview](docs/assets/premium-flow.svg)
+![Premium flow preview](docs/assets/premium-flow.png)
 
 ### Metrics / accuracy preview
 
-![Metrics preview](docs/assets/metrics-preview.svg)
+![Metrics preview](docs/assets/metrics-preview.png)
 
 ## Setup
 
