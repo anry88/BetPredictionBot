@@ -1,4 +1,6 @@
-# DTOs and configurations
+# AI Reference: DTOs and configurations
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 This directory contains transport models used for data exchange between layers and during API serialization/deserialization.
 

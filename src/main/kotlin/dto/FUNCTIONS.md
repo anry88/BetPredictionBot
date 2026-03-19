@@ -1,4 +1,6 @@
-# Data Model Notes (DTOs)
+# AI Reference: Data model notes
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 These files are data-only; they define the shapes used by services and repositories.
 

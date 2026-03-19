@@ -1,0 +1,29 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg4" x1="80" y1="80" x2="1200" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#223047"/>
+      <stop offset="1" stop-color="#155E75"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" rx="36" fill="#ECF1F4"/>
+  <rect x="40" y="40" width="1200" height="640" rx="32" fill="url(#bg4)"/>
+  <text x="88" y="118" fill="#F5FBFF" font-size="44" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700">Metrics / accuracy preview</text>
+  <text x="88" y="156" fill="#CAE8F1" font-size="22" font-family="Trebuchet MS, Segoe UI, sans-serif">Prometheus and reporting features make the project easier to present as production-minded backend work</text>
+  <rect x="88" y="214" width="244" height="146" rx="24" fill="#F6FBFE"/>
+  <rect x="360" y="214" width="244" height="146" rx="24" fill="#F6FBFE"/>
+  <rect x="632" y="214" width="244" height="146" rx="24" fill="#F6FBFE"/>
+  <rect x="904" y="214" width="244" height="146" rx="24" fill="#F6FBFE"/>
+  <text x="116" y="260" fill="#27435D" font-size="18" font-family="Trebuchet MS, Segoe UI, sans-serif">bot_commands_total</text>
+  <text x="116" y="322" fill="#133652" font-size="40" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700">12,481</text>
+  <text x="388" y="260" fill="#27435D" font-size="18" font-family="Trebuchet MS, Segoe UI, sans-serif">bot_users_total</text>
+  <text x="388" y="322" fill="#133652" font-size="40" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700">1,284</text>
+  <text x="660" y="260" fill="#27435D" font-size="18" font-family="Trebuchet MS, Segoe UI, sans-serif">bot_users_active_last_day</text>
+  <text x="660" y="322" fill="#133652" font-size="40" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700">217</text>
+  <text x="932" y="260" fill="#27435D" font-size="18" font-family="Trebuchet MS, Segoe UI, sans-serif">bot_job_operations_total</text>
+  <text x="932" y="322" fill="#133652" font-size="40" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700">4,092</text>
+  <rect x="88" y="406" width="1060" height="190" rx="28" fill="#F6FBFE"/>
+  <text x="120" y="454" fill="#1D4464" font-size="24" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700">Accuracy report preview</text>
+  <text x="120" y="496" fill="#335D7B" font-size="21" font-family="Trebuchet MS, Segoe UI, sans-serif">Daily accuracy: 56.4%   •   Strategy accuracy: 61.8%   •   Strategy ROI: +8.4%</text>
+  <text x="120" y="532" fill="#335D7B" font-size="21" font-family="Trebuchet MS, Segoe UI, sans-serif">Top use cases for clients: monitoring command adoption, scheduled jobs, premium operations, and model quality.</text>
+  <text x="88" y="644" fill="#F5FBFF" font-size="18" font-family="Trebuchet MS, Segoe UI, sans-serif">Illustrative preview asset. Replace with a live Prometheus / dashboard screenshot or a real accuracy message capture.</text>
+</svg>
