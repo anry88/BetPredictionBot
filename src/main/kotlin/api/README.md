@@ -1,4 +1,6 @@
-# API layer
+# AI Reference: API layer
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 The `api/` layer describes external interfaces for Telegram and ChatGPT.
 

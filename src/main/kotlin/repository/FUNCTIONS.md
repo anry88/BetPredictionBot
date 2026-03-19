@@ -1,4 +1,6 @@
-# Function Guide (Repository layer)
+# AI Reference: Repository layer functions
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 ## MatchRepository.kt
 - League table management: `appendRows()`, `updateMatchResult()`, and helpers keep per-league tables in sync; `createLeagueTableIfNeeded`/`addMissingColumnsForLeague` are invoked upstream when adding rows.
