@@ -1,6 +1,6 @@
 # BetPredictionBot Product Overview
 
-`BetPredictionBot` is a production-style Telegram bot for football predictions. It combines external sports data, a local prediction model, ChatGPT fallback logic, premium access flows, scheduled background jobs, and operational metrics in one Kotlin codebase.
+`BetPredictionBot` is a Telegram bot for football predictions. It combines external sports data, a local prediction model, ChatGPT fallback logic, premium access flows, scheduled background jobs, and operational metrics in one Kotlin codebase.
 
 The goal of the project was not to make a thin chat wrapper, but to build a working product that can continuously ingest data, generate forecasts, deliver them to users, evaluate outcomes, and support paid access.
 
