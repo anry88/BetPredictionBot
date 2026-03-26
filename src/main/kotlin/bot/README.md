@@ -1,4 +1,6 @@
-# Bot logic
+# AI Reference: Bot logic
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 Components under `bot/` help `FootballBot` format messages and handle commands.
 

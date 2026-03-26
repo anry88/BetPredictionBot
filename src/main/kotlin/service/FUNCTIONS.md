@@ -1,4 +1,6 @@
-# Function Guide (Service layer)
+# AI Reference: Service layer functions
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 ## HttpAPIFootballService.kt
 - `fetchMatches()`: Pulls near-term fixtures from API-Football, persists new matches, enriches with predictions/odds, and skips duplicates.

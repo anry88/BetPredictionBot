@@ -1,4 +1,6 @@
-# Function Guide (API layer)
+# AI Reference: API layer functions
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 ## ChatGPTApi.kt
 - `getChatGPTRequest(request: ChatGPTRequest)`: Retrofit endpoint for OpenAI chat completions.

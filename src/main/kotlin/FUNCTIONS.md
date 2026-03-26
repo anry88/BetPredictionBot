@@ -1,4 +1,6 @@
-# Function Guide (Root Kotlin Files)
+# AI Reference: Root Kotlin Files
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 ## Config.kt
 - `getProperty(key: String)`: Thin wrapper around a preloaded `config.properties` to fetch configuration values by key.

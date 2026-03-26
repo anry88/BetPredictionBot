@@ -1,4 +1,6 @@
-# Repositories and models
+# AI Reference: Repositories and models
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 Repositories encapsulate database access (Exposed/SQLite) and provide CRUD/aggregation for the bot and scheduler.
 

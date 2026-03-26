@@ -1,4 +1,6 @@
-# Service layer
+# AI Reference: Service layer
+
+> AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 Services encapsulate network calls, business rules, and repository interactions. They are consumed by the bot and the Quartz scheduler.
 
