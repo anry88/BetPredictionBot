@@ -13,17 +13,19 @@ data class OutcomeStrategyConfig(
     val minProb: Double,
     val maxProb: Double? = null,
     val maxXgDiff: Double? = null,
-    val maxXgTotal: Double? = null
+    val maxXgTotal: Double? = null,
+    val minSignedXgDiff: Double? = null
 )
 
 val outcomeStrategyConfigs = listOf(
     // Rule A: Away
     OutcomeStrategyConfig(
         outcomeType = OutcomeType.AwayWin,
-        minOdds = 1.80,
-        maxOdds = 2.50,
-        minProb = 0.55,
-        maxProb = 0.62
+        minOdds = 2.05,
+        maxOdds = 2.30,
+        minProb = 0.54,
+        maxProb = 0.59,
+        minSignedXgDiff = 0.75
     ),
     // Rule B: Draw
     OutcomeStrategyConfig(
@@ -31,7 +33,7 @@ val outcomeStrategyConfigs = listOf(
         minOdds = 2.80,
         maxOdds = 5.50,
         minProb = 0.36,
-        maxXgDiff = 0.10,
+        maxXgDiff = 0.08,
         maxXgTotal = 1.60
     )
 )

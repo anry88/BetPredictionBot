@@ -14,6 +14,7 @@ This note explains the current prediction pipeline in product terms and clarifie
 - The local model is the primary prediction source.
 - It returns win probabilities, expected goals, calibration-related fields, and optional match-count context for both teams.
 - Premium strategy filtering depends on these model outputs, which makes the local model central to the strongest product features.
+- The current premium filter is intentionally narrow: draw picks require low xG imbalance/total, while away-win picks also require a clear away-minus-home xG edge in addition to odds/probability bounds.
 
 ## Where ChatGPT is used
 

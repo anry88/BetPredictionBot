@@ -73,13 +73,21 @@ object StrategyService {
         if (probability < config.minProb) return false
         config.maxProb?.let { if (probability > it) return false }
 
-        if (config.outcomeType == OutcomeType.Draw) {
+        if (config.outcomeType == OutcomeType.Draw || config.outcomeType == OutcomeType.AwayWin) {
             val expectedHomeGoals = match.modelExpectedHomeGoals ?: return false
             val expectedAwayGoals = match.modelExpectedAwayGoals ?: return false
-            val xgDiff = abs(expectedHomeGoals - expectedAwayGoals)
-            val xgTotal = expectedHomeGoals + expectedAwayGoals
-            config.maxXgDiff?.let { if (xgDiff > it) return false }
-            config.maxXgTotal?.let { if (xgTotal > it) return false }
+
+            if (config.outcomeType == OutcomeType.Draw) {
+                val xgDiff = abs(expectedHomeGoals - expectedAwayGoals)
+                val xgTotal = expectedHomeGoals + expectedAwayGoals
+                config.maxXgDiff?.let { if (xgDiff > it) return false }
+                config.maxXgTotal?.let { if (xgTotal > it) return false }
+            }
+
+            if (config.outcomeType == OutcomeType.AwayWin) {
+                val signedXgDiff = expectedAwayGoals - expectedHomeGoals
+                config.minSignedXgDiff?.let { if (signedXgDiff < it) return false }
+            }
         }
 
         return true
