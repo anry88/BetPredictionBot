@@ -90,4 +90,37 @@ class MessageFormatterTest {
 
         assertTrue(result.contains("Calibrated Expected Goals: 1.60 : 1.00"))
     }
+
+    @Test
+    fun directUpcomingMatchShowsAwayXgEdgeCheck() {
+        val matchInfo = MatchInfo(
+            fixtureId = "3",
+            datetime = "2026-04-05 20:00",
+            matchType = "Test League",
+            teams = "Home vs. Away",
+            predictedOutcome = "Away",
+            actualOutcome = null,
+            predictedScore = "0:1",
+            actualScore = null,
+            odds = "2.12",
+            bookmakerName = null,
+            homeWinOdds = "3.5",
+            drawOdds = "3.3",
+            awayWinOdds = "2.12",
+            telegramMessageId = null,
+            strategyTelegramMessageId = null,
+            elapsed = null,
+            modelHomeWinProb = 0.18,
+            modelDrawProb = 0.24,
+            modelAwayWinProb = 0.58,
+            modelExpectedHomeGoals = 0.62,
+            modelExpectedAwayGoals = 1.42,
+            homeMatchesLastYear = 10,
+            awayMatchesLastYear = 10
+        )
+
+        val result = MessageFormatter.formatDirectUpcomingMatch(matchInfo, league = null)
+
+        assertTrue(result.contains("- xG edge ✅"))
+    }
 }

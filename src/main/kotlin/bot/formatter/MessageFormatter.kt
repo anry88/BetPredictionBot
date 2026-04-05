@@ -388,9 +388,24 @@ $analysis""".trimIndent()
             } else {
                 "❌"
             }
+        } else if (outcomeType == OutcomeType.AwayWin && config != null) {
+            val expectedHomeGoals = matchInfo.modelExpectedHomeGoals
+            val expectedAwayGoals = matchInfo.modelExpectedAwayGoals
+            if (expectedHomeGoals != null && expectedAwayGoals != null) {
+                val signedDiff = expectedAwayGoals - expectedHomeGoals
+                val signedDiffOk = config.minSignedXgDiff?.let { signedDiff >= it } ?: true
+                if (signedDiffOk) "✅" else "❌"
+            } else {
+                "❌"
+            }
         } else null
 
-        val xgLine = if (xgCheck != null) "- xG alignment $xgCheck" else ""
+        val xgLine = when {
+            xgCheck == null -> ""
+            outcomeType == OutcomeType.Draw -> "- xG alignment $xgCheck"
+            outcomeType == OutcomeType.AwayWin -> "- xG edge $xgCheck"
+            else -> ""
+        }
 
         return """
             Prediction Analysis:
