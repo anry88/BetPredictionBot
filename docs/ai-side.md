@@ -10,7 +10,7 @@ This note explains the current prediction pipeline in product terms and clarifie
 
 ## Where the local model is used
 
-- `HttpLocalModelService` calls `http://localhost:7007/predict`.
+- `HttpLocalModelService` calls `http://localhost:<local.model.port>/predict` with `7007` as the default port.
 - The local model is the primary prediction source.
 - It returns win probabilities, expected goals, calibration-related fields, and optional match-count context for both teams.
 - Premium strategy filtering depends on these model outputs, which makes the local model central to the strongest product features.
@@ -52,6 +52,8 @@ The repository already contains a real feedback loop:
 2. After matches finish, actual outcomes are pulled back into SQLite.
 3. Accuracy and ROI reports reuse those labeled rows.
 4. `ModelDataUploader` exports completed matches to JSONL.
-5. That JSONL is uploaded to the local model service through `http://localhost:7007/uploadLines`.
+5. That JSONL is uploaded to the local model service through `http://localhost:<local.model.port>/uploadLines` with `7007` as the default port.
+
+In production the upload job runs on Monday/Wednesday/Friday at 03:00. With `test=true`, the same upload is kept enabled but shifted to Tuesday/Thursday/Saturday at 03:00.
 
 The important nuance: this repo prepares and ships labeled data, but the retraining logic itself lives on the local model service side, not inside this Kotlin codebase.

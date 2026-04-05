@@ -302,10 +302,10 @@ fun main() {
         .usingJobData(jobDataMap)
         .build()
 
-    // CRON: запускаем каждую неделю по понедельникам, средам, пятницам в 03:00
+    // Прод: MON/WED/FRI 03:00. Тест: TUE/THU/SAT 03:00.
     val uploadModelDataTrigger = TriggerBuilder.newTrigger()
         .withIdentity("uploadModelDataTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.cronSchedule("0 0 3 ? * MON,WED,FRI"))
+        .withSchedule(CronScheduleBuilder.cronSchedule(Config.getUploadModelDataCron()))
         .build()
 
     // Настройка задачи очистки истекших пригласительных ссылок

@@ -4,6 +4,8 @@
 
 ## Config.kt
 - `getProperty(key: String)`: Thin wrapper around a preloaded `config.properties` to fetch configuration values by key.
+- `reload()`, `getBooleanProperty(...)`, and `getIntProperty(...)`: Helpers for reloading config during tests and reading typed settings.
+- `isTestEnvironment()`, `getLocalModelPort()`, `getLocalModelBaseUrl()`, and `getUploadModelDataCron()`: Runtime helpers for environment-aware scheduling and local-model endpoint construction.
 
 ## Metrics.kt
 - `startServer(port: Int)`: Boots a Prometheus HTTP exporter once with HotSpot defaults.
@@ -11,7 +13,7 @@
 
 ## Main.kt
 - Quartz job classes (`FetchMatchesJob`, `UpdateMatchesJob`, `UpdatePastMatchesJob`, `UpdateLiveMatchesJob`, `UpdateLeaguePredictabilityJob`, `SendAccuracyJob`, `SendWeeklyAccuracyJob`, `SendMonthlyAccuracyJob`, `SendYearlyAccuracyJob`, `SendWeeklyTopMatchesJob`, `SendDailyPremiumSummaryJob`, `UploadModelDataJob`, `InviteLinkCleanupJob`, `CommandUsageCleanupJob`): Each job wraps a specific bot/service call to run on a schedule.
-- `main()`: Creates the bot, exposes metrics, wires Quartz triggers for all jobs, and logs the planned cadence.
+- `main()`: Creates the bot, exposes metrics, wires Quartz triggers for all jobs, and includes an environment-aware cron for model-data uploads.
 
 ## FootballBot.kt
 - Bot identity: `getBotToken()`/`getBotUsername()` return credentials for Telegram registration.

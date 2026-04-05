@@ -22,9 +22,9 @@ AI-oriented repository guide for coding assistants and code-review tools.
 ## Key runtime facts
 
 - Primary match data source: API-Football.
-- Primary prediction source: local model on `http://localhost:7007/predict`.
+- Primary prediction source: local model on `http://localhost:<local.model.port>/predict` with `7007` as the default port.
 - Fallback prediction source: OpenAI via `ChatGPTService`.
-- Feedback upload target: `http://localhost:7007/uploadLines`.
+- Feedback upload target: `http://localhost:<local.model.port>/uploadLines` with `7007` as the default port.
 - Scheduler: Quartz.
 - Persistence: SQLite with Exposed.
 - Observability: Prometheus HTTP exporter from `Metrics.kt`.

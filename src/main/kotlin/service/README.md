@@ -6,12 +6,12 @@ Services encapsulate network calls, business rules, and repository interactions.
 
 ## Files and responsibilities
 - `HttpAPIFootballService.kt` — talks to the external football API to collect upcoming/past matches, refresh odds and statuses, pull live data, and fetch fixture odds.
-- `HttpLocalModelService.kt` — queries the local ML service for outcome probabilities and expected goals.
+- `HttpLocalModelService.kt` — queries the local ML service for outcome probabilities and expected goals via the configured localhost port.
 - `ChatGPTService.kt` and `HttpChatGPTService.kt` — build ChatGPT requests, parse responses into `MatchInfo`, and log errors.
 - `StrategyService.kt` — evaluates whether a match satisfies strategy parameters (`OutcomeStrategyConfig`), including premium filters and model probabilities.
 - `StarsPaymentService.kt` — processes Telegram Stars payments/refunds, updates subscriptions, and notifies users.
 - `DatabaseService.kt` — single entry point for database initialization plus access to repositories (users, matches, payments, polls, subscriptions, commands, etc.).
-- `ModelDataUploader.kt` — aggregates model data and uploads it for the `UploadModelDataJob` Quartz task (scheduled for Monday/Wednesday/Friday at 03:00).
+- `ModelDataUploader.kt` — aggregates model data and uploads it for the `UploadModelDataJob` Quartz task (Monday/Wednesday/Friday at 03:00 in prod, Tuesday/Thursday/Saturday at 03:00 in test mode).
 
 ## Usage
 Services live under the `service` scope. Call them directly from bot commands, Quartz jobs, or other services. When adding a new integration:

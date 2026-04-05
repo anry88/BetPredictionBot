@@ -24,9 +24,6 @@ object ModelDataUploader {
     }
 
     suspend fun uploadModelData(): Int {
-        val isTest = Config.getProperty("test")?.toBoolean() ?: false
-        if (isTest) return -1
-
         val completedMatches = DatabaseService.matches
             .getAllMatchesForLastYears(2)
             .filter { it.actualOutcome != null }
@@ -81,7 +78,7 @@ object ModelDataUploader {
     }
 
     private suspend fun uploadJsonlToLocalModel(jsonlFile: File): Int {
-        val url = "http://localhost:7007/uploadLines"
+        val url = "${Config.getLocalModelBaseUrl()}/uploadLines"
         return try {
             client.post(url) {
                 contentType(ContentType.Application.Json)

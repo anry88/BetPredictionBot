@@ -11,7 +11,7 @@
 - `getPastMatches(...)` / `getUpcomingMatches(...)`: Low-level fetchers for fixtures in a date window used by higher-level flows.
 
 ## HttpLocalModelService.kt
-- `getModelPrediction(...)`: Calls the local model HTTP endpoint to score a fixture and map results into `MatchInfo`.
+- `getModelPrediction(...)`: Calls the local model HTTP endpoint on the configured localhost port to score a fixture and map results into `MatchInfo`.
 
 ## ChatGPTService.kt
 - `getMatchPrediction(matchInfo)`: Builds a chat prompt for a single fixture and parses the ChatGPT response into `MatchInfo`.
@@ -30,7 +30,7 @@
 - `refundStars(userId, telegramPaymentChargeId)`: Initiates a refund for a payment identified by Telegram's charge id.
 
 ## ModelDataUploader.kt
-- `uploadModelData()`: Extracts recent matches, writes them to JSONL, posts to the local model API, and returns the status code.
+- `uploadModelData()`: Extracts recent matches, writes them to JSONL, posts to the local model API, and returns the status code in both prod and test environments.
 - `createJsonlFileForModel(matches)` / `uploadJsonlToLocalModel(file)`: Helpers that serialize matches and perform the HTTP upload.
 
 ## DatabaseService.kt

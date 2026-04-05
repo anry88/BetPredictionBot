@@ -35,14 +35,14 @@ Human-facing docs live in this file and in [docs/product-overview.md](docs/produ
 ```mermaid
 flowchart LR
     A["API-Football fixtures + odds"] --> B["Quartz jobs"]
-    B --> C["Local model API (:7007/predict)"]
+    B --> C["Local model API (configured port, default 7007)"]
     C --> D["Strategy filters"]
     C -. fallback on failure .-> E["ChatGPT / OpenAI"]
     D --> F["SQLite + Exposed repositories"]
     E --> F
     F --> G["Telegram bot + premium channel"]
     F --> H["Prometheus exporter"]
-    F --> I["JSONL feedback upload (:7007/uploadLines)"]
+    F --> I["JSONL feedback upload (same local model port)"]
 ```
 
 - `Main.kt` boots the Telegram bot, metrics server, and all recurring Quartz jobs.
@@ -54,7 +54,7 @@ flowchart LR
 ## AI Side / Prediction Pipeline
 
 - `Data sources`: upcoming and historical fixtures come from API-Football; odds are refreshed close to kickoff; user/payment/invite events come from Telegram.
-- `Local model`: the primary predictor is `HttpLocalModelService`, which calls `http://localhost:7007/predict` and stores win probabilities, expected goals, calibration fields, and match-count context.
+- `Local model`: the primary predictor is `HttpLocalModelService`, which calls `http://localhost:<local.model.port>/predict` with `7007` as the default port and stores win probabilities, expected goals, calibration fields, and match-count context.
 - `ChatGPT`: `ChatGPTService` is a fallback path. If the local model does not return a prediction, the bot retries against OpenAI and parses a structured response back into `MatchInfo`.
 - `Strategy selection`: premium picks are not arbitrary. `StrategyService` filters matches by predicted outcome, probability thresholds, expected-goal constraints, and bookmaker odds.
 - `Accuracy`: the current code measures outcome accuracy and ROI over rolling periods, plus strategy-only accuracy/ROI and per-outcome breakdowns. Daily, weekly, monthly, and yearly summary jobs are already wired.
@@ -73,7 +73,7 @@ The repository already demonstrates backend automation rather than manual operat
 - Recompute league predictability daily.
 - Send daily, weekly, monthly, and yearly accuracy reports.
 - Send a daily premium summary.
-- Upload model training data every Monday, Wednesday, and Friday at 03:00.
+- Upload model training data at 03:00 on Monday/Wednesday/Friday in production, or Tuesday/Thursday/Saturday when `test=true`.
 - Clean up invite links hourly.
 - Run user-defined scheduled tasks with stored time zones.
 
@@ -118,7 +118,7 @@ The repository includes real cropped screenshots from the bot flows and reportin
 - Telegram bot token and chat ids
 - API-Football token
 - OpenAI API key for fallback mode
-- Local model service running on `localhost:7007`
+- Local model service running on `localhost` at the configured `local.model.port` (`7007` by default)
 
 ### Quick start
 
@@ -142,3 +142,4 @@ Use [config.example.properties](config.example.properties) as the starting point
 - `chatgpt.api.key`
 - `provider.token`
 - `test`
+- `local.model.port`

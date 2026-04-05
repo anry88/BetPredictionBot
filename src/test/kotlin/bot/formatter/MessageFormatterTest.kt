@@ -1,5 +1,6 @@
 package bot.formatter
 
+import Config
 import dto.MatchInfo
 import java.io.File
 import kotlin.test.AfterTest
@@ -11,6 +12,7 @@ class MessageFormatterTest {
     @BeforeTest
     fun setupConfig() {
         File("config.properties").writeText("test=true")
+        Config.reload()
     }
 
     @AfterTest

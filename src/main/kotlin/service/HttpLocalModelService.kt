@@ -1,5 +1,6 @@
 package service
 
+import Config
 import dto.MatchInfo
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -60,7 +61,7 @@ object HttpLocalModelService {
         awayTeam: String,
         matchInfo: MatchInfo
     ): MatchInfo? {
-        val url = "http://localhost:7007/predict"
+        val url = "${Config.getLocalModelBaseUrl()}/predict"
         return try {
             val response: HttpResponse = client.get(url) {
                 parameter("home", homeTeam)

@@ -1,5 +1,6 @@
 package service
 
+import Config
 import dto.MatchInfo
 import dto.OutcomeType
 import dto.outcomeStrategyConfigs
@@ -14,6 +15,7 @@ class StrategyServiceTest {
     @BeforeTest
     fun setupConfig() {
         File("config.properties").writeText("test=true")
+        Config.reload()
     }
 
     @AfterTest
