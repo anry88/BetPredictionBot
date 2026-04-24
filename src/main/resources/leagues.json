@@ -57,8 +57,8 @@
   {"leagueId": 103, "season": 2025, "description": "Norway Eliteserien", "premiumSelection": true},
   {"leagueId": 113, "season": 2025, "description": "Sweden Allsvenskan", "premiumSelection": true},
   {"leagueId": 19, "season": 2024, "description": "World African Nations Championship", "premiumSelection": false},
-  {"leagueId": 17, "season": 2025, "description": "World AFC Champions League", "premiumSelection": false},
-  {"leagueId": 18, "season": 2025, "description": "World AFC Cup", "premiumSelection": false},
+  {"leagueId": 17, "season": 2025, "description": "World AFC Champions League Elite", "premiumSelection": false},
+  {"leagueId": 18, "season": 2025, "description": "World AFC Champions League Two", "premiumSelection": false},
   {"leagueId": 1132, "season": 2025, "description": "World AFC Challenge League", "premiumSelection": false},
   {"leagueId": 6, "season": 2025, "description": "World Africa Cup of Nations", "premiumSelection": true},
   {"leagueId": 37, "season": 2026, "description": "World World Cup - Qualification Intercontinental Play-offs", "premiumSelection": true}
