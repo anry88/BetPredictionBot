@@ -13,6 +13,8 @@ This note explains the current prediction pipeline in product terms and clarifie
 - `HttpLocalModelService` calls `http://localhost:<local.model.port>/predict` with `7007` as the default port.
 - The local model is the primary prediction source.
 - It returns win probabilities, expected goals, calibration-related fields, and optional match-count context for both teams.
+- The stored `predictedOutcome` is selected with a direct argmax over `homeWin`, `draw`, and `awayWin`; the generated score is then adjusted to match that selected outcome.
+- Local-model predictions also store `predictedAt`, an ISO-UTC timestamp captured when the prediction response is received.
 - Premium strategy filtering depends on these model outputs, which makes the local model central to the strongest product features.
 - The current premium filter is intentionally narrow: draw picks require low xG imbalance/total, while away-win picks also require a clear away-minus-home xG edge in addition to odds/probability bounds.
 
@@ -53,6 +55,8 @@ The repository already contains a real feedback loop:
 3. Accuracy and ROI reports reuse those labeled rows.
 4. `ModelDataUploader` exports completed matches to JSONL.
 5. That JSONL is uploaded to the local model service through `http://localhost:<local.model.port>/uploadLines` with `7007` as the default port.
+
+The JSONL export includes the original local-model probability/xG fields plus `predictedAt` when the row came from a local-model prediction.
 
 In production the upload job runs on Monday/Wednesday/Friday at 03:00. With `test=true`, the same upload is kept enabled but shifted to Tuesday/Thursday/Saturday at 03:00.
 

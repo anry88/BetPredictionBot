@@ -11,7 +11,9 @@ import io.ktor.client.engine.cio.*
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.time.Instant
 
 @Suppress("PLUGIN_IS_NOT_ENABLED")
 object HttpLocalModelService {
@@ -19,7 +21,7 @@ object HttpLocalModelService {
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
-            json()
+            json(Json { ignoreUnknownKeys = true })
         }
     }
 
@@ -70,6 +72,7 @@ object HttpLocalModelService {
             }
             if (response.status == HttpStatusCode.OK) {
                 val data = response.body<LocalModelResponse>()
+                val predictedAt = Instant.now().toString()
 
                 // Заполняем новые поля в matchInfo
                 matchInfo.modelHomeWinProb = data.homeWin
@@ -83,6 +86,7 @@ object HttpLocalModelService {
                 matchInfo.calibratedDrawProb = data.calibratedDraw
                 matchInfo.calibratedAwayWinProb = data.calibratedAwayWin
                 matchInfo.calibrationApplied = data.calibrationApplied
+                matchInfo.predictedAt = predictedAt
 
                 if (data.homeMatchesLastYear != null) {
                     matchInfo.homeMatchesLastYear = data.homeMatchesLastYear
@@ -91,45 +95,30 @@ object HttpLocalModelService {
                     matchInfo.awayMatchesLastYear = data.awayMatchesLastYear
                 }
 
-                // Округляем ожидаемые голы
-                var roundedHomeGoals = kotlin.math.round(data.expectedHomeGoals).toInt()
-                var roundedAwayGoals = kotlin.math.round(data.expectedAwayGoals).toInt()
+                val outcome = listOf(
+                    homeTeam to data.homeWin,
+                    "Draw" to data.draw,
+                    awayTeam to data.awayWin
+                ).maxByOrNull { it.second }!!.first
 
-                val homeProb = data.homeWin
-                val drawProb = data.draw
-                val awayProb = data.awayWin
+                var roundedHomeGoals = kotlin.math.round(data.expectedHomeGoals).toInt().coerceAtLeast(0)
+                var roundedAwayGoals = kotlin.math.round(data.expectedAwayGoals).toInt().coerceAtLeast(0)
 
-                val homeGoalsDiff = data.expectedHomeGoals - data.expectedAwayGoals
-
-                val outcome: String
-
-                if (drawProb > homeProb && drawProb > awayProb) {
-                    // Наибольшая вероятность ничьей
-                    outcome = "Draw"
-                    if (roundedHomeGoals != roundedAwayGoals) {
-                        val maxGoals = maxOf(roundedHomeGoals, roundedAwayGoals)
-                        roundedHomeGoals = maxGoals
-                        roundedAwayGoals = maxGoals
+                when (outcome) {
+                    homeTeam -> {
+                        if (roundedHomeGoals <= roundedAwayGoals) {
+                            roundedHomeGoals = roundedAwayGoals + 1
+                        }
                     }
-                } else if (homeProb > drawProb && homeProb > awayProb && homeProb > 0.4 && homeGoalsDiff > 0.4) {
-                    // Победа домашней команды
-                    outcome = homeTeam
-                    if (roundedHomeGoals <= roundedAwayGoals) {
-                        if (roundedAwayGoals > 0) roundedAwayGoals -= 1 else roundedHomeGoals += 1
+                    awayTeam -> {
+                        if (roundedAwayGoals <= roundedHomeGoals) {
+                            roundedAwayGoals = roundedHomeGoals + 1
+                        }
                     }
-                } else if (awayProb > drawProb && awayProb > homeProb && awayProb > 0.4 && homeGoalsDiff < -0.4) {
-                    // Победа гостевой команды
-                    outcome = awayTeam
-                    if (roundedAwayGoals <= roundedHomeGoals) {
-                        if (roundedHomeGoals > 0) roundedHomeGoals -= 1 else roundedAwayGoals += 1
-                    }
-                } else {
-                    // Все остальные случаи трактуем как ничью
-                    outcome = "Draw"
-                    if (roundedHomeGoals != roundedAwayGoals) {
-                        val maxGoals = maxOf(roundedHomeGoals, roundedAwayGoals)
-                        roundedHomeGoals = maxGoals
-                        roundedAwayGoals = maxGoals
+                    "Draw" -> {
+                        val goals = maxOf(roundedHomeGoals, roundedAwayGoals)
+                        roundedHomeGoals = goals
+                        roundedAwayGoals = goals
                     }
                 }
 

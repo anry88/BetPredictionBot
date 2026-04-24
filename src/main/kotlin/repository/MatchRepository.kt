@@ -35,6 +35,7 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val matchType = varchar("matchType", 50)
     val teams = varchar("teams", 100)
     val predictedOutcome = varchar("predictedOutcome", 50).nullable()
+    val predictedAt = varchar("predictedAt", 50).nullable()
     val actualOutcome = varchar("actualOutcome", 50).nullable()
     val predictedScore = varchar("predictedScore", 50).nullable()
     val actualScore = varchar("actualScore", 50).nullable()
@@ -124,6 +125,7 @@ class MatchRepository {
                     it[matchType] = match.matchType
                     it[teams] = match.teams
                     it[predictedOutcome] = match.predictedOutcome
+                    it[predictedAt] = match.predictedAt
                     it[actualOutcome] = match.actualOutcome
                     it[predictedScore] = match.predictedScore
                     it[actualScore] = match.actualScore
@@ -194,6 +196,7 @@ class MatchRepository {
         addMissingColumnsForLeague(matchInfo.matchType)
         leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
             it[predictedOutcome] = matchInfo.predictedOutcome
+            it[predictedAt] = matchInfo.predictedAt
             it[predictedScore] = matchInfo.predictedScore
             it[odds] = matchInfo.odds
             it[modelHomeWinProb] = matchInfo.modelHomeWinProb
@@ -862,6 +865,7 @@ class MatchRepository {
             matchType = row[leagueTable.matchType],
             teams = row[leagueTable.teams],
             predictedOutcome = row[leagueTable.predictedOutcome],
+            predictedAt = row[leagueTable.predictedAt],
             actualOutcome = row[leagueTable.actualOutcome],
             predictedScore = row[leagueTable.predictedScore],
             actualScore = row[leagueTable.actualScore],

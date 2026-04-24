@@ -29,5 +29,6 @@ data class MatchInfo(
     var calibratedAwayWinProb: Double? = null,
     var calibrationApplied: Boolean? = null,
     var homeMatchesLastYear: Int? = null,
-    var awayMatchesLastYear: Int? = null
+    var awayMatchesLastYear: Int? = null,
+    var predictedAt: String? = null
 )

@@ -1322,7 +1322,8 @@ Available actions:
             calibratedHomeWinProb = match.calibratedHomeWinProb,
             calibratedDrawProb = match.calibratedDrawProb,
             calibratedAwayWinProb = match.calibratedAwayWinProb,
-            calibrationApplied = match.calibrationApplied
+            calibrationApplied = match.calibrationApplied,
+            predictedAt = match.predictedAt
         )
         val json = Json { prettyPrint = false }
         return json.encodeToString(jsonlMatch)
@@ -1835,6 +1836,7 @@ Available actions:
                                 }
                                 if (prediction != null) {
                                     match.predictedOutcome = prediction.predictedOutcome
+                                    match.predictedAt = prediction.predictedAt
                                     match.predictedScore = prediction.predictedScore
                                     match.odds = prediction.odds
                                     match.modelHomeWinProb = prediction.modelHomeWinProb

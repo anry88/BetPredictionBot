@@ -217,6 +217,7 @@ fun createLeagueTableIfNeeded(tableName: String) {
             matchType TEXT NOT NULL,
             teams TEXT NOT NULL,
             predictedOutcome TEXT,
+            predictedAt TEXT,
             actualOutcome TEXT,
             predictedScore TEXT,
             actualScore TEXT,
@@ -268,6 +269,7 @@ fun addColumnIfNotExists(tableName: String, columnName: String, columnDefinition
 }
 
 fun addMissingColumnsForLeague(tableName: String) {
+    addColumnIfNotExists(tableName, "predictedAt", "TEXT")
     addColumnIfNotExists(tableName, "modelHomeWinProb", "DOUBLE")
     addColumnIfNotExists(tableName, "modelDrawProb", "DOUBLE")
     addColumnIfNotExists(tableName, "modelAwayWinProb", "DOUBLE")

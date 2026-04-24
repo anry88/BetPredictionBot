@@ -179,6 +179,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     } else {
                         // Обновляем базу
                         matchInfo.predictedOutcome = finalPrediction.predictedOutcome
+                        matchInfo.predictedAt = finalPrediction.predictedAt
                         matchInfo.predictedScore = finalPrediction.predictedScore
                         matchInfo.odds = finalPrediction.odds
                         matchInfo.modelHomeWinProb = finalPrediction.modelHomeWinProb

@@ -11,7 +11,7 @@
 - `getPastMatches(...)` / `getUpcomingMatches(...)`: Low-level fetchers for fixtures in a date window used by higher-level flows.
 
 ## HttpLocalModelService.kt
-- `getModelPrediction(...)`: Calls the local model HTTP endpoint on the configured localhost port to score a fixture and map results into `MatchInfo`.
+- `getModelPrediction(...)`: Calls the local model HTTP endpoint on the configured localhost port, selects outcome by argmax over home/draw/away probabilities, records `predictedAt`, and maps results into `MatchInfo`.
 
 ## ChatGPTService.kt
 - `getMatchPrediction(matchInfo)`: Builds a chat prompt for a single fixture and parses the ChatGPT response into `MatchInfo`.
@@ -31,7 +31,7 @@
 
 ## ModelDataUploader.kt
 - `uploadModelData()`: Extracts recent matches, writes them to JSONL, posts to the local model API, and returns the status code in both prod and test environments.
-- `createJsonlFileForModel(matches)` / `uploadJsonlToLocalModel(file)`: Helpers that serialize matches and perform the HTTP upload.
+- `createJsonlFileForModel(matches)` / `uploadJsonlToLocalModel(file)`: Helpers that serialize matches, including model metadata such as `predictedAt`, and perform the HTTP upload.
 
 ## DatabaseService.kt
 - `initDatabase(dbPath)` / `execSql(sql)`: Initialize and execute migrations against the SQLite store.

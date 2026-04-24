@@ -67,7 +67,8 @@ object ModelDataUploader {
                     calibratedHomeWinProb = match.calibratedHomeWinProb,
                     calibratedDrawProb = match.calibratedDrawProb,
                     calibratedAwayWinProb = match.calibratedAwayWinProb,
-                    calibrationApplied = match.calibrationApplied
+                    calibrationApplied = match.calibrationApplied,
+                    predictedAt = match.predictedAt
                 )
                 val line = Json.encodeToString(jsonlMatch)
                 writer.write(line)
