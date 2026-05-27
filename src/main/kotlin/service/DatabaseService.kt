@@ -240,7 +240,8 @@ fun createLeagueTableIfNeeded(tableName: String) {
             calibratedAwayWinProb REAL,
             calibrationApplied BOOLEAN,
             homeMatchesLastYear INTEGER,
-            awayMatchesLastYear INTEGER
+            awayMatchesLastYear INTEGER,
+            neutralVenue BOOLEAN DEFAULT 0
         );
     """.trimIndent())
 }
@@ -283,6 +284,7 @@ fun addMissingColumnsForLeague(tableName: String) {
     addColumnIfNotExists(tableName, "calibrationApplied", "BOOLEAN")
     addColumnIfNotExists(tableName, "homeMatchesLastYear", "INTEGER")
     addColumnIfNotExists(tableName, "awayMatchesLastYear", "INTEGER")
+    addColumnIfNotExists(tableName, "neutralVenue", "BOOLEAN DEFAULT 0")
 }
 
 object DatabaseService {

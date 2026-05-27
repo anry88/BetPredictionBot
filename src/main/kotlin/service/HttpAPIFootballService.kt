@@ -3,6 +3,7 @@
 package service
 
 import FootballBot
+import NeutralVenuePolicy
 import dto.BookmakerInfo
 import dto.LeagueConfig
 import dto.MatchInfo
@@ -110,6 +111,7 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                 val homeTeamName = match.teams.home.name
                 val awayTeamName = match.teams.away.name
                 val teams = "$homeTeamName vs. $awayTeamName"
+                val neutralVenue = NeutralVenuePolicy.isNeutralVenue(match)
 
                 val homeMatchesCount = DatabaseService.matches.getTeamMatchesCountLastYear(homeTeamName)
                 val awayMatchesCount = DatabaseService.matches.getTeamMatchesCountLastYear(awayTeamName)
@@ -137,7 +139,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     modelExpectedHomeGoals = null,
                     modelExpectedAwayGoals = null,
                     homeMatchesLastYear = homeMatchesCount,
-                    awayMatchesLastYear = awayMatchesCount
+                    awayMatchesLastYear = awayMatchesCount,
+                    neutralVenue = neutralVenue
                 )
 
                 // Проверяем, существует ли матч в базе данных
@@ -486,7 +489,8 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         actualScore = actualScore,
                         actualOutcome = actualOutcome,
                         elapsed = if (statusShort == "PST" || statusShort == "CANC") null else elapsed,
-                        datetime = datetime
+                        datetime = datetime,
+                        neutralVenue = existingMatchInfo.neutralVenue || NeutralVenuePolicy.isNeutralVenue(match)
                     ),
                     statusShort = statusShort
                 )

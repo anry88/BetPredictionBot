@@ -14,6 +14,9 @@
 ## TagNormalizer.kt
 - `toTag(name)`: Builds stable Telegram hashtags from team names, transliterating diacritics to ASCII before removing non-hashtag characters.
 
+## NeutralVenuePolicy.kt
+- `isNeutralVenue(...)`: Marks FIFA World Cup fixtures and cup finals as neutral-ground matches so model calls and JSONL feedback can skip home-field advantage.
+
 ## Main.kt
 - Quartz job classes (`FetchMatchesJob`, `UpdateMatchesJob`, `UpdatePastMatchesJob`, `UpdateLiveMatchesJob`, `UpdateLeaguePredictabilityJob`, `SendAccuracyJob`, `SendWeeklyAccuracyJob`, `SendMonthlyAccuracyJob`, `SendYearlyAccuracyJob`, `SendWeeklyTopMatchesJob`, `SendDailyPremiumSummaryJob`, `UploadModelDataJob`, `InviteLinkCleanupJob`, `CommandUsageCleanupJob`): Each job wraps a specific bot/service call to run on a schedule.
 - `main()`: Creates the bot, exposes metrics, wires Quartz triggers for all jobs, and schedules model-data uploads only outside test mode.

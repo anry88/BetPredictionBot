@@ -59,6 +59,7 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val calibrationApplied = bool("calibrationApplied").nullable()
     val homeMatchesLastYear = integer("homeMatchesLastYear").nullable()
     val awayMatchesLastYear = integer("awayMatchesLastYear").nullable()
+    val neutralVenue = bool("neutralVenue").default(false)
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -137,6 +138,7 @@ class MatchRepository {
                     it[calibrationApplied] = match.calibrationApplied
                     it[homeMatchesLastYear] = match.homeMatchesLastYear
                     it[awayMatchesLastYear] = match.awayMatchesLastYear
+                    it[neutralVenue] = match.neutralVenue
                 }
             }
         }
@@ -145,11 +147,13 @@ class MatchRepository {
     fun updateMatchResult(matchInfo: MatchInfo) {
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+            addMissingColumnsForLeague(matchInfo.matchType)
             try {
                 leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                     it[datetime] = matchInfo.datetime
                     it[actualOutcome] = matchInfo.actualOutcome
                     it[actualScore] = matchInfo.actualScore
+                    it[neutralVenue] = matchInfo.neutralVenue
                 }
             } catch (e: ExposedSQLException) {
                 if (e.message?.contains("no such table") == true) {
@@ -157,6 +161,7 @@ class MatchRepository {
                     leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                         it[actualOutcome] = matchInfo.actualOutcome
                         it[actualScore] = matchInfo.actualScore
+                        it[neutralVenue] = matchInfo.neutralVenue
                     }
                 } else throw e
             }
@@ -179,8 +184,10 @@ class MatchRepository {
 
     fun updateMatchDatetime(matchInfo: MatchInfo) = transaction {
         val leagueTable = LeagueTableFactory.getTableForLeague(matchInfo.matchType)
+        addMissingColumnsForLeague(matchInfo.matchType)
         leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
             it[datetime] = matchInfo.datetime
+            it[neutralVenue] = matchInfo.neutralVenue
         }
     }
 
@@ -212,6 +219,7 @@ class MatchRepository {
             it[calibrationApplied] = matchInfo.calibrationApplied
             it[homeMatchesLastYear] = matchInfo.homeMatchesLastYear
             it[awayMatchesLastYear] = matchInfo.awayMatchesLastYear
+            it[neutralVenue] = matchInfo.neutralVenue
         }
     }
 
@@ -889,6 +897,7 @@ class MatchRepository {
             calibratedAwayWinProb = row[leagueTable.calibratedAwayWinProb],
             calibrationApplied = row[leagueTable.calibrationApplied],
             homeMatchesLastYear = row[leagueTable.homeMatchesLastYear],
-            awayMatchesLastYear = row[leagueTable.awayMatchesLastYear]
+            awayMatchesLastYear = row[leagueTable.awayMatchesLastYear],
+            neutralVenue = row[leagueTable.neutralVenue]
         )
 }

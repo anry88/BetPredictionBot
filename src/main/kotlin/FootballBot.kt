@@ -1321,7 +1321,8 @@ Available actions:
             calibratedDrawProb = match.calibratedDrawProb,
             calibratedAwayWinProb = match.calibratedAwayWinProb,
             calibrationApplied = match.calibrationApplied,
-            predictedAt = match.predictedAt
+            predictedAt = match.predictedAt,
+            neutralVenue = match.neutralVenue
         )
         val json = Json { prettyPrint = false }
         return json.encodeToString(jsonlMatch)
@@ -2792,6 +2793,7 @@ Available actions:
 
                 val homeTeam = match.teams.home.name
                 val awayTeam = match.teams.away.name
+                val neutralVenue = NeutralVenuePolicy.isNeutralVenue(match)
 
                 val homeGoals = match.score?.fulltime?.home ?: 0
                 val awayGoals = match.score?.fulltime?.away ?: 0
@@ -2824,7 +2826,8 @@ Available actions:
                     modelDrawProb = null,
                     modelAwayWinProb = null,
                     modelExpectedHomeGoals = null,
-                    modelExpectedAwayGoals = null
+                    modelExpectedAwayGoals = null,
+                    neutralVenue = neutralVenue
                 )
             }.filter { match -> !DatabaseService.matches.matchExists(match) }
 

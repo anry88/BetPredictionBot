@@ -30,5 +30,6 @@ data class MatchInfo(
     var calibrationApplied: Boolean? = null,
     var homeMatchesLastYear: Int? = null,
     var awayMatchesLastYear: Int? = null,
-    var predictedAt: String? = null
+    var predictedAt: String? = null,
+    var neutralVenue: Boolean = false
 )

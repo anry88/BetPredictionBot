@@ -29,5 +29,6 @@ data class JsonlMatch(
     val calibratedDrawProb: Double? = null,
     val calibratedAwayWinProb: Double? = null,
     val calibrationApplied: Boolean? = null,
-    val predictedAt: String? = null
+    val predictedAt: String? = null,
+    val neutralVenue: Boolean = false
 )

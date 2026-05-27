@@ -12,6 +12,7 @@ This note explains the current prediction pipeline in product terms and clarifie
 
 - `HttpLocalModelService` calls `http://localhost:<local.model.port>/predict` with `7008` as the default port.
 - The local model is the primary prediction source.
+- For neutral-ground fixtures, such as FIFA World Cup matches and detected cup finals, the bot passes `neutral=true` so the model can skip home-field advantage.
 - It returns win probabilities, expected goals, calibration-related fields, and optional match-count context for both teams.
 - The stored `predictedOutcome` is selected with a direct argmax over `homeWin`, `draw`, and `awayWin`; the generated score is then adjusted to match that selected outcome.
 - Local-model predictions also store `predictedAt`, an ISO-UTC timestamp captured when the prediction response is received.
@@ -56,7 +57,7 @@ The repository already contains a real feedback loop:
 4. `ModelDataUploader` exports completed matches to JSONL.
 5. In production, that JSONL is uploaded to the local model service through `http://localhost:<local.model.port>/uploadLines` with `7008` as the default port.
 
-The JSONL export includes the original local-model probability/xG fields plus `predictedAt` when the row came from a local-model prediction.
+The JSONL export includes the original local-model probability/xG fields plus `predictedAt` when the row came from a local-model prediction. It also includes `neutralVenue` so retraining can avoid applying home-field advantage to neutral-ground rows.
 
 In production the upload job runs nightly at 03:00. With `test=true`, the upload job is not scheduled, and the manual upload command is blocked, while prediction calls to `/predict` remain enabled.
 

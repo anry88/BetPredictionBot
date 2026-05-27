@@ -69,6 +69,7 @@ object HttpLocalModelService {
                 parameter("home", homeTeam)
                 parameter("away", awayTeam)
                 parameter("league", matchInfo.matchType)
+                parameter("neutral", matchInfo.neutralVenue)
             }
             if (response.status == HttpStatusCode.OK) {
                 val data = response.body<LocalModelResponse>()

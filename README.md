@@ -55,6 +55,7 @@ flowchart LR
 
 - `Data sources`: upcoming and historical fixtures come from API-Football; odds are refreshed close to kickoff; user/payment/invite events come from Telegram.
 - `Local model`: the primary predictor is `HttpLocalModelService`, which calls `http://localhost:<local.model.port>/predict` with `7008` as the default port and stores win probabilities, expected goals, calibration fields, and match-count context.
+- `Neutral venues`: FIFA World Cup fixtures and detected cup finals are sent to the model with `neutral=true`, and JSONL feedback includes `neutralVenue` so home-field advantage is not applied to those rows.
 - `ChatGPT`: `ChatGPTService` is a fallback path. If the local model does not return a prediction, the bot retries against OpenAI and parses a structured response back into `MatchInfo`.
 - `Strategy selection`: premium picks are not arbitrary. `StrategyService` filters matches by predicted outcome, probability thresholds, expected-goal constraints, and bookmaker odds.
 - `Accuracy`: the current code measures outcome accuracy and ROI over rolling periods, plus strategy-only accuracy/ROI and per-outcome breakdowns. Daily, weekly, monthly, and yearly summary jobs are already wired.
