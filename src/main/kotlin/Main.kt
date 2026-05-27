@@ -114,6 +114,11 @@ class UploadModelDataJob : Job {
     private val logger = LoggerFactory.getLogger(UploadModelDataJob::class.java)
 
     override fun execute(context: JobExecutionContext?) {
+        if (!Config.isModelDataUploadEnabled()) {
+            logger.info("Model data upload is disabled for this environment")
+            return
+        }
+
         runBlocking {
             val status = ModelDataUploader.uploadModelData()
             if (status > 0) {
@@ -297,17 +302,6 @@ fun main() {
         .withSchedule(SimpleScheduleBuilder.simpleSchedule().withIntervalInMinutes(10).repeatForever())
         .build()
 
-    val uploadModelDataJob = JobBuilder.newJob(UploadModelDataJob::class.java)
-        .withIdentity("uploadModelDataJob", "group1")
-        .usingJobData(jobDataMap)
-        .build()
-
-    // Прод: MON/WED/FRI 03:00. Тест: TUE/THU/SAT 03:00.
-    val uploadModelDataTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("uploadModelDataTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.cronSchedule(Config.getUploadModelDataCron()))
-        .build()
-
     // Настройка задачи очистки истекших пригласительных ссылок
     val inviteLinkCleanupJob = JobBuilder.newJob(InviteLinkCleanupJob::class.java)
         .withIdentity("inviteLinkCleanupJob", "inviteLinkGroup")
@@ -347,8 +341,23 @@ fun main() {
     scheduler.scheduleJob(weeklyTopMatchesJob, weeklyTopMatchesTrigger)
     scheduler.scheduleJob(dailyPremiumSummaryJob, dailyPremiumSummaryTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
-    scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
-//    scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
+    if (Config.isModelDataUploadEnabled()) {
+        val uploadModelDataJob = JobBuilder.newJob(UploadModelDataJob::class.java)
+            .withIdentity("uploadModelDataJob", "group1")
+            .usingJobData(jobDataMap)
+            .build()
+
+        val uploadModelDataTrigger = TriggerBuilder.newTrigger()
+            .withIdentity("uploadModelDataTrigger", "group1")
+            .withSchedule(CronScheduleBuilder.cronSchedule(Config.getUploadModelDataCron()))
+            .build()
+
+        scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
+//        scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
+        logger.info("Scheduled UploadModelDataJob with cron {}", Config.getUploadModelDataCron())
+    } else {
+        logger.info("Skipped UploadModelDataJob because model data upload is disabled")
+    }
     scheduler.scheduleJob(inviteLinkCleanupJob, inviteLinkCleanupTrigger)
     scheduler.scheduleJob(commandUsageCleanupJob, commandUsageCleanupTrigger)
 
@@ -363,7 +372,7 @@ fun main() {
     logger.info("Scheduled SendDailyPremiumSummaryJob to run daily at 08:45")
     logger.info("Executed FetchMatchesJob immediately upon startup")
     logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
-    logger.info("Executed UploadModelDataJob every Monday, Wednesday, Friday at 03:00")
+    logger.info("UploadModelDataJob runs in production only")
     logger.info("Scheduled InviteLinkCleanupJob to run every hour")
     logger.info("Scheduled CommandUsageCleanupJob to run on the 1st of every month")
 }

@@ -981,9 +981,7 @@ Available actions:
     }
 
     private fun generateTag(teamName: String): String {
-        // Remove special characters and spaces, keep only alphanumeric
-        val cleanName = teamName.replace(Regex("[^a-zA-Z0-9]"), "")
-        return "#$cleanName"
+        return TagNormalizer.toTag(teamName)
     }
 
     private fun getTags(matchType: String, teams: String): String {

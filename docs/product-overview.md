@@ -51,7 +51,7 @@ The bot includes:
 1. Finished matches are updated with actual results.
 2. Historical records are reused for accuracy and ROI reporting.
 3. Completed matches are exported to JSONL.
-4. That JSONL is uploaded back to the local model service as fresh labeled data.
+4. In production, that JSONL is uploaded back to the local model service as fresh labeled data.
 
 ## Operational model
 
@@ -62,7 +62,7 @@ The repository is structured around continuous background work, not only on-dema
 - recalculating league predictability,
 - sending daily/weekly/monthly/yearly accuracy summaries,
 - sending premium summaries,
-- uploading model data on schedule,
+- uploading model data on the production schedule,
 - cleaning invite links and old usage records,
 - executing user-defined scheduled tasks in stored time zones.
 

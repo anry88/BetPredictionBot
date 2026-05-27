@@ -1,5 +1,6 @@
 package bot.commands
 
+import Config
 import FootballBot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,11 @@ class AdminCommands(private val bot: FootballBot) {
     }
 
     fun handleUploadModelData(chatId: String) {
+        if (!Config.isModelDataUploadEnabled()) {
+            bot.sendMessage(chatId, "Model data upload is disabled for this environment.")
+            return
+        }
+
         bot.sendMessage(chatId, "Starting model data upload...")
         CoroutineScope(Dispatchers.IO).launch {
             val status = ModelDataUploader.uploadModelData()

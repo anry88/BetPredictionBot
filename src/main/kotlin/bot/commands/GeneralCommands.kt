@@ -55,7 +55,7 @@ class GeneralCommands(private val bot: FootballBot) {
             /getStrategyEfficiency n - Get strategy efficiency for 'n' period
             /getLeaguePredictability - Get League Predictability data
             /getjsonl - Get the matches data in .jsonl format
-            /uploadmodeldata - Upload matches data to the model
+            /uploadmodeldata - Upload matches data to the model (production only)
             /updatePastMatches - Update results of matches from the last two days
             /addPastResults league season startDate endDate - Add past results to database
             /createInviteLink subscribers days - Create an invite link for the premium channel

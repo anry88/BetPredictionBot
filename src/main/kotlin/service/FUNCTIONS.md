@@ -30,7 +30,7 @@
 - `refundStars(userId, telegramPaymentChargeId)`: Initiates a refund for a payment identified by Telegram's charge id.
 
 ## ModelDataUploader.kt
-- `uploadModelData()`: Extracts recent matches, writes them to JSONL, posts to the local model API, and returns the status code in both prod and test environments.
+- `uploadModelData()`: Skips test environments, otherwise extracts recent matches, writes them to JSONL, posts to the local model API, and returns the status code.
 - `createJsonlFileForModel(matches)` / `uploadJsonlToLocalModel(file)`: Helpers that serialize matches, including model metadata such as `predictedAt`, and perform the HTTP upload.
 
 ## DatabaseService.kt

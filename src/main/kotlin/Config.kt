@@ -2,9 +2,8 @@ import java.io.FileInputStream
 import java.util.Properties
 
 object Config {
-    private const val DEFAULT_LOCAL_MODEL_PORT = 7007
-    private const val PROD_UPLOAD_MODEL_DATA_CRON = "0 0 3 ? * MON,WED,FRI"
-    private const val TEST_UPLOAD_MODEL_DATA_CRON = "0 0 3 ? * TUE,THU,SAT"
+    private const val DEFAULT_LOCAL_MODEL_PORT = 7008
+    private const val PROD_UPLOAD_MODEL_DATA_CRON = "0 0 3 * * ?"
 
     private val properties: Properties = Properties()
 
@@ -42,10 +41,14 @@ object Config {
     }
 
     fun getUploadModelDataCron(): String {
-        return uploadModelDataCronFor(isTestEnvironment())
+        return PROD_UPLOAD_MODEL_DATA_CRON
     }
 
-    fun uploadModelDataCronFor(isTestEnvironment: Boolean): String {
-        return if (isTestEnvironment) TEST_UPLOAD_MODEL_DATA_CRON else PROD_UPLOAD_MODEL_DATA_CRON
+    fun isModelDataUploadEnabled(): Boolean {
+        return isModelDataUploadEnabledFor(isTestEnvironment())
+    }
+
+    fun isModelDataUploadEnabledFor(isTestEnvironment: Boolean): Boolean {
+        return !isTestEnvironment
     }
 }

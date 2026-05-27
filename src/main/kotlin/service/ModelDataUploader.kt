@@ -24,6 +24,11 @@ object ModelDataUploader {
     }
 
     suspend fun uploadModelData(): Int {
+        if (!Config.isModelDataUploadEnabled()) {
+            logger.info("Model data upload is disabled for this environment")
+            return 0
+        }
+
         val completedMatches = DatabaseService.matches
             .getAllMatchesForLastYears(2)
             .filter { it.actualOutcome != null }

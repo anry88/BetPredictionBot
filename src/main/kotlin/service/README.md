@@ -11,7 +11,7 @@ Services encapsulate network calls, business rules, and repository interactions.
 - `StrategyService.kt` — evaluates whether a match satisfies strategy parameters (`OutcomeStrategyConfig`), including premium filters and model probabilities.
 - `StarsPaymentService.kt` — processes Telegram Stars payments/refunds, updates subscriptions, and notifies users.
 - `DatabaseService.kt` — single entry point for database initialization plus access to repositories (users, matches, payments, polls, subscriptions, commands, etc.).
-- `ModelDataUploader.kt` — aggregates model data and uploads it for the `UploadModelDataJob` Quartz task (Monday/Wednesday/Friday at 03:00 in prod, Tuesday/Thursday/Saturday at 03:00 in test mode).
+- `ModelDataUploader.kt` — aggregates model data and uploads it for the `UploadModelDataJob` Quartz task (nightly at 03:00 in prod; disabled in test mode).
 
 ## Usage
 Services live under the `service` scope. Call them directly from bot commands, Quartz jobs, or other services. When adding a new integration:

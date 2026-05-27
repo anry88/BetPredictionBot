@@ -28,8 +28,9 @@ class ConfigTest {
     }
 
     @Test
-    fun uploadModelDataCronShiftsForTestEnvironment() {
-        assertEquals("0 0 3 ? * TUE,THU,SAT", Config.getUploadModelDataCron())
-        assertEquals("0 0 3 ? * MON,WED,FRI", Config.uploadModelDataCronFor(false))
+    fun modelDataUploadRunsNightlyOnlyOutsideTestEnvironment() {
+        assertEquals("0 0 3 * * ?", Config.getUploadModelDataCron())
+        assertEquals(false, Config.isModelDataUploadEnabled())
+        assertEquals(true, Config.isModelDataUploadEnabledFor(false))
     }
 }
