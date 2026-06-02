@@ -37,7 +37,13 @@ object Config {
     }
 
     fun getLocalModelBaseUrl(): String {
-        return "http://localhost:${getLocalModelPort()}"
+        return nonBlank(System.getenv("LOCAL_MODEL_BASE_URL"))
+            ?: nonBlank(getProperty("local.model.base.url"))
+            ?: "http://localhost:${getLocalModelPort()}"
+    }
+
+    private fun nonBlank(value: String?): String? {
+        return value?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     fun getUploadModelDataCron(): String {

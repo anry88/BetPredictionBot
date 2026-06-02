@@ -28,6 +28,20 @@ class ConfigTest {
     }
 
     @Test
+    fun localModelBaseUrlUsesExplicitPropertyWhenConfigured() {
+        File("config.properties").writeText(
+            """
+            test=true
+            local.model.port=7011
+            local.model.base.url=http://football-model:7008
+            """.trimIndent()
+        )
+        Config.reload()
+
+        assertEquals("http://football-model:7008", Config.getLocalModelBaseUrl())
+    }
+
+    @Test
     fun modelDataUploadRunsNightlyOnlyOutsideTestEnvironment() {
         assertEquals("0 0 3 * * ?", Config.getUploadModelDataCron())
         assertEquals(false, Config.isModelDataUploadEnabled())

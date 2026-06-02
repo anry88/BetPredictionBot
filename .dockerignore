@@ -1,0 +1,16 @@
+.git
+.gradle
+build
+out
+.idea
+.DS_Store
+*.iml
+logs
+*.log
+config.properties
+predictions.db
+*.db
+*.db-shm
+*.db-wal
+Dockerfile.local
+docker-compose*.yml
