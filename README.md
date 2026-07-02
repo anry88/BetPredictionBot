@@ -129,6 +129,13 @@ cp config.example.properties config.properties
 ./gradlew run
 ```
 
+### HDC deployment
+
+The repeatable test/production container procedure is documented in
+[docs/hdc-deployment.md](docs/hdc-deployment.md). Use
+`./scripts/deploy-hdc-bots.sh`; it builds the required `linux/amd64` image,
+loads it directly over SSH, and verifies both bot healthchecks and metrics.
+
 ### Configuration
 
 Use [config.example.properties](config.example.properties) as the starting point. Current keys used by the application:

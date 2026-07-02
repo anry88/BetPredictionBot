@@ -7,6 +7,7 @@ AI-oriented repository guide for coding assistants and code-review tools.
 - `README.md` is the human-facing project overview for clients, recruiters, and freelance marketplaces.
 - `docs/product-overview.md` is the human-facing product overview.
 - `docs/ai-side.md` is the deeper prediction-pipeline note.
+- `docs/hdc-deployment.md` is the operational runbook for test/prod bot containers on HDC.
 - `src/main/kotlin/**/README.md` and `src/main/kotlin/**/FUNCTIONS.md` are AI-reference files for code navigation.
 
 ## Repository map
@@ -18,6 +19,7 @@ AI-oriented repository guide for coding assistants and code-review tools.
 - `src/main/kotlin/dto/`: transport models, strategy configs, and API schemas.
 - `src/main/resources/`: league, tag, and team metadata.
 - `src/test/kotlin/`: unit tests.
+- `scripts/deploy-hdc-bots.sh`: canonical test/prod bot-container deployment from a local Docker host.
 
 ## Key runtime facts
 
@@ -28,6 +30,13 @@ AI-oriented repository guide for coding assistants and code-review tools.
 - Scheduler: Quartz.
 - Persistence: SQLite with Exposed.
 - Observability: Prometheus HTTP exporter from `Metrics.kt`.
+
+## HDC deployment
+
+- Use `scripts/deploy-hdc-bots.sh` from a clean worktree.
+- The script builds `linux/amd64` locally and streams the image to HDC; do not rediscover or replace this path with a server-side Docker build.
+- Recreate only `betprediction-test` and `betprediction-prod` with `--no-deps`; the model and bind-mounted SQLite files are outside a normal bot deployment.
+- Follow `docs/hdc-deployment.md` for verification, rollback, and database-change precautions.
 
 ## Update rules
 
