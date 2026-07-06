@@ -112,4 +112,28 @@ class MatchPollRepository {
         conn.close()
         return polls
     }
+
+    fun getOpenPostedPolls(): List<MatchPoll> {
+        val conn = getConnection()
+        val stmt = conn.prepareStatement(
+            "SELECT fixture_id, teams, poll_message_id, poll_id, poll_date, closed " +
+                    "FROM match_polls WHERE poll_message_id IS NOT NULL AND closed = 0"
+        )
+        val rs = stmt.executeQuery()
+        val polls = mutableListOf<MatchPoll>()
+        while (rs.next()) {
+            polls += MatchPoll(
+                rs.getString("fixture_id"),
+                rs.getString("teams"),
+                rs.getString("poll_message_id"),
+                rs.getString("poll_id"),
+                rs.getString("poll_date"),
+                rs.getInt("closed") == 1
+            )
+        }
+        rs.close()
+        stmt.close()
+        conn.close()
+        return polls
+    }
 }
