@@ -26,6 +26,9 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
+internal fun isUnavailableFixtureStatus(statusShort: String?): Boolean =
+    statusShort == "PST" || statusShort == "CANC"
+
 class HttpAPIFootballService(private val footballBot: FootballBot) {
     private val logger = LoggerFactory.getLogger(HttpAPIFootballService::class.java)
     private val apiKey: String = Config.getProperty("api-football.token") ?: throw IllegalStateException("API Key not found")
@@ -304,9 +307,6 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
     }
 
     suspend fun updatePastMatches() {
-        val currentDate = LocalDate.now()
-        val oneDayAgo = currentDate.minusDays(1)
-
         val messagesToUpdate = mutableMapOf<Pair<String?, String?>, MatchInfo>()
         val messagesMap = mutableSetOf<Pair<String, String>>()
         val strategyMap = mutableSetOf<Pair<String, String>>()
@@ -327,37 +327,35 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
             }
         }
 
-        val matches = DatabaseService.matches.getMatchesFromLastDaysWithoutResult(2)
+        val matches = DatabaseService.matches.getMatchesAroundNowWithoutResult(daysBefore = 2, daysAfter = 2)
         for (match in matches) {
             val liveResult = getLiveMatchInfoWithStatus(match.fixtureId)
             if (liveResult != null && liveResult.matchInfo.actualOutcome != null) {
                 DatabaseService.matches.updateMatchResult(liveResult.matchInfo)
+                footballBot.finalizeMatchPollIfNeeded(liveResult.matchInfo)
                 trackUpdatedMatch(liveResult.matchInfo)
                 delay(1000)
                 continue
             }
 
-            if (liveResult?.statusShort == "PST") {
-                DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
-                trackRemovedMatch(match)
-            } else if (liveResult?.statusShort == "CANC") {
+            if (isUnavailableFixtureStatus(liveResult?.statusShort)) {
                 DatabaseService.matches.deleteMatchByFixtureId(match.fixtureId, match.matchType)
                 trackRemovedMatch(match)
             }
             delay(1000)
         }
 
+        DatabaseService.polls.getOpenPostedPolls().forEach { poll ->
+            val match = DatabaseService.matches.getMatchInfoByFixtureId(poll.fixtureId)
+            if (match?.actualOutcome != null) {
+                footballBot.finalizeMatchPollIfNeeded(match)
+                delay(1000)
+            }
+        }
+
         for ((_, info) in messagesToUpdate) {
             footballBot.updateMatchMessages(info)
             delay(10000)
-        }
-
-        // Delete matches older than one day with no actual result
-        val matchesToDelete = DatabaseService.matches.getMatchesOlderThanOneDayWithoutResult(oneDayAgo)
-
-        matchesToDelete.forEach { matchInfo ->
-            DatabaseService.matches.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
-            trackRemovedMatch(matchInfo)
         }
 
         for ((league, msgId) in messagesMap) {

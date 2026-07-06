@@ -17,7 +17,6 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -95,7 +94,6 @@ object LeaguePredictability : Table() {
 class MatchRepository {
     private val logger = LoggerFactory.getLogger(MatchRepository::class.java)
     private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val listOfLeagues = mutableSetOf<String>()
 
     private fun loadLeagues() {
@@ -424,9 +422,10 @@ class MatchRepository {
         return matchesToUpdate
     }
 
-    fun getMatchesFromLastDaysWithoutResult(days: Int): List<MatchInfo> {
+    fun getMatchesAroundNowWithoutResult(daysBefore: Int, daysAfter: Int): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
-        val startDate = now.minusDays(days.toLong())
+        val startDate = now.minusDays(daysBefore.toLong())
+        val endDate = now.plusDays(daysAfter.toLong())
         val matchesToUpdate = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
@@ -434,7 +433,9 @@ class MatchRepository {
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.selectAll().mapNotNullTo(matchesToUpdate) { row ->
                     val matchDateTime = LocalDateTime.parse(row[leagueTable.datetime], dateTimeFormatter)
-                    val isWithinRange = matchDateTime.isAfter(startDate) && matchDateTime.isBefore(now) && row[leagueTable.actualOutcome] == null
+                    val isWithinRange = matchDateTime.isAfter(startDate) &&
+                            matchDateTime.isBefore(endDate) &&
+                            row[leagueTable.actualOutcome] == null
                     if (isWithinRange) mapRowToMatchInfo(row, leagueTable) else null
                 }
             }
@@ -455,21 +456,6 @@ class MatchRepository {
             }
         }
         return matchInfo
-    }
-
-    fun getMatchesOlderThanOneDayWithoutResult(date: LocalDate): List<MatchInfo> {
-        val matches = mutableListOf<MatchInfo>()
-        transaction {
-            listOfLeagues.forEach { leagueName ->
-                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
-                addMissingColumnsForLeague(leagueName)
-                leagueTable.select {
-                    (leagueTable.datetime lessEq date.format(dateFormatter)) and
-                            leagueTable.actualOutcome.isNull()
-                }.mapNotNullTo(matches) { mapRowToMatchInfo(it, leagueTable) }
-            }
-        }
-        return matches
     }
 
     fun getLastMatches(days: Int): List<MatchInfo> {

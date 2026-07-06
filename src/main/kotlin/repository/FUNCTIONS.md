@@ -5,7 +5,7 @@
 ## MatchRepository.kt
 - League table management: `appendRows()`, `updateMatchResult()`, and helpers keep per-league tables in sync; `createLeagueTableIfNeeded`/`addMissingColumnsForLeague` are invoked upstream when adding rows.
 - Prediction fields: `updateMatchPredictions()`, `updateMatchOdds()`, `updateMatchMessageId()`, `updateMatchStrategyMessageId()`, `updateMatchDatetime()`, and `updateMatchTeams()` keep model outputs and Telegram ids current.
-- Queries: `getUpcomingMatches*()`, `getOngoingMatches()`, `getMatchesFromLastDaysWithoutResult()`, `getLastMatches*()`, `getMatchesBy*()` fetch slices for messaging, cleanup, and stats.
+- Queries: `getUpcomingMatches*()`, `getOngoingMatches()`, `getMatchesAroundNowWithoutResult()`, `getLastMatches*()`, `getMatchesBy*()` fetch slices for messaging, reconciliation, and stats.
 - Statistics: `updateLeaguePredictability()`, `getLeaguePredictabilityData()`, `getStatisticsForPeriod()`, `getDetailedStatisticsForPeriod()`, `getTopPremiumRoiMatchesForPeriod()` aggregate ROI/accuracy metrics and team match counts.
 - Utilities: `matchExists()`, `deleteMatchByFixtureId()`, `getMatchInfoByFixtureId()`, and helpers that normalize league naming and team counts.
 
@@ -16,7 +16,7 @@
 - Rate limiting: `incrementUsage()` tracks command usage per month and returns the new count; `getUsage()`/`getTotalUsage()` read counters; `clearOldEntries()` prunes stale rows.
 
 ## MatchPollRepository.kt
-- Poll lifecycle: `addPoll()`, `markPollPosted()`, `markPollClosed()`, and `getPendingPolls()` store poll metadata; `existsPollForDate()` prevents duplicates; `getPollByFixtureId()` retrieves poll details.
+- Poll lifecycle: `addPoll()`, `markPollPosted()`, `markPollClosed()`, `getPendingPolls()`, and `getOpenPostedPolls()` store and reconcile poll metadata; `existsPollForDate()` prevents duplicates; `getPollByFixtureId()` retrieves poll details.
 
 ## UserStatsRepository.kt
 - User counters: `addUserActivity()` logs interactions with names; `getUserCount()` and `getActiveUserCountLast24Hours()` provide metrics for Prometheus and messaging.
