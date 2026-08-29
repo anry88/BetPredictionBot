@@ -17,6 +17,7 @@ This note explains the current prediction pipeline in product terms and clarifie
 - The stored `predictedOutcome` is selected with a direct argmax over `homeWin`, `draw`, and `awayWin`; the generated score is then adjusted to match that selected outcome.
 - Local-model predictions also store `predictedAt`, an ISO-UTC timestamp captured when the prediction response is received.
 - Premium strategy filtering depends on these model outputs, which makes the local model central to the strongest product features.
+- Every configured league is eligible for premium strategy selection in both test and production; probability, odds, match-history, and xG thresholds still determine whether an individual match qualifies.
 - The current premium filter is intentionally narrow: draw picks require low xG imbalance/total, while away-win picks also require a clear away-minus-home xG edge in addition to odds/probability bounds.
 
 ## Where ChatGPT is used
