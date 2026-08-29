@@ -79,6 +79,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
+    private val tagsFile = File(System.getenv("TAGS_FILE") ?: "src/main/resources/tags.json")
     private val leagueTags: Map<String, String>
     private val teamTags: Map<String, String>
     private val topTeams: List<String>
@@ -987,10 +988,13 @@ Available actions:
     }
 
     private fun loadTags(): Pair<Map<String, String>, Map<String, String>> {
-        val fileContent =
-            javaClass.getResource("/tags.json")?.readText() ?: throw IllegalStateException("leagues.json not found")
-        val json = Json { ignoreUnknownKeys = true }
-        val tagsData = json.decodeFromString<TagsData>(fileContent)
+        val fileContent = if (tagsFile.isFile) {
+            tagsFile.readText()
+        } else {
+            javaClass.getResource("/tags.json")?.readText()
+                ?: throw IllegalStateException("tags.json not found")
+        }
+        val tagsData = Json { ignoreUnknownKeys = true }.decodeFromString<TagsData>(fileContent)
         return Pair(tagsData.leagues, tagsData.teams)
     }
 
@@ -1089,10 +1093,9 @@ Available actions:
     private fun saveTags() {
         try {
             val tagsData = TagsData(leagueTags, teamTags)
-            val json = Json { prettyPrint = true }
-            val jsonString = json.encodeToString(tagsData)
-            val file = File("src/main/resources/tags.json")
-            file.writeText(jsonString)
+            val jsonString = Json { prettyPrint = true }.encodeToString(tagsData)
+            tagsFile.parentFile?.mkdirs()
+            tagsFile.writeText(jsonString)
         } catch (e: Exception) {
             logger.error("Failed to save tags", e)
         }
