@@ -458,6 +458,18 @@ class MatchRepository {
         return matchInfo
     }
 
+    fun getMatchInfoByFixtureId(fixtureId: String, leagueName: String): MatchInfo? {
+        if (leagueName !in listOfLeagues) return null
+
+        val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+        addMissingColumnsForLeague(leagueName)
+        return transaction {
+            leagueTable.select { leagueTable.fixtureId eq fixtureId }
+                .mapNotNull { mapRowToMatchInfo(it, leagueTable) }
+                .singleOrNull()
+        }
+    }
+
     fun getLastMatches(days: Int): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneId.of("UTC+3"))
         val startDate = now.minusDays(days.toLong())

@@ -99,9 +99,17 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
 
         leaguesConfig.forEach { leagueConfig ->
             val matches = getUpcomingMatches(leagueConfig.leagueId, leagueConfig.season, formattedCurrentDate, formattedNextDay)
-            matches.forEach { match ->
+            matches.forEach matchLoop@ { match ->
                 val fixtureId = match.fixture.id.toString()
-                val leagueName = "${match.league.country} ${match.league.name}"
+                if (!leagueConfig.matchesApiIdentity(match.league.id, match.league.season)) {
+                    logger.warn(
+                        "Skipping fixture $fixtureId: API league ${match.league.id}/${match.league.season} " +
+                                "does not match requested league ${leagueConfig.leagueId}/${leagueConfig.season}"
+                    )
+                    return@matchLoop
+                }
+                val leagueName = leagueConfig.description
+                val apiLeagueName = "${match.league.country} ${match.league.name}"
 
                 // Парсим дату и время матча
                 val isoDateTime = match.fixture.date // Оригинальная дата и время в ISO формате
@@ -146,8 +154,15 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                     neutralVenue = neutralVenue
                 )
 
-                // Проверяем, существует ли матч в базе данных
-                if (!DatabaseService.matches.matchExists(matchInfo)) {
+                val existingMatch = DatabaseService.matches.getMatchInfoByFixtureId(
+                    matchInfo.fixtureId,
+                    matchInfo.matchType
+                ) ?: if (apiLeagueName != matchInfo.matchType) {
+                    DatabaseService.matches.getMatchInfoByFixtureId(matchInfo.fixtureId, apiLeagueName)
+                } else {
+                    null
+                }
+                if (existingMatch == null) {
                     // Вставляем матч в базу данных
                     DatabaseService.matches.appendRows(listOf(matchInfo))
 
@@ -221,39 +236,43 @@ class HttpAPIFootballService(private val footballBot: FootballBot) {
                         }
                     }
                 } else {
-                    DatabaseService.matches.updateMatchDatetime(matchInfo)
+                    val updatedExistingMatch = existingMatch.copy(
+                        datetime = matchInfo.datetime,
+                        neutralVenue = matchInfo.neutralVenue
+                    )
+                    DatabaseService.matches.updateMatchDatetime(updatedExistingMatch)
                     logger.info("Duplicate match found: $teams at $datetime")
 
-                    val existingMatch = DatabaseService.matches.getMatchInfoByFixtureId(matchInfo.fixtureId)
-                    if (existingMatch != null) {
-                        val matchDateTime = LocalDateTime.parse(existingMatch.datetime, formatterMatchDate)
-                        val now = LocalDateTime.now(ZoneOffset.UTC)
-                        val needsOdds = existingMatch.homeWinOdds == null ||
-                                existingMatch.drawOdds == null ||
-                                existingMatch.awayWinOdds == null
+                    val matchDateTime = LocalDateTime.parse(updatedExistingMatch.datetime, formatterMatchDate)
+                    val now = LocalDateTime.now(ZoneOffset.UTC)
+                    val needsOdds = updatedExistingMatch.homeWinOdds == null ||
+                            updatedExistingMatch.drawOdds == null ||
+                            updatedExistingMatch.awayWinOdds == null
 
-                        if (matchDateTime.isBefore(now.plusHours(28)) && needsOdds) {
-                            val oddsInfo = getOddsForFixture(
-                                existingMatch.fixtureId,
-                                existingMatch.predictedOutcome ?: "",
-                                match.teams.home.name,
-                                match.teams.away.name
+                    if (matchDateTime.isBefore(now.plusHours(28)) && needsOdds) {
+                        val oddsInfo = getOddsForFixture(
+                            updatedExistingMatch.fixtureId,
+                            updatedExistingMatch.predictedOutcome ?: "",
+                            match.teams.home.name,
+                            match.teams.away.name
+                        )
+                        if (oddsInfo != null) {
+                            val updatedMatch = updatedExistingMatch.copy(
+                                odds = oddsInfo.odds.toString(),
+                                bookmakerName = oddsInfo.bookmakerName,
+                                homeWinOdds = oddsInfo.homeWinOdds?.toString(),
+                                drawOdds = oddsInfo.drawOdds?.toString(),
+                                awayWinOdds = oddsInfo.awayWinOdds?.toString()
                             )
-                            if (oddsInfo != null) {
-                                val updatedMatch = existingMatch.copy(
-                                    odds = oddsInfo.odds.toString(),
-                                    bookmakerName = oddsInfo.bookmakerName,
-                                    homeWinOdds = oddsInfo.homeWinOdds?.toString(),
-                                    drawOdds = oddsInfo.drawOdds?.toString(),
-                                    awayWinOdds = oddsInfo.awayWinOdds?.toString()
-                                )
-                                DatabaseService.matches.updateMatchOdds(updatedMatch)
-                            }
+                            DatabaseService.matches.updateMatchOdds(updatedMatch)
                         }
                     }
                 }
                 if (match.fixture.status?.short == "CANC"){
-                    DatabaseService.matches.deleteMatchByFixtureId(matchInfo.fixtureId, matchInfo.matchType)
+                    DatabaseService.matches.deleteMatchByFixtureId(
+                        matchInfo.fixtureId,
+                        existingMatch?.matchType ?: matchInfo.matchType
+                    )
                 }
             }
         }

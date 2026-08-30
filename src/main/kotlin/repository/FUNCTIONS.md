@@ -7,7 +7,7 @@
 - Prediction fields: `updateMatchPredictions()`, `updateMatchOdds()`, `updateMatchMessageId()`, `updateMatchStrategyMessageId()`, `updateMatchDatetime()`, and `updateMatchTeams()` keep model outputs and Telegram ids current.
 - Queries: `getUpcomingMatches*()`, `getOngoingMatches()`, `getMatchesAroundNowWithoutResult()`, `getLastMatches*()`, `getMatchesBy*()` fetch slices for messaging, reconciliation, and stats.
 - Statistics: `updateLeaguePredictability()`, `getLeaguePredictabilityData()`, `getStatisticsForPeriod()`, `getDetailedStatisticsForPeriod()`, `getTopPremiumRoiMatchesForPeriod()` aggregate ROI/accuracy metrics and team match counts.
-- Utilities: `matchExists()`, `deleteMatchByFixtureId()`, `getMatchInfoByFixtureId()`, and helpers that normalize league naming and team counts.
+- Utilities: `matchExists()`, `deleteMatchByFixtureId()`, `getMatchInfoByFixtureId()` (global or scoped to one league), and helpers that normalize league naming and team counts.
 
 ## ScheduledJobRepository.kt
 - Persistence for user-defined jobs: `addJob()`, `getJobsByUser()`, `updateJob()`, `deleteJob()` manage custom schedules; `getDueJobs()` returns runnable jobs and `updateNextRun()` bumps them forward.

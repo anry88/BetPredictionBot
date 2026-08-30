@@ -3,7 +3,7 @@
 > AI-oriented reference file for code assistants and code review tools. Human-facing project overview lives in the repository root `README.md`.
 
 ## HttpAPIFootballService.kt
-- `fetchMatches()`: Pulls near-term fixtures from API-Football, persists new matches, enriches with predictions/odds, and skips duplicates.
+- `fetchMatches()`: Pulls near-term fixtures from API-Football, resolves each API league id/season to the exact `leagues.json` description, persists new matches, enriches them with predictions/odds, and skips duplicates.
 - `getModelBasedLeaguesFromConfig()`: Returns leagues flagged for premium model selection in `leagues.json`.
 - `updatePastMatches()`: Refreshes completed fixtures with actual outcomes and scores, cleaning stale entries when predictions fail.
 - `getLiveMatchInfo(fixtureId)` / `getFixtureInfo(fixtureId)`: Fetches live or static fixture snapshots for formatting and result tracking.

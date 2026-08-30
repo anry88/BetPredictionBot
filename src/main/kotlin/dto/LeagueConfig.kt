@@ -10,5 +10,7 @@ data class LeagueConfig(
     val season: Int,
     val description: String,
     val premiumSelection: Boolean = false
-)
-
+) {
+    fun matchesApiIdentity(leagueId: Int, season: Int): Boolean =
+        this.leagueId == leagueId && this.season == season
+}
