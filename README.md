@@ -4,7 +4,8 @@ AI-powered Telegram bot for football predictions with a local model, ChatGPT fal
 
 **What it does**
 - Pulls football fixtures and odds, generates predictions, and publishes them to Telegram.
-- Separates free and premium match flows, including subscriptions, invite links, and refund handling.
+- Posts upcoming matches twice daily (8 AM and 8 PM server time) with league summaries and inline buttons for detailed views.
+- Provides detailed match information via bot commands without usage limits.
 - Tracks accuracy and ROI over time and exposes operational metrics for monitoring.
 
 **Why it is technically interesting**
@@ -23,10 +24,11 @@ Human-facing docs live in this file and in [docs/product-overview.md](docs/produ
 
 ## What I built
 
-- A Telegram bot that delivers upcoming matches, recent results, premium picks, and accuracy summaries.
+- A Telegram bot that delivers upcoming matches, recent results, and accuracy summaries via scheduled posts and bot commands.
 - A hybrid prediction pipeline that prefers a local football model and falls back to ChatGPT when the local service is unavailable.
-- A premium flow with Telegram Stars payments, invite-link management, refunds, and gated command limits.
-- Quartz-based automation for match fetching, result updates, premium summaries, league predictability refreshes, and model-data uploads.
+- Scheduled posting system that shows league summaries with inline buttons (max 10 leagues per post) twice daily at 8 AM and 8 PM server time.
+- Bot commands without usage limits for accessing detailed match information.
+- Quartz-based automation for match fetching, result updates, league predictability refreshes, and model-data uploads.
 - SQLite persistence with Exposed repositories for matches, subscriptions, payments, scheduled jobs, invites, refunds, and poll history.
 - Prometheus metrics for commands, user counts, job operations, and refund operations.
 
@@ -58,7 +60,7 @@ flowchart LR
 - `Neutral venues`: FIFA World Cup fixtures and detected cup finals are sent to the model with `neutral=true`, and JSONL feedback includes `neutralVenue` so home-field advantage is not applied to those rows.
 - `ChatGPT`: `ChatGPTService` is a fallback path. If the local model does not return a prediction, the bot retries against OpenAI and parses a structured response back into `MatchInfo`.
 - `Strategy selection`: premium picks are not arbitrary. `StrategyService` filters matches by predicted outcome, probability thresholds, expected-goal constraints, and bookmaker odds.
-- `Accuracy`: the current code measures outcome accuracy and ROI over rolling periods, plus strategy-only accuracy/ROI and per-outcome breakdowns. Daily, weekly, monthly, and yearly summary jobs are already wired.
+- `Accuracy`: the current code measures outcome accuracy and ROI over rolling periods and per-outcome breakdowns. Public daily, weekly, monthly, and yearly summaries intentionally omit private-strategy statistics.
 - `Feedback loop`: after matches finish, results are fetched back into SQLite. In production, completed labeled matches are exported to JSONL and uploaded to the local model on a recurring schedule so the model service can ingest fresh historical data.
 
 More detail is in [docs/ai-side.md](docs/ai-side.md).
@@ -68,12 +70,11 @@ More detail is in [docs/ai-side.md](docs/ai-side.md).
 The repository already demonstrates backend automation rather than manual operation:
 
 - Fetch new matches every 4 hours.
-- Update match posts shortly after fetch windows.
+- Post upcoming match summaries twice daily at 8 AM and 8 PM server time with league buttons (max 10 leagues per post).
 - Refresh past results daily.
 - Update live matches every 10 minutes.
 - Recompute league predictability daily.
 - Send daily, weekly, monthly, and yearly accuracy reports.
-- Send a daily premium summary.
 - Upload model training data nightly at 03:00 in production. Test instances keep prediction reads enabled but do not upload feedback data to the model.
 - Clean up invite links hourly.
 - Run user-defined scheduled tasks with stored time zones.
@@ -82,7 +83,7 @@ The repository already demonstrates backend automation rather than manual operat
 
 - SQLite is used as the operational store, with Exposed repositories wrapping access.
 - Match data is stored per league and enriched over time with predictions, odds, actual outcomes, message ids, and calibration fields.
-- Separate repositories handle subscriptions, payments, refunds, invite links, user settings, scheduled jobs, polls, and command-usage limits.
+- Separate repositories handle subscriptions, payments, refunds, invite links, user settings, scheduled jobs, polls, and retained usage history. Match-detail commands are currently unlimited.
 - The same store powers both end-user features and analytics such as predictability, accuracy, and ROI.
 
 ## Monitoring
@@ -103,7 +104,7 @@ The repository includes real cropped screenshots from the bot flows and reportin
 
 ![Prediction example](docs/assets/prediction-example.png)
 
-### Premium / paid flow
+### Admin-managed private flow
 
 ![Premium flow preview](docs/assets/premium-flow.png)
 

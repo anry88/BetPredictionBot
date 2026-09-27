@@ -10,7 +10,7 @@ Repositories encapsulate database access (Exposed/SQLite) and provide CRUD/aggre
 - `UserStatsRepository.kt` — user/command metrics, prediction accuracy, and ROI tracking.
 - `PaymentRepository.kt` — payments/refunds and transaction states.
 - `InviteRepository.kt` — channel/bot invite links, limits, expiry, and validation.
-- `CommandUsageRepository.kt` — command usage tracking and pruning of old entries.
+- `CommandUsageRepository.kt` — retained command usage history and pruning; no active command limit depends on it.
 - `UserSettingsRepository.kt` — time zones and other per-user settings.
 - `PremiumSubscriptionRepository.kt` — active subscriptions, renewals, and access checks.
 - `ScheduledJobRepository.kt` — user-defined schedules created/edited from chats.

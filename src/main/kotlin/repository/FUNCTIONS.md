@@ -13,7 +13,7 @@
 - Persistence for user-defined jobs: `addJob()`, `getJobsByUser()`, `updateJob()`, `deleteJob()` manage custom schedules; `getDueJobs()` returns runnable jobs and `updateNextRun()` bumps them forward.
 
 ## CommandUsageRepository.kt
-- Rate limiting: `incrementUsage()` tracks command usage per month and returns the new count; `getUsage()`/`getTotalUsage()` read counters; `clearOldEntries()` prunes stale rows.
+- Legacy usage tracking remains available for future policy changes, but current match-detail commands do not enforce a monthly limit. `clearOldEntries()` prunes stale historical rows.
 
 ## MatchPollRepository.kt
 - Poll lifecycle: `addPoll()`, `markPollPosted()`, `markPollClosed()`, `getPendingPolls()`, and `getOpenPostedPolls()` store and reconcile poll metadata; `existsPollForDate()` prevents duplicates; `getPollByFixtureId()` retrieves poll details.

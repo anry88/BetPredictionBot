@@ -11,8 +11,8 @@ The bot includes:
 - match ingestion from API-Football,
 - prediction generation through a local model,
 - fallback prediction generation through ChatGPT,
-- free and premium delivery paths in Telegram,
-- subscription and invite-link flows,
+- public league-summary delivery and a quiet private strategy channel,
+- admin-only subscription, invite-link, and private-match commands,
 - refund handling,
 - scheduled reporting and maintenance jobs,
 - accuracy and ROI tracking,
@@ -23,7 +23,7 @@ The bot includes:
 - `API-Football` provides fixtures, match status updates, and bookmaker odds.
 - `HttpLocalModelService` is the primary prediction integration and returns outcome probabilities plus expected goals.
 - `ChatGPTService` is used as a fallback when the local model does not return a usable prediction.
-- `StrategyService` filters matches for premium delivery based on probabilities, odds, and expected-goal constraints.
+- `StrategyService` filters prediction-suitable matches based on probabilities, odds, and expected-goal constraints.
 - `FootballBot` owns Telegram interactions: commands, messaging, paid flows, invite logic, and scheduled user-facing delivery.
 - `SQLite + Exposed` store matches, subscriptions, payments, refunds, polls, jobs, and user settings.
 - `Quartz` runs recurring fetch, update, cleanup, and reporting jobs.
@@ -38,10 +38,11 @@ The bot includes:
 3. The bot requests a prediction from the local model.
 4. If that fails, it retries through ChatGPT.
 5. Predictions and odds are persisted and then formatted for Telegram delivery.
+6. At 08:00 and 20:00 server time, the public channel receives league/count summaries with up to ten one-row league buttons per post; detailed match data stays in bot replies.
 
 ### Premium flow
 
-1. The bot exposes paid plans through Telegram Stars.
+1. Subscription, free-link, and private-match commands are restricted to the admin chat and kept available for possible future reuse.
 2. Premium access is stored in the database.
 3. Personal invite links and feature access are granted after payment.
 4. Refund requests can be created, reviewed, and processed through the bot/admin workflow.
@@ -61,9 +62,9 @@ The repository is structured around continuous background work, not only on-dema
 - updating recent and live matches,
 - recalculating league predictability,
 - sending daily/weekly/monthly/yearly accuracy summaries,
-- sending premium summaries,
+- delivering suitable matches to the private strategy channel without mentioning them in public posts or statistics,
 - uploading model data on the production schedule,
-- cleaning invite links and old usage records,
+- cleaning invite links and retained usage records; match-detail commands are not rate-limited,
 - executing user-defined scheduled tasks in stored time zones.
 
 ## Why this repository matters

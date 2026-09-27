@@ -13,7 +13,7 @@ AI-oriented repository guide for coding assistants and code-review tools.
 ## Repository map
 
 - `src/main/kotlin/Main.kt`: application bootstrap, Prometheus server startup, Quartz job wiring.
-- `src/main/kotlin/FootballBot.kt`: command routing, Telegram messaging, premium flows, scheduled delivery, accuracy messages.
+- `src/main/kotlin/FootballBot.kt`: command routing, Telegram messaging, scheduled delivery, accuracy messages.
 - `src/main/kotlin/service/`: external integrations and service-layer business logic.
 - `src/main/kotlin/repository/`: SQLite and Exposed-backed persistence.
 - `src/main/kotlin/dto/`: transport models, strategy configs, and API schemas.
@@ -24,9 +24,9 @@ AI-oriented repository guide for coding assistants and code-review tools.
 ## Key runtime facts
 
 - Primary match data source: API-Football.
-- Primary prediction source: local model on `http://localhost:<local.model.port>/predict` with `7007` as the default port.
+- Primary prediction source: local model on `http://localhost:<local.model.port>/predict` with `7008` as the default port.
 - Fallback prediction source: OpenAI via `ChatGPTService`.
-- Feedback upload target: `http://localhost:<local.model.port>/uploadLines` with `7007` as the default port.
+- Feedback upload target: `http://localhost:<local.model.port>/uploadLines` with `7008` as the default port.
 - Scheduler: Quartz.
 - Persistence: SQLite with Exposed.
 - Observability: Prometheus HTTP exporter from `Metrics.kt`.

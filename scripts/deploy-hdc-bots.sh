@@ -3,10 +3,31 @@ set -euo pipefail
 
 REMOTE_SSH_HOST="${REMOTE_SSH_HOST:-hdc}"
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-hdc/betprediction-bot}"
+DEPLOY_TARGET="${DEPLOY_TARGET:-all}"
 COMPOSE_FILE="D:\\HomeDataCenter\\compose\\docker-compose.betprediction.yml"
 COMPOSE_DIR="D:\\HomeDataCenter\\compose"
-SERVICES=(betprediction-test betprediction-prod)
-CONTAINERS=(hdc-betprediction-test hdc-betprediction-prod)
+
+case "$DEPLOY_TARGET" in
+    test)
+        SERVICES=(betprediction-test)
+        CONTAINERS=(hdc-betprediction-test)
+        METRICS_PORTS=(7111)
+        ;;
+    prod)
+        SERVICES=(betprediction-prod)
+        CONTAINERS=(hdc-betprediction-prod)
+        METRICS_PORTS=(7222)
+        ;;
+    all)
+        SERVICES=(betprediction-test betprediction-prod)
+        CONTAINERS=(hdc-betprediction-test hdc-betprediction-prod)
+        METRICS_PORTS=(7111 7222)
+        ;;
+    *)
+        echo "DEPLOY_TARGET must be one of: test, prod, all" >&2
+        exit 1
+        ;;
+esac
 
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -20,7 +41,7 @@ require_command git
 require_command ssh
 
 if [[ -n "$(git status --porcelain)" ]]; then
-    echo "The worktree is dirty. Commit the deployment before updating production." >&2
+    echo "The worktree is dirty. Commit the deployment before updating HDC." >&2
     exit 1
 fi
 
@@ -69,28 +90,30 @@ if [[ "$remote_versioned" != "$remote_latest" || "$remote_latest" != *" amd64/li
     exit 1
 fi
 
-echo "Recreating only the test and production bot containers..."
+echo "Recreating bot services for target '${DEPLOY_TARGET}': ${SERVICES[*]}..."
 ssh "$REMOTE_SSH_HOST" \
     "cmd /c \"cd /d ${COMPOSE_DIR} && docker compose -f ${COMPOSE_FILE} up -d --no-deps --force-recreate --pull never ${SERVICES[*]}\""
 
-echo "Waiting for both healthchecks..."
-ssh "$REMOTE_SSH_HOST" "powershell -NoProfile -Command \"\
+echo "Waiting for selected healthchecks..."
+for container in "${CONTAINERS[@]}"; do
+    ssh "$REMOTE_SSH_HOST" "powershell -NoProfile -Command \"\
 \$ErrorActionPreference='Stop'; \
-\$names=@('${CONTAINERS[0]}','${CONTAINERS[1]}'); \
 \$deadline=(Get-Date).AddSeconds(150); \
 do { \
-  \$states=@(\$names | ForEach-Object { docker inspect \$_ --format '{{.State.Health.Status}}' }); \
-  Write-Output ((\$names | ForEach-Object -Begin { \$i=0 } -Process { \$_ + '=' + \$states[\$i]; \$i++ }) -join ' '); \
-  if (@(\$states | Where-Object { \$_ -ne 'healthy' }).Count -eq 0) { exit 0 }; \
+  \$state=docker inspect '${container}' --format '{{.State.Health.Status}}'; \
+  Write-Output ('${container}=' + \$state); \
+  if (\$state -eq 'healthy') { exit 0 }; \
   Start-Sleep -Seconds 3; \
 } while ((Get-Date) -lt \$deadline); \
-throw 'Timed out waiting for bot container healthchecks'\""
+throw 'Timed out waiting for ${container} healthcheck'\""
+done
 
 echo "Checking metrics endpoints..."
-ssh "$REMOTE_SSH_HOST" "powershell -NoProfile -Command \"\
-\$test=(Invoke-WebRequest -UseBasicParsing 'http://localhost:7111/metrics').StatusCode; \
-\$prod=(Invoke-WebRequest -UseBasicParsing 'http://localhost:7222/metrics').StatusCode; \
-if (\$test -ne 200 -or \$prod -ne 200) { throw ('Metrics failed: test=' + \$test + ' prod=' + \$prod) }; \
-Write-Output ('metrics test=' + \$test + ' prod=' + \$prod)\""
+for port in "${METRICS_PORTS[@]}"; do
+    ssh "$REMOTE_SSH_HOST" "powershell -NoProfile -Command \"\
+\$status=(Invoke-WebRequest -UseBasicParsing 'http://localhost:${port}/metrics').StatusCode; \
+if (\$status -ne 200) { throw ('Metrics failed on port ${port}: ' + \$status) }; \
+Write-Output ('metrics port ${port}=' + \$status)\""
+done
 
 echo "Deployment complete: ${git_sha}"

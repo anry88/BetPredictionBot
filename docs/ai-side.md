@@ -33,11 +33,11 @@ Current evaluation in the repository is outcome-focused:
 
 - `accuracy`: percent of correct predicted outcomes over a selected period,
 - `ROI`: return on a fixed notional stake using stored odds,
-- `strategy accuracy / ROI`: the same metrics for premium-strategy picks only,
+- `strategy accuracy / ROI`: retained internally for strategy evaluation, but omitted from public and on-demand accuracy messages,
 - `breakdown by outcome`: home-win, draw, and away-win performance,
 - `league predictability`: per-league aggregated stats stored in the database.
 
-Daily, weekly, monthly, and yearly accuracy messages are already scheduled in `Main.kt`.
+Daily, weekly, monthly, and yearly accuracy messages are already scheduled in `Main.kt`; none includes private-strategy or premium wording, and there is no separate weekly premium-results post.
 
 ## How accuracy is planned to evolve
 

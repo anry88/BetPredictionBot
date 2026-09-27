@@ -94,7 +94,7 @@ class MessageFormatterTest {
     }
 
     @Test
-    fun directUpcomingMatchShowsAwayXgEdgeCheck() {
+    fun directUpcomingMatchShowsTestDataWithoutExtendedAnalysis() {
         val matchInfo = MatchInfo(
             fixtureId = "3",
             datetime = "2026-04-05 20:00",
@@ -121,8 +121,50 @@ class MessageFormatterTest {
             awayMatchesLastYear = 10
         )
 
-        val result = MessageFormatter.formatDirectUpcomingMatch(matchInfo, league = null)
+        val result = MessageFormatter.formatDirectUpcomingMatch(matchInfo)
 
-        assertTrue(result.contains("- xG edge ✅"))
+        assertTrue(result.contains("Expected Goals: 0.62 : 1.42"))
+        assertTrue(result.contains("Probabilities: 18.00% - 24.00% - 58.00%"))
+        assertTrue(result.contains("Odds: 3.5 - 3.3 - 2.12"))
+        assertTrue(!result.contains("PREMIUM PICK"))
+        assertTrue(!result.contains("Prediction Analysis:"))
+    }
+
+    @Test
+    fun directCompletedMatchOmitsPremiumAndExtendedAnalysis() {
+        val matchInfo = MatchInfo(
+            fixtureId = "4",
+            datetime = "2026-04-05 20:00",
+            matchType = "Test League",
+            teams = "Home vs. Away",
+            predictedOutcome = "Away",
+            actualOutcome = "Away",
+            predictedScore = "0:1",
+            actualScore = "0:2",
+            odds = "2.12",
+            bookmakerName = "Bookmaker",
+            homeWinOdds = "3.5",
+            drawOdds = "3.3",
+            awayWinOdds = "2.12",
+            telegramMessageId = null,
+            strategyTelegramMessageId = null,
+            elapsed = null,
+            modelHomeWinProb = 0.18,
+            modelDrawProb = 0.24,
+            modelAwayWinProb = 0.58,
+            modelExpectedHomeGoals = 0.62,
+            modelExpectedAwayGoals = 1.42,
+            homeMatchesLastYear = 10,
+            awayMatchesLastYear = 10
+        )
+
+        val result = MessageFormatter.formatDirectCompletedMatch(matchInfo)
+
+        assertTrue(result.contains("Expected Goals: 0.62 : 1.42"))
+        assertTrue(result.contains("Probabilities: 18.00% - 24.00% - 58.00%"))
+        assertTrue(result.contains("Odds: 3.5 - 3.3 - 2.12"))
+        assertTrue(result.contains("Actual: Away 0:2"))
+        assertTrue(!result.contains("PREMIUM PICK"))
+        assertTrue(!result.contains("Prediction Analysis:"))
     }
 }

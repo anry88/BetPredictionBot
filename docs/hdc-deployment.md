@@ -36,16 +36,24 @@ From the repository root, run:
 ./scripts/deploy-hdc-bots.sh
 ```
 
+To deploy only one bot and leave the other running container untouched, set
+`DEPLOY_TARGET` to `test` or `prod`:
+
+```bash
+DEPLOY_TARGET=test ./scripts/deploy-hdc-bots.sh
+```
+
+The default is `DEPLOY_TARGET=all`.
+
 The script:
 
 1. runs `./gradlew test`;
 2. builds the current commit locally for `linux/amd64`;
 3. tags it as both `hdc/betprediction-bot:<git-sha>` and `latest`;
 4. streams the image over SSH with `docker save | docker load`;
-5. recreates only `betprediction-test` and `betprediction-prod` with
-   `--no-deps --pull never`;
-6. waits for both Docker healthchecks;
-7. requires HTTP 200 from both metrics endpoints.
+5. recreates the selected bot service(s) with `--no-deps --pull never`;
+6. waits for the selected Docker healthcheck(s);
+7. requires HTTP 200 from the selected metrics endpoint(s).
 
 Use a different SSH alias only when required:
 

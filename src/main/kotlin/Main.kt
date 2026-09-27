@@ -92,24 +92,6 @@ class SendYearlyAccuracyJob : Job {
     }
 }
 
-class SendWeeklyTopMatchesJob : Job {
-    override fun execute(context: JobExecutionContext?) {
-        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
-        runBlocking {
-            footballBot.sendWeeklyTopMatches()
-        }
-    }
-}
-
-class SendDailyPremiumSummaryJob : Job {
-    override fun execute(context: JobExecutionContext?) {
-        val footballBot = context!!.mergedJobDataMap["footballBot"] as FootballBot
-        runBlocking {
-            footballBot.sendDailyPremiumSummary()
-        }
-    }
-}
-
 class UploadModelDataJob : Job {
     private val logger = LoggerFactory.getLogger(UploadModelDataJob::class.java)
 
@@ -190,11 +172,6 @@ fun main() {
         .withSchedule(CronScheduleBuilder.cronSchedule("0 1 0,4,8,12,16,20 * * ?"))
         .build()
 
-    val immediateTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("fetchMatchesImmediateTrigger", "group1")
-        .startNow()
-        .build()
-
     val updateMatchesJob = JobBuilder.newJob(UpdateMatchesJob::class.java)
         .withIdentity("updateMatchesJob", "group1")
         .usingJobData(jobDataMap)
@@ -203,7 +180,7 @@ fun main() {
     val updateMatchesTrigger = TriggerBuilder.newTrigger()
         .withIdentity("updateMatchesTrigger", "group1")
         .withSchedule(
-            CronScheduleBuilder.cronSchedule("0 5 0,4,8,12,16,20 * * ?")  // На 5-й минуте каждого 4-го часа
+            CronScheduleBuilder.cronSchedule("0 0 8,20 * * ?")  // At 08:00 and 20:00 server time
         )
         .build()
 
@@ -271,27 +248,6 @@ fun main() {
         .withSchedule(CronScheduleBuilder.cronSchedule("0 33 8 1 1 ?"))
         .build()
 
-    // SendWeeklyTopMatchesJob setup
-    val weeklyTopMatchesJob = JobBuilder.newJob(SendWeeklyTopMatchesJob::class.java)
-        .withIdentity("sendWeeklyTopMatchesJob", "group1")
-        .usingJobData(jobDataMap)
-        .build()
-
-    val weeklyTopMatchesTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("sendWeeklyTopMatchesTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.weeklyOnDayAndHourAndMinute(DateBuilder.MONDAY, 8, 35))
-        .build()
-
-    val dailyPremiumSummaryJob = JobBuilder.newJob(SendDailyPremiumSummaryJob::class.java)
-        .withIdentity("sendDailyPremiumSummaryJob", "group1")
-        .usingJobData(jobDataMap)
-        .build()
-
-    val dailyPremiumSummaryTrigger = TriggerBuilder.newTrigger()
-        .withIdentity("sendDailyPremiumSummaryTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.dailyAtHourAndMinute(8, 45))
-        .build()
-
     val liveUpdateJob = JobBuilder.newJob(UpdateLiveMatchesJob::class.java)
         .withIdentity("updateLiveMatchesJob", "group1")
         .usingJobData(jobDataMap)
@@ -331,15 +287,11 @@ fun main() {
     scheduler.scheduleJob(job, dailyTrigger)
     scheduler.scheduleJob(updateMatchesJob, updateMatchesTrigger)
     scheduler.scheduleJob(updatePastMatchesJob, updatePastMatchesTrigger)
-//    scheduler.scheduleJob(updatePastMatchesJob, setOf(updatePastMatchesTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(updateLeaguePredictabilityJob, updateLeaguePredictabilityTrigger)
-//    scheduler.scheduleJob(updateLeaguePredictabilityJob, setOf(updateLeaguePredictabilityTrigger, immediateTrigger).toMutableSet(), true)
     scheduler.scheduleJob(accuracyJob, accuracyTrigger)
     scheduler.scheduleJob(weeklyAccuracyJob, weeklyAccuracyTrigger)
     scheduler.scheduleJob(monthlyAccuracyJob, monthlyAccuracyTrigger)
     scheduler.scheduleJob(yearlyAccuracyJob, yearlyAccuracyTrigger)
-    scheduler.scheduleJob(weeklyTopMatchesJob, weeklyTopMatchesTrigger)
-    scheduler.scheduleJob(dailyPremiumSummaryJob, dailyPremiumSummaryTrigger)
     scheduler.scheduleJob(liveUpdateJob, liveUpdateTrigger)
     if (Config.isModelDataUploadEnabled()) {
         val uploadModelDataJob = JobBuilder.newJob(UploadModelDataJob::class.java)
@@ -353,7 +305,6 @@ fun main() {
             .build()
 
         scheduler.scheduleJob(uploadModelDataJob, uploadModelDataTrigger)
-//        scheduler.scheduleJob(uploadModelDataJob, setOf(uploadModelDataTrigger, immediateTrigger).toMutableSet(), true)
         logger.info("Scheduled UploadModelDataJob with cron {}", Config.getUploadModelDataCron())
     } else {
         logger.info("Skipped UploadModelDataJob because model data upload is disabled")
@@ -361,17 +312,14 @@ fun main() {
     scheduler.scheduleJob(inviteLinkCleanupJob, inviteLinkCleanupTrigger)
     scheduler.scheduleJob(commandUsageCleanupJob, commandUsageCleanupTrigger)
 
-    logger.info("Scheduled FetchMatchesJob to run three times a day at midnight, 8 AM, and 4 PM")
-    logger.info("Scheduled UpdateMatchesJob to run at every hour")
+    logger.info("Scheduled FetchMatchesJob to run every four hours starting at midnight")
+    logger.info("Scheduled UpdateMatchesJob to run twice a day at 8 AM and 8 PM server time")
     logger.info("Scheduled UpdateLeaguePredictabilityJob to run daily at 08:00")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
     logger.info("Scheduled SendWeeklyAccuracyJob to run every Monday at 08:31")
     logger.info("Scheduled SendMonthlyAccuracyJob to run on the 1st of every month at 08:32")
     logger.info("Scheduled SendYearlyAccuracyJob to run on the 1st of January of every year at 08:33")
-    logger.info("Scheduled SendWeeklyTopMatchesJob to run every Monday at 08:35")
-    logger.info("Scheduled SendDailyPremiumSummaryJob to run daily at 08:45")
-    logger.info("Executed FetchMatchesJob immediately upon startup")
-    logger.info("Executed UpdateLiveMatchesJob immediately upon startup to run every 5 minutes")
+    logger.info("Scheduled UpdateLiveMatchesJob to run every 10 minutes")
     logger.info("UploadModelDataJob runs in production only")
     logger.info("Scheduled InviteLinkCleanupJob to run every hour")
     logger.info("Scheduled CommandUsageCleanupJob to run on the 1st of every month")

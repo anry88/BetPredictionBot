@@ -1,5 +1,4 @@
 import dto.JsonlMatch
-import dto.LeagueConfig
 import dto.LeagueStats
 import dto.MatchInfo
 import dto.OutcomeStrategyConfig
@@ -18,6 +17,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeChat
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument
 import org.telegram.telegrambots.meta.api.objects.InputFile
@@ -51,6 +51,8 @@ import java.time.ZoneOffset
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.security.MessageDigest
+import java.util.Base64
 import kotlin.math.roundToInt
 import bot.commands.AdminCommands
 import bot.commands.GeneralCommands
@@ -71,6 +73,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         Config.getProperty("bot.name") ?: "topPrediction_bot"
 
     private val TELEGRAM_MESSAGE_LIMIT = 4096
+    private val MAX_LEAGUES_PER_SUMMARY = 10
 
     private val generalCommands = GeneralCommands(this)
     private val adminCommands = AdminCommands(this)
@@ -84,8 +87,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val teamTags: Map<String, String>
     private val topTeams: List<String>
 
-    // Загружаем конфигурацию лиг из файла
-    private val leaguesConfig: List<LeagueConfig>
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -97,6 +98,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val pendingRefundInfo = mutableMapOf<String, Long>()
 
     private val adminCommandNames = setOf(
+        "/subscribe",
+        "/freepremiumlinks",
+        "/premiummatches",
+        "/premiumrecent",
         "/getdatabase",
         "/usercount",
         "/activeusercount",
@@ -114,14 +119,10 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
     private val knownCommands = adminCommandNames + setOf(
         "/start",
         "/help",
-        "/subscribe",
-        "/freepremiumlinks",
         "/upcomingmatches",
         "/leagueupcoming",
-        "/premiummatches",
         "/recentmatches",
         "/leaguerecent",
-        "/premiumrecent",
         "/getaccuracy",
         "/tasks",
         "/settimezone",
@@ -138,12 +139,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         WAITING_JOB_TIME
     }
 
-    private fun loadLeaguesConfig(): List<LeagueConfig> {
-        val leaguesJson = javaClass.getResource("/leagues.json")?.readText()
-            ?: throw IllegalStateException("leagues.json not found")
-        return json.decodeFromString(leaguesJson)
-    }
-
     private fun loadTopTeams(): List<String> {
         val data = javaClass.getResource("/top_teams.json")?.readText() ?: "[]"
         return json.decodeFromString(data)
@@ -156,7 +151,6 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         val tags = loadTags()
         leagueTags = tags.first
         teamTags = tags.second
-        leaguesConfig = loadLeaguesConfig()
         topTeams = loadTopTeams()
         startScheduledJobs()
         startPollJobs()
@@ -391,11 +385,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun showUpcomingOptions(chatId: String) {
         val markup = InlineKeyboardMarkup()
-        val rows = listOf(
+        val rows = mutableListOf(
             listOf(InlineKeyboardButton("All upcoming matches").apply { callbackData = "jobs_create_upcoming_all" }),
-            listOf(InlineKeyboardButton("Upcoming matches for a league").apply { callbackData = "jobs_create_upcoming_league" }),
-            listOf(InlineKeyboardButton("Premium upcoming matches").apply { callbackData = "jobs_create_upcoming_premium" })
+            listOf(InlineKeyboardButton("Upcoming matches for a league").apply { callbackData = "jobs_create_upcoming_league" })
         )
+        if (chatId == adminChatId) {
+            rows += listOf(InlineKeyboardButton("Premium upcoming matches").apply {
+                callbackData = "jobs_create_upcoming_premium"
+            })
+        }
         markup.keyboard = rows
         val message = SendMessage(chatId, "Which upcoming matches to schedule:")
         message.replyMarkup = markup
@@ -404,11 +402,15 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
 
     private fun showRecentOptions(chatId: String) {
         val markup = InlineKeyboardMarkup()
-        val rows = listOf(
+        val rows = mutableListOf(
             listOf(InlineKeyboardButton("All recent results").apply { callbackData = "jobs_create_recent_all" }),
-            listOf(InlineKeyboardButton("Recent results for a league").apply { callbackData = "jobs_create_recent_league" }),
-            listOf(InlineKeyboardButton("Premium recent results").apply { callbackData = "jobs_create_recent_premium" })
+            listOf(InlineKeyboardButton("Recent results for a league").apply { callbackData = "jobs_create_recent_league" })
         )
+        if (chatId == adminChatId) {
+            rows += listOf(InlineKeyboardButton("Premium recent results").apply {
+                callbackData = "jobs_create_recent_premium"
+            })
+        }
         markup.keyboard = rows
         val message = SendMessage(chatId, "Which recent results to schedule:")
         message.replyMarkup = markup
@@ -699,7 +701,7 @@ Available actions:
                     handleUpcomingMatchesByLeagueCommand(chatId, userId, messageText)
                 }
 
-                messageText == "/premiummatches" -> {
+                chatId == adminChatId && messageText == "/premiummatches" -> {
                     handleUpcomingPremiumMatchesCommand(chatId, userId)
                 }
 
@@ -711,7 +713,7 @@ Available actions:
                     handleRecentMatchesByLeagueCommand(chatId, userId, messageText)
                 }
 
-                messageText == "/premiumrecent" -> {
+                chatId == adminChatId && messageText == "/premiumrecent" -> {
                     handleRecentPremiumMatchesCommand(chatId, userId)
                 }
 
@@ -779,6 +781,21 @@ Available actions:
                                 generalCommands.handleStart(chatId)
                             }
                         }
+                        param.startsWith("leagueupcomingid_") -> {
+                            Metrics.commandCounter.labels(
+                                "/leagueupcoming",
+                                userId,
+                                false.toString()
+                            ).inc()
+                            val token = param.removePrefix("leagueupcomingid_")
+                            val league = DatabaseService.matches.getAllLeagues()
+                                .firstOrNull { leagueDeepLinkToken(it) == token }
+                            if (league == null) {
+                                sendMessage(chatId, "League link is no longer available.")
+                            } else {
+                                sendUpcomingMatchesForLeague(chatId, userId, league)
+                            }
+                        }
                         param.startsWith("leagueupcoming_") -> {
                             Metrics.commandCounter.labels(
                                 "/leagueupcoming",
@@ -786,30 +803,7 @@ Available actions:
                                 false.toString()
                             ).inc()
                             val league = param.removePrefix("leagueupcoming_").replace('_', ' ')
-                            val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-                            val isAdmin = userId == adminChatId || chatId == adminChatId
-                            if (!isPremium && !isAdmin) {
-                                val used = DatabaseService.commandUsage.getTotalUsage(userId)
-                                if (used >= 10) {
-                                    sendMessage(
-                                        chatId,
-                                        "Monthly limit of 10 uses reached. Subscribe to remove the limit."
-                                    )
-                                    Metrics.commandCounter.labels(
-                                        "/subscribe",
-                                        userId,
-                                        false.toString()
-                                    ).inc()
-                                    generalCommands.handleSubscriptionMenu(chatId, userId)
-                                } else {
-                                    val total = DatabaseService.commandUsage.incrementUsage(userId, "leagueupcoming")
-                                    val remaining = 10 - total
-                                    sendMessage(chatId, "You have $remaining uses left this month.")
-                                    sendUpcomingMatchesForLeague(chatId, userId, league)
-                                }
-                            } else {
-                                sendUpcomingMatchesForLeague(chatId, userId, league)
-                            }
+                            sendUpcomingMatchesForLeague(chatId, userId, league)
                         }
                         else -> {
                             generalCommands.handleStart(chatId)
@@ -821,11 +815,11 @@ Available actions:
                     generalCommands.handleHelp(chatId, chatId == adminChatId)
                 }
 
-                messageText == "/freepremiumlinks" -> {
+                chatId == adminChatId && messageText == "/freepremiumlinks" -> {
                     generalCommands.handlePremiumLinks(chatId)
                 }
 
-                messageText == "/subscribe" -> {
+                chatId == adminChatId && messageText == "/subscribe" -> {
                     generalCommands.handleSubscriptionMenu(chatId, userId)
                 }
 
@@ -875,7 +869,7 @@ Available actions:
             Metrics.commandCounter.labels(data, userId, isAdminCallback.toString()).inc()
             val plan = SubscriptionPlan.values().firstOrNull { it.callbackData == data }
             when {
-                plan != null -> sendPremiumInvoice(chatId, plan)
+                plan != null && chatId == adminChatId -> sendPremiumInvoice(chatId, plan)
                 data == "jobs_create" -> {
                     editingJobs.remove(userId)
                     showCreateCategory(chatId)
@@ -900,13 +894,15 @@ Available actions:
                     jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER
                     sendMessage(chatId, "Enter league name or keyword:")
                 }
-                data == "jobs_create_upcoming_premium" -> handleSchedulePremiumUpcomingCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_upcoming_premium" && chatId == adminChatId ->
+                    handleSchedulePremiumUpcomingCommand(chatId, userId, editingJobs[userId])
                 data == "jobs_create_recent_all" -> handleScheduleRecentCommand(chatId, userId, editingJobs[userId])
                 data == "jobs_create_recent_league" -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_RECENT_FILTER
                     sendMessage(chatId, "Enter league name or keyword:")
                 }
-                data == "jobs_create_recent_premium" -> handleSchedulePremiumRecentCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_recent_premium" && chatId == adminChatId ->
+                    handleSchedulePremiumRecentCommand(chatId, userId, editingJobs[userId])
                 data.startsWith("jobs_edit_") -> {
                     val id = data.removePrefix("jobs_edit_").toLongOrNull()
                     if (id != null) {
@@ -1105,20 +1101,6 @@ Available actions:
 
 
     private fun handleUpcomingMatchesCommand(chatId: String, userId: String) {
-        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        val isAdmin = userId == adminChatId || chatId == adminChatId
-        if (!isPremium && !isAdmin) {
-            val used = DatabaseService.commandUsage.getTotalUsage(userId)
-            if (used >= 10) {
-                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
-                return
-            } else {
-                val total = DatabaseService.commandUsage.incrementUsage(userId, "upcomingmatches")
-                val remaining = 10 - total
-                sendMessage(chatId, "You have $remaining uses left this month.")
-            }
-        }
-
         val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         if (upcomingMatches.isNotEmpty()) {
@@ -1135,20 +1117,6 @@ Available actions:
     }
 
     private fun handleUpcomingMatchesByLeagueCommand(chatId: String, userId: String, messageText: String) {
-        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        val isAdmin = userId == adminChatId || chatId == adminChatId
-        if (!isPremium && !isAdmin) {
-            val used = DatabaseService.commandUsage.getTotalUsage(userId)
-            if (used >= 10) {
-                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
-                return
-            } else {
-                val total = DatabaseService.commandUsage.incrementUsage(userId, "leagueupcoming")
-                val remaining = 10 - total
-                sendMessage(chatId, "You have $remaining uses left this month.")
-            }
-        }
-
         val filter = messageText.removePrefix("/leagueupcoming").trim()
         if (filter.isBlank()) {
             sendMessage(chatId, "Usage: /leagueupcoming <filter>")
@@ -1180,20 +1148,6 @@ Available actions:
     }
 
     private fun handleUpcomingPremiumMatchesCommand(chatId: String, userId: String) {
-        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        val isAdmin = userId == adminChatId || chatId == adminChatId
-        if (!isPremium && !isAdmin) {
-            val used = DatabaseService.commandUsage.getTotalUsage(userId)
-            if (used >= 10) {
-                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
-                return
-            } else {
-                val total = DatabaseService.commandUsage.incrementUsage(userId, "premiummatches")
-                val remaining = 10 - total
-                sendMessage(chatId, "You have $remaining uses left this month.")
-            }
-        }
-
         val (zone, label) = userTimezone(userId)
         val upcomingMatches = DatabaseService.matches.getUpcomingMatches()
         val premiumMatches = upcomingMatches.filter { match ->
@@ -1352,8 +1306,7 @@ Available actions:
     }
 
     private fun formatUpcomingMatchInfo(matchInfo: MatchInfo, timezone: String): String {
-        val league = leaguesConfig.find { it.description == matchInfo.matchType }
-        return MessageFormatter.formatDirectUpcomingMatch(matchInfo, league, timezone)
+        return MessageFormatter.formatDirectUpcomingMatch(matchInfo, timezone)
     }
 
     private fun formatMatchInfoWithResult(matchInfo: MatchInfo): String {
@@ -1362,8 +1315,7 @@ Available actions:
     }
 
     private fun formatMatchInfoWithResultDetailed(matchInfo: MatchInfo, timezone: String): String {
-        val league = leaguesConfig.find { it.description == matchInfo.matchType }
-        return MessageFormatter.formatDirectCompletedMatch(matchInfo, league, timezone)
+        return MessageFormatter.formatDirectCompletedMatch(matchInfo, timezone)
     }
 
     private fun formatDetailedMatchInfo(matchInfo: MatchInfo, timezone: String): String {
@@ -1564,14 +1516,10 @@ Available actions:
         val commands = mutableListOf<BotCommand>()
         commands.add(BotCommand("/start", "Start the bot and get information about it"))
         commands.add(BotCommand("/help", "Get the list of available commands"))
-        commands.add(BotCommand("/subscribe", "Purchase bot or Premium channel subscription"))
-        commands.add(BotCommand("/freepremiumlinks", "Get available premium channel links for free"))
         commands.add(BotCommand("/upcomingmatches", "Get upcoming matches within the next 24 hours with analysis"))
         commands.add(BotCommand("/leagueupcoming", "Get upcoming matches for leagues matching a filter"))
-        commands.add(BotCommand("/premiummatches", "Get premium matches for the next 24 hours"))
         commands.add(BotCommand("/recentmatches", "Get matches from the last 24 hours with results"))
         commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
-        commands.add(BotCommand("/premiumrecent", "Get premium matches from the last 24 hours"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
         commands.add(BotCommand("/tasks", "Manage scheduled tasks"))
         commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
@@ -1582,6 +1530,17 @@ Available actions:
 
         try {
             execute(setMyCommands)
+
+            val adminMenuCommands = commands + listOf(
+                BotCommand("/subscribe", "Open subscription management"),
+                BotCommand("/freepremiumlinks", "Get available premium channel links"),
+                BotCommand("/premiummatches", "Get selected upcoming matches"),
+                BotCommand("/premiumrecent", "Get selected recent matches")
+            )
+            val setAdminCommands = SetMyCommands()
+            setAdminCommands.commands = adminMenuCommands
+            setAdminCommands.scope = BotCommandScopeChat(adminChatId)
+            execute(setAdminCommands)
         } catch (e: Exception) {
             logger.error("Failed to set bot commands", e)
         }
@@ -1792,12 +1751,7 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-        """.trimIndent() + leagueText + """
-
-        ✨ **Selected matches for the Premium channel:**
-        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-        - ROI: ${"%.2f".format(stats.strategyRoi)}%
-        """.trimIndent()
+        """.trimIndent() + leagueText
         } else {
             "No matches were played in the last 24 hours."
         }
@@ -1811,9 +1765,12 @@ Available actions:
 
         if (matches.isNotEmpty()) {
             val matchesByLeague = matches.groupBy { it.matchType }
-            for ((league, leagueMatches) in matchesByLeague) {
+            val leagueSummaries = mutableListOf<Pair<String, Int>>()
+
+            for ((league, _) in matchesByLeague) {
                 val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext20Hours(league).toMutableList()
                 if (leagueBatch.isEmpty()) continue
+
                 scheduleTopMatchPoll(leagueBatch)
 
                 val iterator = leagueBatch.iterator()
@@ -1847,7 +1804,7 @@ Available actions:
                                     try {
                                         prediction = ChatGPTService.getMatchPrediction(match)
                                     } catch (e: Exception) {
-                                        logger.error("ChatGPT error on attempt #$attempts: ${'$'}{e.message}")
+                                        logger.error("ChatGPT error on attempt #$attempts: ${e.message}")
                                     }
                                 }
                                 if (prediction != null) {
@@ -1868,33 +1825,15 @@ Available actions:
                     }
                 }
 
-
-
-                val leagueMessages = buildMatchMessages(
-                    leagueBatch,
-                    formatter = { formatMatchInfo(it) }
-                )
-                for ((text, batch) in leagueMessages) {
-                    val markup = createLeagueUpcomingMarkup(league)
-                    val msgId = sendMessageAndGetId(channelId, text, markup)
-                    if (msgId != null) {
-                        val messageId = msgId.toString()
-                        batch.forEach { match ->
-                            val updated = match.copy(telegramMessageId = messageId)
-                            DatabaseService.matches.updateMatchMessageId(updated)
-                        }
-                        val updatedMarkup = createLeagueUpcomingMarkup(league, messageId)
-                        updateMessage(channelId, messageId, text, updatedMarkup)
-                    }
-                }
-
-                val premiumMatches = leagueBatch.filter { match ->
+                val suitableMatches = leagueBatch.filter { match ->
                     outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
                 }
+                if (suitableMatches.isNotEmpty()) {
+                    leagueSummaries += league to suitableMatches.size
 
-                if (premiumMatches.isNotEmpty()) {
+                    val newStrategyMatches = suitableMatches.filter { it.strategyTelegramMessageId == null }
                     val strategyMessages = buildMatchMessages(
-                        premiumMatches,
+                        newStrategyMatches,
                         formatter = { formatPremiumMatchInfo(it) },
                         includeTags = false
                     )
@@ -1910,6 +1849,28 @@ Available actions:
                 }
 
                 delay(10000)
+            }
+
+            leagueSummaries.chunked(MAX_LEAGUES_PER_SUMMARY).forEach { summaries ->
+                val summaryText = buildString {
+                    append("⚽ Upcoming Matches\n\n")
+                    summaries.forEach { (league, count) ->
+                        val flag = getCountryFlagFromText(league)
+                        val matchLabel = if (count == 1) "match" else "matches"
+                        append("$flag $league: $count $matchLabel\n")
+                    }
+                }.trimEnd()
+
+                val buttons = summaries.map { (league, _) ->
+                    val flag = getCountryFlagFromText(league)
+                    val buttonText = listOf(flag, league).filter { it.isNotBlank() }.joinToString(" ")
+                    val callbackData = leagueDeepLinkToken(league)
+                    InlineKeyboardButton(buttonText).apply {
+                        url = "https://t.me/$botUsername?start=leagueupcomingid_$callbackData"
+                    }
+                }
+                val markup = InlineKeyboardMarkup(buttons.map { listOf(it) })
+                sendMessage(channelId, summaryText, replyMarkup = markup)
             }
         }
     }
@@ -2000,10 +1961,6 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-
-        ✨ **Selected matches for the Premium channel:**
-        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-        - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
         } else {
             "No matches were played in the last week."
@@ -2023,10 +1980,6 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-
-        ✨ **Selected matches for the Premium channel:**
-        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-        - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
         } else {
             "No matches were played in the last month."
@@ -2046,13 +1999,9 @@ Available actions:
         **Overall:**
         - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
         - ROI: ${"%.2f".format(stats.roi)}%
-
-        ✨ **Selected matches for the Premium channel:**
-        - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-        - ROI: ${"%.2f".format(stats.strategyRoi)}%
         """.trimIndent()
         } else {
-            "No matches were played in the last week."
+            "No matches were played in the last year."
         }
 
         sendMessage(channelId, messageText, replyMarkup = createGetAccuracyMarkup(365))
@@ -2073,12 +2022,7 @@ Available actions:
                     **Overall:**
                     - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
                     - ROI: ${"%.2f".format(stats.roi)}%
-                    """.trimIndent() + leagueText + """
-
-                    ✨ **Selected matches for the Premium channel:**
-                    - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-                    - ROI: ${"%.2f".format(stats.strategyRoi)}%
-                    """.trimIndent()
+                    """.trimIndent() + leagueText
                 } else {
                     "No matches were played in the last $days days."
                 }
@@ -2107,12 +2051,6 @@ Available actions:
                     - Correct Predictions: ${stats.correctPredictions}
                     - Accuracy: ${"%.2f".format(stats.accuracy)}%
                     - ROI: ${"%.2f".format(stats.roi)}%
-
-                    **Strategy Statistics:**
-                    - Total Matches: ${stats.strategyTotalMatches}
-                    - Correct Predictions: ${stats.strategyCorrectPredictions}
-                    - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}%
-                    - ROI: ${"%.2f".format(stats.strategyRoi)}%
 
                     **By Outcome Type:**
                     - Home Win: ${"%.2f".format(stats.homeWinAccuracy)}% (${stats.homeWinSuccesses}/${stats.homeWinPredictions})
@@ -2203,9 +2141,8 @@ Available actions:
     }
 
     private fun handleSchedulePremiumUpcomingCommand(chatId: String, userId: String, existingId: Long? = null) {
-        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        if (!isPremium) {
-            sendMessage(chatId, "This command is available for premium users only.")
+        if (chatId != adminChatId) {
+            sendMessage(chatId, "This command is available for administrators only.")
             return
         }
         handleUpcomingPremiumMatchesCommand(chatId, userId)
@@ -2238,9 +2175,8 @@ Available actions:
     }
 
     private fun handleSchedulePremiumRecentCommand(chatId: String, userId: String, existingId: Long? = null) {
-        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-        if (!isPremium) {
-            sendMessage(chatId, "This command is available for premium users only.")
+        if (chatId != adminChatId) {
+            sendMessage(chatId, "This command is available for administrators only.")
             return
         }
         handleRecentPremiumMatchesCommand(chatId, userId)
@@ -2332,70 +2268,14 @@ Available actions:
             "upcomingmatches" -> sendUpcomingMatches(chatId, job.userId)
             "leagueupcoming" -> job.params?.let { sendUpcomingMatchesForLeague(chatId, job.userId, it) }
             "recentmatches" -> sendRecentMatches(chatId, job.userId)
-            "premiummatches" -> handleUpcomingPremiumMatchesCommand(chatId, job.userId)
-            "leaguerecent" -> job.params?.let { sendRecentMatchesForLeague(chatId, job.userId, it) }
-            "premiumrecent" -> handleRecentPremiumMatchesCommand(chatId, job.userId)
-            "getaccuracy" -> job.params?.toIntOrNull()?.let { sendAccuracyStats(chatId, it) }
-        }
-    }
-
-    fun sendDailyPremiumSummary() {
-        val matches = DatabaseService.matches.getLastMatches(1)
-            .filter { it.strategyTelegramMessageId != null }
-        if (matches.isEmpty()) return
-
-        val bigWin = matches
-            .filter { it.predictedOutcome?.equals(it.actualOutcome, true) == true }
-            .filter { (it.odds?.toDoubleOrNull() ?: 0.0) >= 5.0 }
-            .maxByOrNull { it.odds?.toDoubleOrNull() ?: 0.0 }
-
-        if (bigWin != null) {
-            val message = "\uD83D\uDD25 Massive win! Premium pick ${bigWin.teams} cashed at odds ${bigWin.odds}!\n" +
-                    "Don't miss today's high-value predictions - join now! \uD83D\uDE80"
-            sendMessage(channelId, message)
-            return
-        }
-
-        if (matches.size >= 5 && matches.all { it.predictedOutcome?.equals(it.actualOutcome, true) == true }) {
-            val averageRoi = matches.map { match ->
-                val oddsVal = match.odds?.toDoubleOrNull() ?: 0.0
-                if (match.predictedOutcome?.equals(match.actualOutcome, true) == true) (oddsVal - 1) * 100 else -100.0
-            }.average()
-            val sign = if (averageRoi >= 0) "+" else ""
-            val message = "\uD83C\uDF1F Premium perfection! All ${matches.size} picks hit yesterday.\n" +
-                    "Average ROI: $sign${"%.2f".format(averageRoi)}%\n" +
-                    "Jump in before today's action kicks off! \u26BD\uD83D\uDCB0"
-            sendMessage(channelId, message)
-        }
-    }
-
-    fun sendWeeklyTopMatches() {
-        val topMatches = DatabaseService.matches.getTopPremiumRoiMatchesForPeriod(7, 3)
-        if (topMatches.isEmpty()) return
-        val stats = DatabaseService.matches.getStatisticsForPeriod(7)
-        val message = buildString {
-            append("\uD83D\uDD25 Top 3 premium predictions from last week \uD83D\uDD25\n\n")
-            topMatches.forEachIndexed { index, (match, roi) ->
-                val sign = if (roi >= 0) "+" else ""
-                val league = combineLeagueName(match)
-                val flag = getCountryFlag(match.matchType)
-                val prediction = buildString {
-                    append(match.predictedOutcome ?: "N/A")
-                }
-                append("${index + 1}. $league$flag\n")
-                append("${match.teams}\n")
-                append("Predicted outcome: $prediction\n")
-                append("ROI: $sign${"%.2f".format(roi)}% | Odds: ${match.odds}\n\n")
+            "premiummatches" -> if (chatId == adminChatId) {
+                handleUpcomingPremiumMatchesCommand(chatId, job.userId)
             }
-            val sign = if (stats.strategyRoi >= 0) "+" else ""
-            append("Total premium matches: ${stats.strategyTotalMatches} | ROI: $sign${"%.2f".format(stats.strategyRoi)}%\n\n")
-            append("To get premium picks, subscribe to the premium channel via @topPrediction_bot or subscribe to the bot to use premium features without any limits.")
-        }
-        val msg = SendMessage(channelId, message)
-        try {
-            execute(msg)
-        } catch (e: Exception) {
-            logger.error("Failed to send weekly top matches", e)
+            "leaguerecent" -> job.params?.let { sendRecentMatchesForLeague(chatId, job.userId, it) }
+            "premiumrecent" -> if (chatId == adminChatId) {
+                handleRecentPremiumMatchesCommand(chatId, job.userId)
+            }
+            "getaccuracy" -> job.params?.toIntOrNull()?.let { sendAccuracyStats(chatId, it) }
         }
     }
 
@@ -2438,22 +2318,6 @@ Available actions:
             return
         }
 
-        val hasActiveMatches = matches.any { it.actualOutcome == null }
-        val isPremium = DatabaseService.subscriptions.isActive(userId, SubscriptionType.BOT)
-
-        if (hasActiveMatches && !isPremium && !isAdmin) {
-            val used = DatabaseService.commandUsage.getTotalUsage(userId)
-            if (used >= 10) {
-                sendMessage(chatId, "Monthly limit of 10 uses reached. Subscribe to remove the limit.")
-                Metrics.commandCounter.labels("/subscribe", userId, false.toString()).inc()
-                generalCommands.handleSubscriptionMenu(chatId, userId)
-                return
-            }
-            val total = DatabaseService.commandUsage.incrementUsage(userId, "matchdetails")
-            val remaining = 10 - total
-            sendMessage(chatId, "You have $remaining uses left this month.")
-        }
-
         val (zone, label) = userTimezone(userId)
         val enriched = enrichWithLiveData(matches)
         val converted = adjustMatchesTimezone(enriched, zone)
@@ -2494,17 +2358,21 @@ Available actions:
                 **Overall:**
                 - Accuracy: ${"%.2f".format(stats.accuracy)}% (${stats.correctPredictions}/${stats.totalMatches})
                 - ROI: ${"%.2f".format(stats.roi)}%
-                """.trimIndent() + leagueText + """
-
-                ✨ **Selected matches for the Premium channel:**
-                - Accuracy: ${"%.2f".format(stats.strategyAccuracy)}% (${stats.strategyCorrectPredictions}/${stats.strategyTotalMatches})
-                - ROI: ${"%.2f".format(stats.strategyRoi)}%
-            """.trimIndent()
+                """.trimIndent() + leagueText
             sendMultipartMessage(chatId, resultMessageText)
         }
     }
 
     private fun getCountryFlag(text: String): String {
+        return getCountryFlagFromText(text)
+    }
+
+    private fun leagueDeepLinkToken(league: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(league.toByteArray(Charsets.UTF_8))
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest.copyOf(9))
+    }
+
+    private fun getCountryFlagFromText(text: String): String {
         // Словарь сопоставления названий стран с эмодзи-флагами
         val countryNameToEmoji = mapOf(
             // Английские названия
@@ -2648,8 +2516,6 @@ Available actions:
                 appendLine("**${stats.leagueName}**")
                 appendLine("- Overall Accuracy: ${stats.accuracy}%")
                 appendLine("- ROI: ${stats.roi}%")
-                appendLine("- Strategy Accuracy: ${stats.strategyAccuracy}%")
-                appendLine("- Strategy ROI: ${stats.strategyRoi}%")
                 appendLine("- Home Win Accuracy: ${stats.homeWinAccuracy}%")
                 appendLine("- Home Win ROI: ${stats.homeWinRoi}%")
                 appendLine("- Draw Accuracy: ${stats.drawAccuracy}%")

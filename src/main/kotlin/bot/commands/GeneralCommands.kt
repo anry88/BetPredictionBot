@@ -31,24 +31,21 @@ class GeneralCommands(private val bot: FootballBot) {
     fun handleHelp(chatId: String, isAdmin: Boolean) {
         val commonCommands = """
             /start - Start the bot and get information about it
-            /freepremiumlinks - Get available premium channel links for free
-            /subscribe - Purchase bot or Premium channel subscription
             /paysupport - Request a refund
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
-            /premiummatches - Get matches selected for the Premium channel
             /recentmatches - Get matches from the last 24 hours with results
             /leaguerecent <filter> - Get matches from the last 24 hours for leagues matching the filter
-            /premiumrecent - Get premium matches from the last 24 hours
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
             /tasks - Schedule automatic bot commands at a convenient time
             /settimezone <HH:mm> - Set your timezone by sending your current time
-
-            Commands /upcomingmatches, /leagueupcoming and /premiummatches together are limited to 10 uses per month for non-premium users. Premium subscribers have unlimited access.
         """.trimIndent()
 
         val adminCommands = """
-            
+            /subscribe - Open subscription management
+            /freepremiumlinks - Get available premium channel links
+            /premiummatches - Get matches selected for the Premium channel
+            /premiumrecent - Get premium matches from the last 24 hours
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
@@ -113,9 +110,9 @@ class GeneralCommands(private val bot: FootballBot) {
             }
         }
         val introText = """
-            We offer two subscription types:
+            Subscription administration is currently restricted to the admin chat. Retained plans:
             • Premium Channel – access to a private channel with predictions only for premium matches.
-            • Bot Premium – includes Premium Channel access and unlimited use of premium bot features (three commands + ability to schedule automatic forecast delivery at your preferred time).
+            • Bot Premium – retained for possible future reactivation of paid bot features.
         """.trimIndent()
 
         val statusText = buildString {

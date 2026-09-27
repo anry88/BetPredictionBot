@@ -18,15 +18,15 @@
 - `isNeutralVenue(...)`: Marks FIFA World Cup fixtures and cup finals as neutral-ground matches so model calls and JSONL feedback can skip home-field advantage.
 
 ## Main.kt
-- Quartz job classes (`FetchMatchesJob`, `UpdateMatchesJob`, `UpdatePastMatchesJob`, `UpdateLiveMatchesJob`, `UpdateLeaguePredictabilityJob`, `SendAccuracyJob`, `SendWeeklyAccuracyJob`, `SendMonthlyAccuracyJob`, `SendYearlyAccuracyJob`, `SendWeeklyTopMatchesJob`, `SendDailyPremiumSummaryJob`, `UploadModelDataJob`, `InviteLinkCleanupJob`, `CommandUsageCleanupJob`): Each job wraps a specific bot/service call to run on a schedule.
+- Quartz job classes (`FetchMatchesJob`, `UpdateMatchesJob`, `UpdatePastMatchesJob`, `UpdateLiveMatchesJob`, `UpdateLeaguePredictabilityJob`, `SendAccuracyJob`, `SendWeeklyAccuracyJob`, `SendMonthlyAccuracyJob`, `SendYearlyAccuracyJob`, `UploadModelDataJob`, `InviteLinkCleanupJob`, `CommandUsageCleanupJob`): Each job wraps a specific bot/service call to run on a schedule. Upcoming public summaries run at 08:00 and 20:00 server time.
 - `main()`: Creates the bot, exposes metrics, wires Quartz triggers for all jobs, and schedules model-data uploads only outside test mode.
 
 ## FootballBot.kt
 - Bot identity: `getBotToken()`/`getBotUsername()` return credentials for Telegram registration.
 - Messaging helpers: `sendMessageAndGetId()`, `updateMessage()`, `sendMessage()`, `sendMultipartMessage()`, `deleteMatchMessages()`, `updateMatchMessages()` route text and markup to Telegram and manage stored message ids.
-- Subscription and payments: `sendPremiumInvoice()`, `showSubscriptionOptions()`, `sendDailyPremiumSummary()`, `cleanupInviteLinks()` orchestrate paid features and invite hygiene.
-- Prediction reporting: `sendUpcomingMatchesToTelegram()`, `updateLiveMatches()`, `sendPredictionAccuracyMessage()` (plus weekly/monthly/yearly variants), `sendWeeklyTopMatches()` format and deliver match info with model data.
+- Subscription and payments: `sendPremiumInvoice()`, `showSubscriptionOptions()`, and `cleanupInviteLinks()` retain paid features and invite hygiene behind admin-only commands.
+- Prediction reporting: `sendUpcomingMatchesToTelegram()` publishes league/count digests in chunks of ten buttons while continuing quiet strategy-channel delivery; `updateLiveMatches()` and the accuracy variants handle result updates without public premium statistics.
 - Scheduling helpers: `startScheduledJobs()`, `startPollJobs()`, `executeScheduledJob()` manage user-defined schedules and polls persisted in repositories.
-- Command handlers: `onUpdateReceived()` dispatches incoming updates into handlers like `handleUpcomingMatchesCommand()`, `handleRecentMatchesCommand()`, `handleGetAccuracyCommand()`, `handleGetStrategyEfficiencyCommand()`, `handleMatchDetailsCommand()`, and job setup flows (`handleSchedule*`, `handleConfirmJob()`, `handleCancelJob()`).
+- Command handlers: `onUpdateReceived()` dispatches unlimited public match-detail commands and admin-only `/subscribe`, `/freepremiumlinks`, `/premiummatches`, and `/premiumrecent` flows, plus job setup handlers.
 - Formatting and tagging: Helpers (`formatMatchInfo*`, `buildMatchMessages()`, `getTags()`, `formatLeaguePredictabilityData()` etc.) generate human-friendly text with league context, tags, and accuracy stats.
 - Strategy and stats: `updateLeaguePredictability()`, `sendAccuracyStats()`, and filtering helpers (`isTopMatch()`, `isPremiumMatch()`, `isMatchFitsStrategy()`) apply strategy rules before messaging.
