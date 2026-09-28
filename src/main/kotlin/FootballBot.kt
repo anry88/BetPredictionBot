@@ -1761,14 +1761,19 @@ Available actions:
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
-        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext8Hours()
+        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext12Hours()
+        logger.info("Upcoming digest check: ${matches.size} unposted matches in the next 12h")
 
+        if (matches.isEmpty()) {
+            logger.info("Upcoming digest skipped: no unposted matches in the next 12h")
+            return
+        }
         if (matches.isNotEmpty()) {
             val matchesByLeague = matches.groupBy { it.matchType }
             val leagueSummaries = mutableListOf<Pair<String, Int>>()
 
             for ((league, _) in matchesByLeague) {
-                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext20Hours(league).toMutableList()
+                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext12Hours(league).toMutableList()
                 if (leagueBatch.isEmpty()) continue
 
                 scheduleTopMatchPoll(leagueBatch)
@@ -1828,6 +1833,7 @@ Available actions:
                 val suitableMatches = leagueBatch.filter { match ->
                     outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
                 }
+                logger.info("Upcoming digest: league '$league' has ${leagueBatch.size} matches, ${suitableMatches.size} suitable")
                 if (suitableMatches.isNotEmpty()) {
                     leagueSummaries += league to suitableMatches.size
 
@@ -1871,6 +1877,10 @@ Available actions:
                 }
                 val markup = InlineKeyboardMarkup(buttons.map { listOf(it) })
                 sendMessage(channelId, summaryText, replyMarkup = markup)
+                logger.info("Upcoming digest posted: ${summaries.size} leagues")
+            }
+            if (leagueSummaries.isEmpty()) {
+                logger.info("Upcoming digest skipped: no strategy-suitable matches in the next 12h")
             }
         }
     }
@@ -2305,6 +2315,8 @@ Available actions:
             val converted = adjustMatchesTimezone(enriched, zone)
             val messages = buildMatchMessages(converted, formatter = { formatUpcomingMatchInfo(it, label) }, includeTags = false)
             messages.forEach { (text, _) -> sendMessage(chatId, text) }
+        } else {
+            sendMessage(chatId, "No upcoming matches within the next 24 hours for '$league'.")
         }
     }
 

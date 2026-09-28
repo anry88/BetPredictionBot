@@ -313,6 +313,48 @@ class MatchRepository {
         return matchesToSend
     }
 
+    fun getMatchesWithoutMessageIdForNext12Hours(): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        val twelveHoursLater = now.plusHours(12)
+        val matchesToSend = mutableListOf<MatchInfo>()
+        transaction {
+            listOfLeagues.forEach { leagueName ->
+                val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+                addMissingColumnsForLeague(leagueName)
+                leagueTable.select {
+                    (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.telegramMessageId.isNull())
+                }.mapNotNullTo(matchesToSend) {
+                    val match = mapRowToMatchInfo(it, leagueTable)
+                    ensureMatchCounts(match, leagueTable)
+                    match
+                }
+            }
+        }
+        return matchesToSend
+    }
+
+    fun getLeagueMatchesWithoutMessageIdForNext12Hours(leagueName: String): List<MatchInfo> {
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        val twelveHoursLater = now.plusHours(12)
+        val matchesToSend = mutableListOf<MatchInfo>()
+        transaction {
+            val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
+            addMissingColumnsForLeague(leagueName)
+            leagueTable.select {
+                (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
+                        (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                        (leagueTable.telegramMessageId.isNull())
+            }.mapNotNullTo(matchesToSend) {
+                val match = mapRowToMatchInfo(it, leagueTable)
+                ensureMatchCounts(match, leagueTable)
+                match
+            }
+        }
+        return matchesToSend
+    }
+
     fun getLeagueMatchesWithoutMessageIdForNext20Hours(leagueName: String): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
         val twentyHoursLater = now.plusHours(20)
