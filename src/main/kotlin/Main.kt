@@ -131,6 +131,7 @@ class InviteLinkCleanupJob : Job {
 class CommandUsageCleanupJob : Job {
     override fun execute(context: JobExecutionContext?) {
         DatabaseService.commandUsage.clearOldEntries()
+        DatabaseService.digests.pruneEntriesOlderThanDays(30)
     }
 }
 

@@ -16,6 +16,7 @@ Repositories encapsulate database access (Exposed/SQLite) and provide CRUD/aggre
 - `ScheduledJobRepository.kt` — user-defined schedules created/edited from chats.
 - `RefundRequestRepository.kt` — refund requests and their states.
 - `MatchPollRepository.kt` — top-match polls and associated Telegram message ids.
+- `DigestRepository.kt` — marks fixtures already announced in an aggregated league-summary digest so twice-daily posts never repeat matches.
 
 ## Update practice
 1. When adding a new table, create the DAO/repository in this folder and describe it here.

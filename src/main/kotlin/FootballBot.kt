@@ -1762,18 +1762,21 @@ Available actions:
 
     suspend fun sendUpcomingMatchesToTelegram() {
         val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext16Hours()
-        logger.info("Upcoming digest check: ${matches.size} unposted matches in the next 16h")
+        val postedIds = DatabaseService.digests.getPostedIds(matches.map { it.fixtureId })
+        val freshMatches = matches.filter { it.fixtureId !in postedIds }
+        logger.info("Upcoming digest check: ${matches.size} unposted matches in the next 16h, ${freshMatches.size} not yet in digest")
 
-        if (matches.isEmpty()) {
+        if (freshMatches.isEmpty()) {
             logger.info("Upcoming digest skipped: no unposted matches in the next 16h")
             return
         }
-        if (matches.isNotEmpty()) {
-            val matchesByLeague = matches.groupBy { it.matchType }
-            val leagueSummaries = mutableListOf<Pair<String, Int>>()
+        if (freshMatches.isNotEmpty()) {
+            val matchesByLeague = freshMatches.groupBy { it.matchType }
+            val leagueSummaries = mutableListOf<Pair<String, List<MatchInfo>>>()
 
             for ((league, _) in matchesByLeague) {
-                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext16Hours(league).toMutableList()
+                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext16Hours(league)
+                    .filter { it.fixtureId !in postedIds }.toMutableList()
                 if (leagueBatch.isEmpty()) continue
 
                 scheduleTopMatchPoll(leagueBatch)
@@ -1835,7 +1838,7 @@ Available actions:
                 }
                 logger.info("Upcoming digest: league '$league' has ${leagueBatch.size} matches, ${suitableMatches.size} suitable")
                 if (suitableMatches.isNotEmpty()) {
-                    leagueSummaries += league to suitableMatches.size
+                    leagueSummaries += league to suitableMatches
 
                     val newStrategyMatches = suitableMatches.filter { it.strategyTelegramMessageId == null }
                     val strategyMessages = buildMatchMessages(
@@ -1860,10 +1863,10 @@ Available actions:
             leagueSummaries.chunked(MAX_LEAGUES_PER_SUMMARY).forEach { summaries ->
                 val summaryText = buildString {
                     append("⚽ Upcoming Matches\n\n")
-                    summaries.forEach { (league, count) ->
+                    summaries.forEach { (league, suitable) ->
                         val flag = getCountryFlagFromText(league)
-                        val matchLabel = if (count == 1) "match" else "matches"
-                        append("$flag $league: $count $matchLabel\n")
+                        val matchLabel = if (suitable.size == 1) "match" else "matches"
+                        append("$flag $league: ${suitable.size} $matchLabel\n")
                     }
                 }.trimEnd()
 
@@ -1876,8 +1879,17 @@ Available actions:
                     }
                 }
                 val markup = InlineKeyboardMarkup(buttons.map { listOf(it) })
-                sendMessage(channelId, summaryText, replyMarkup = markup)
-                logger.info("Upcoming digest posted: ${summaries.size} leagues")
+                val msgId = sendMessageAndGetId(channelId, summaryText, markup)
+                if (msgId != null) {
+                    summaries.forEach { (league, suitable) ->
+                        suitable.forEach { match ->
+                            DatabaseService.digests.markPosted(match.fixtureId, league)
+                        }
+                    }
+                    logger.info("Upcoming digest posted (msg $msgId): ${summaries.size} leagues")
+                } else {
+                    logger.error("Upcoming digest post failed, matches left unmarked for next run")
+                }
             }
             if (leagueSummaries.isEmpty()) {
                 logger.info("Upcoming digest skipped: no strategy-suitable matches in the next 16h")

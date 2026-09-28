@@ -14,6 +14,7 @@ import repository.ScheduledJobRepository
 import repository.PaymentRepository
 import repository.RefundRequestRepository
 import repository.MatchPollRepository
+import repository.DigestRepository
 import java.io.File
 import io.ktor.utils.io.errors.*
 
@@ -179,6 +180,14 @@ private fun runManualMigration() {
     addColumnIfNotExists("match_polls", "teams", "TEXT")
 
     execSql("""
+        CREATE TABLE IF NOT EXISTS digest_posts (
+            fixture_id TEXT PRIMARY KEY,
+            league TEXT NOT NULL,
+            posted_at INTEGER NOT NULL
+        );
+    """.trimIndent())
+
+    execSql("""
         CREATE TABLE IF NOT EXISTS payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
@@ -298,4 +307,5 @@ object DatabaseService {
     val payments = PaymentRepository()
     val refunds = RefundRequestRepository()
     val polls = MatchPollRepository()
+    val digests = DigestRepository()
 }
