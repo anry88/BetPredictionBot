@@ -183,9 +183,11 @@ private fun runManualMigration() {
         CREATE TABLE IF NOT EXISTS digest_posts (
             fixture_id TEXT PRIMARY KEY,
             league TEXT NOT NULL,
-            posted_at INTEGER NOT NULL
+            posted_at INTEGER NOT NULL,
+            summary_message_id TEXT
         );
     """.trimIndent())
+    addColumnIfNotExists("digest_posts", "summary_message_id", "TEXT")
 
     execSql("""
         CREATE TABLE IF NOT EXISTS payments (

@@ -1861,29 +1861,13 @@ Available actions:
             }
 
             leagueSummaries.chunked(MAX_LEAGUES_PER_SUMMARY).forEach { summaries ->
-                val summaryText = buildString {
-                    append("⚽ Upcoming Matches\n\n")
-                    summaries.forEach { (league, suitable) ->
-                        val flag = getCountryFlagFromText(league)
-                        val matchLabel = if (suitable.size == 1) "match" else "matches"
-                        append("$flag $league: ${suitable.size} $matchLabel\n")
-                    }
-                }.trimEnd()
-
-                val buttons = summaries.map { (league, _) ->
-                    val flag = getCountryFlagFromText(league)
-                    val buttonText = listOf(flag, league).filter { it.isNotBlank() }.joinToString(" ")
-                    val callbackData = leagueDeepLinkToken(league)
-                    InlineKeyboardButton(buttonText).apply {
-                        url = "https://t.me/$botUsername?start=leagueupcomingid_$callbackData"
-                    }
-                }
-                val markup = InlineKeyboardMarkup(buttons.map { listOf(it) })
+                val summaryText = buildDigestSummaryText(summaries)
+                val markup = buildDigestSummaryMarkup(summaries.map { it.first })
                 val msgId = sendMessageAndGetId(channelId, summaryText, markup)
                 if (msgId != null) {
                     summaries.forEach { (league, suitable) ->
                         suitable.forEach { match ->
-                            DatabaseService.digests.markPosted(match.fixtureId, league)
+                            DatabaseService.digests.markPosted(match.fixtureId, league, msgId.toString())
                         }
                     }
                     logger.info("Upcoming digest posted (msg $msgId): ${summaries.size} leagues")
@@ -1962,6 +1946,56 @@ Available actions:
             val messageText = formatPremiumMatchesBatchForUpdate(matches)
             updateMessage(strategyChannelId, messageId, messageText, null)
             delay(10000)
+        }
+
+        refreshDigestSummaries()
+    }
+
+    private fun buildDigestSummaryText(leagues: List<Pair<String, List<MatchInfo>>>): String {
+        return buildString {
+            append("⚽ Upcoming Matches\n\n")
+            leagues.forEach { (league, matches) ->
+                val flag = getCountryFlagFromText(league)
+                val ordered = matches.sortedBy { it.datetime }
+                val finished = ordered.filter { it.actualOutcome != null }
+                val marks = finished.joinToString("") { match ->
+                    if (match.predictedOutcome?.equals(match.actualOutcome, ignoreCase = true) == true) "✅" else "❌"
+                }
+                append("$flag $league: ${finished.size}/${ordered.size}")
+                if (marks.isNotEmpty()) append(" $marks")
+                append("\n")
+            }
+        }.trimEnd()
+    }
+
+    private fun buildDigestSummaryMarkup(leagues: List<String>): InlineKeyboardMarkup {
+        val buttons = leagues.map { league ->
+            val flag = getCountryFlagFromText(league)
+            val buttonText = listOf(flag, league).filter { it.isNotBlank() }.joinToString(" ")
+            val callbackData = leagueDeepLinkToken(league)
+            InlineKeyboardButton(buttonText).apply {
+                url = "https://t.me/$botUsername?start=leagueupcomingid_$callbackData"
+            }
+        }
+        return InlineKeyboardMarkup(buttons.map { listOf(it) })
+    }
+
+    private suspend fun refreshDigestSummaries() {
+        val since = System.currentTimeMillis() / 1000 - 2 * 24 * 60 * 60
+        val messageIds = DatabaseService.digests.getRecentMessageIds(since)
+        if (messageIds.isEmpty()) return
+        for (msgId in messageIds) {
+            val entries = DatabaseService.digests.getEntriesByMessage(msgId)
+            if (entries.isEmpty()) continue
+            val byLeague = entries.groupBy(
+                keySelector = { it.league },
+                valueTransform = { DatabaseService.matches.getMatchInfoByFixtureId(it.fixtureId, it.league) }
+            ).mapValues { (_, infos) -> infos.filterNotNull() }
+                .filterValues { it.isNotEmpty() }
+            if (byLeague.isEmpty()) continue
+            val leagues = byLeague.toList()
+            updateMessage(channelId, msgId, buildDigestSummaryText(leagues), buildDigestSummaryMarkup(leagues.map { it.first }))
+            delay(3000)
         }
     }
 

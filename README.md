@@ -70,7 +70,7 @@ More detail is in [docs/ai-side.md](docs/ai-side.md).
 The repository already demonstrates backend automation rather than manual operation:
 
 - Fetch new matches every 4 hours.
-- Post upcoming match summaries twice daily at 8:05 AM and 8:05 PM server time with league buttons (max 10 leagues per post).
+- Post upcoming match summaries twice daily at 8:05 AM and 8:05 PM server time with league buttons (max 10 leagues per post); the live job refreshes them with finished/total progress and ✅/❌ per finished match.
 - Refresh past results daily.
 - Update live matches every 10 minutes.
 - Recompute league predictability daily.
