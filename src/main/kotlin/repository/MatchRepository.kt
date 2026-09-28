@@ -313,9 +313,9 @@ class MatchRepository {
         return matchesToSend
     }
 
-    fun getMatchesWithoutMessageIdForNext12Hours(): List<MatchInfo> {
+    fun getMatchesWithoutMessageIdForNext16Hours(): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
-        val twelveHoursLater = now.plusHours(12)
+        val sixteenHoursLater = now.plusHours(16)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
             listOfLeagues.forEach { leagueName ->
@@ -323,7 +323,7 @@ class MatchRepository {
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.select {
                     (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                            (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                            (leagueTable.datetime lessEq sixteenHoursLater.format(dateTimeFormatter)) and
                             (leagueTable.telegramMessageId.isNull())
                 }.mapNotNullTo(matchesToSend) {
                     val match = mapRowToMatchInfo(it, leagueTable)
@@ -335,16 +335,16 @@ class MatchRepository {
         return matchesToSend
     }
 
-    fun getLeagueMatchesWithoutMessageIdForNext12Hours(leagueName: String): List<MatchInfo> {
+    fun getLeagueMatchesWithoutMessageIdForNext16Hours(leagueName: String): List<MatchInfo> {
         val now = LocalDateTime.now(ZoneOffset.UTC)
-        val twelveHoursLater = now.plusHours(12)
+        val sixteenHoursLater = now.plusHours(16)
         val matchesToSend = mutableListOf<MatchInfo>()
         transaction {
             val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
             addMissingColumnsForLeague(leagueName)
             leagueTable.select {
                 (leagueTable.datetime greaterEq now.format(dateTimeFormatter)) and
-                        (leagueTable.datetime lessEq twelveHoursLater.format(dateTimeFormatter)) and
+                        (leagueTable.datetime lessEq sixteenHoursLater.format(dateTimeFormatter)) and
                         (leagueTable.telegramMessageId.isNull())
             }.mapNotNullTo(matchesToSend) {
                 val match = mapRowToMatchInfo(it, leagueTable)

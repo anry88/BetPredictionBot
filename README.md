@@ -4,7 +4,7 @@ AI-powered Telegram bot for football predictions with a local model, ChatGPT fal
 
 **What it does**
 - Pulls football fixtures and odds, generates predictions, and publishes them to Telegram.
-- Posts upcoming matches twice daily (8 AM and 8 PM server time) with league summaries and inline buttons for detailed views.
+- Posts upcoming matches twice daily (8:05 AM and 8:05 PM server time) with league summaries and inline buttons for detailed views.
 - Provides detailed match information via bot commands without usage limits.
 - Tracks accuracy and ROI over time and exposes operational metrics for monitoring.
 
@@ -26,7 +26,7 @@ Human-facing docs live in this file and in [docs/product-overview.md](docs/produ
 
 - A Telegram bot that delivers upcoming matches, recent results, and accuracy summaries via scheduled posts and bot commands.
 - A hybrid prediction pipeline that prefers a local football model and falls back to ChatGPT when the local service is unavailable.
-- Scheduled posting system that shows league summaries with inline buttons (max 10 leagues per post) twice daily at 8 AM and 8 PM server time.
+- Scheduled posting system that shows league summaries with inline buttons (max 10 leagues per post) twice daily at 8:05 AM and 8:05 PM server time.
 - Bot commands without usage limits for accessing detailed match information.
 - Quartz-based automation for match fetching, result updates, league predictability refreshes, and model-data uploads.
 - SQLite persistence with Exposed repositories for matches, subscriptions, payments, scheduled jobs, invites, refunds, and poll history.
@@ -70,7 +70,7 @@ More detail is in [docs/ai-side.md](docs/ai-side.md).
 The repository already demonstrates backend automation rather than manual operation:
 
 - Fetch new matches every 4 hours.
-- Post upcoming match summaries twice daily at 8 AM and 8 PM server time with league buttons (max 10 leagues per post).
+- Post upcoming match summaries twice daily at 8:05 AM and 8:05 PM server time with league buttons (max 10 leagues per post).
 - Refresh past results daily.
 - Update live matches every 10 minutes.
 - Recompute league predictability daily.

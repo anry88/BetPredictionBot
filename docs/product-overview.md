@@ -38,7 +38,7 @@ The bot includes:
 3. The bot requests a prediction from the local model.
 4. If that fails, it retries through ChatGPT.
 5. Predictions and odds are persisted and then formatted for Telegram delivery.
-6. At 08:00 and 20:00 server time, the public channel receives league/count summaries with up to ten one-row league buttons per post; detailed match data stays in bot replies.
+6. At 08:05 and 20:05 server time, the public channel receives league/count summaries with up to ten one-row league buttons per post; detailed match data stays in bot replies.
 
 ### Premium flow
 

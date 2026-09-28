@@ -18,7 +18,7 @@
 - `isNeutralVenue(...)`: Marks FIFA World Cup fixtures and cup finals as neutral-ground matches so model calls and JSONL feedback can skip home-field advantage.
 
 ## Main.kt
-- Quartz job classes (`FetchMatchesJob`, `UpdateMatchesJob`, `UpdatePastMatchesJob`, `UpdateLiveMatchesJob`, `UpdateLeaguePredictabilityJob`, `SendAccuracyJob`, `SendWeeklyAccuracyJob`, `SendMonthlyAccuracyJob`, `SendYearlyAccuracyJob`, `UploadModelDataJob`, `InviteLinkCleanupJob`, `CommandUsageCleanupJob`): Each job wraps a specific bot/service call to run on a schedule. Upcoming public summaries run at 08:05 and 20:05 server time over a 12h window.
+- Quartz job classes (`FetchMatchesJob`, `UpdateMatchesJob`, `UpdatePastMatchesJob`, `UpdateLiveMatchesJob`, `UpdateLeaguePredictabilityJob`, `SendAccuracyJob`, `SendWeeklyAccuracyJob`, `SendMonthlyAccuracyJob`, `SendYearlyAccuracyJob`, `UploadModelDataJob`, `InviteLinkCleanupJob`, `CommandUsageCleanupJob`): Each job wraps a specific bot/service call to run on a schedule. Upcoming public summaries run at 08:05 and 20:05 server time over a 16h window.
 - `main()`: Creates the bot, exposes metrics, wires Quartz triggers for all jobs, and schedules model-data uploads only outside test mode.
 
 ## FootballBot.kt

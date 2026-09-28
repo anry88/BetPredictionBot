@@ -1761,11 +1761,11 @@ Available actions:
     }
 
     suspend fun sendUpcomingMatchesToTelegram() {
-        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext12Hours()
-        logger.info("Upcoming digest check: ${matches.size} unposted matches in the next 12h")
+        val matches = DatabaseService.matches.getMatchesWithoutMessageIdForNext16Hours()
+        logger.info("Upcoming digest check: ${matches.size} unposted matches in the next 16h")
 
         if (matches.isEmpty()) {
-            logger.info("Upcoming digest skipped: no unposted matches in the next 12h")
+            logger.info("Upcoming digest skipped: no unposted matches in the next 16h")
             return
         }
         if (matches.isNotEmpty()) {
@@ -1773,7 +1773,7 @@ Available actions:
             val leagueSummaries = mutableListOf<Pair<String, Int>>()
 
             for ((league, _) in matchesByLeague) {
-                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext12Hours(league).toMutableList()
+                val leagueBatch = DatabaseService.matches.getLeagueMatchesWithoutMessageIdForNext16Hours(league).toMutableList()
                 if (leagueBatch.isEmpty()) continue
 
                 scheduleTopMatchPoll(leagueBatch)
@@ -1880,7 +1880,7 @@ Available actions:
                 logger.info("Upcoming digest posted: ${summaries.size} leagues")
             }
             if (leagueSummaries.isEmpty()) {
-                logger.info("Upcoming digest skipped: no strategy-suitable matches in the next 12h")
+                logger.info("Upcoming digest skipped: no strategy-suitable matches in the next 16h")
             }
         }
     }
