@@ -789,6 +789,23 @@ Available actions:
                                 generalCommands.handleStart(chatId)
                             }
                         }
+                        param.startsWith("leaguedigestid_") -> {
+                            Metrics.commandCounter.labels(
+                                "/leagueupcoming",
+                                userId,
+                                false.toString()
+                            ).inc()
+                            val payload = param.removePrefix("leaguedigestid_")
+                            val token = payload.take(12)
+                            val digestMsgId = payload.drop(13)
+                            val league = DatabaseService.matches.getAllLeagues()
+                                .firstOrNull { leagueDeepLinkToken(it) == token }
+                            if (league == null || digestMsgId.toIntOrNull() == null) {
+                                sendMessage(chatId, "League link is no longer available.")
+                            } else {
+                                sendDigestLeagueMatches(chatId, userId, league, digestMsgId)
+                            }
+                        }
                         param.startsWith("leagueupcomingid_") -> {
                             Metrics.commandCounter.labels(
                                 "/leagueupcoming",
@@ -1872,14 +1889,16 @@ Available actions:
 
             leagueSummaries.chunked(MAX_LEAGUES_PER_SUMMARY).forEach { summaries ->
                 val summaryText = buildDigestSummaryText(summaries)
-                val markup = buildDigestSummaryMarkup(summaries.map { it.first })
-                val msgId = sendMessageAndGetId(channelId, summaryText, markup)
+                // Message id is only known after sending, but buttons must reference it
+                // to restore this post's match scope, so send text first, then attach buttons.
+                val msgId = sendMessageAndGetId(channelId, summaryText, null)
                 if (msgId != null) {
-                    summaries.forEach { (league, suitable) ->
-                        suitable.forEach { match ->
+                    summaries.forEach { (league, matches) ->
+                        matches.forEach { match ->
                             DatabaseService.digests.markPosted(match.fixtureId, league, msgId.toString())
                         }
                     }
+                    updateMessage(channelId, msgId.toString(), summaryText, buildDigestSummaryMarkup(summaries.map { it.first }, msgId.toString()))
                     logger.info("Upcoming digest posted (msg $msgId): ${summaries.size} leagues")
                 } else {
                     logger.error("Upcoming digest post failed, matches left unmarked for next run")
@@ -1978,13 +1997,15 @@ Available actions:
         }.trimEnd()
     }
 
-    private fun buildDigestSummaryMarkup(leagues: List<String>): InlineKeyboardMarkup {
+    private fun buildDigestSummaryMarkup(leagues: List<String>, summaryMessageId: String): InlineKeyboardMarkup {
         val buttons = leagues.map { league ->
             val flag = getCountryFlagFromText(league)
             val buttonText = listOf(flag, league).filter { it.isNotBlank() }.joinToString(" ")
+            // Token is a fixed 12-char base64url string, so the handler can split
+            // "<token>_<messageId>" unambiguously and restore this post's match scope.
             val callbackData = leagueDeepLinkToken(league)
             InlineKeyboardButton(buttonText).apply {
-                url = "https://t.me/$botUsername?start=leagueupcomingid_$callbackData"
+                url = "https://t.me/$botUsername?start=leaguedigestid_${callbackData}_$summaryMessageId"
             }
         }
         return InlineKeyboardMarkup(buttons.map { listOf(it) })
@@ -2004,7 +2025,7 @@ Available actions:
                 .filterValues { it.isNotEmpty() }
             if (byLeague.isEmpty()) continue
             val leagues = byLeague.toList()
-            updateMessage(channelId, msgId, buildDigestSummaryText(leagues), buildDigestSummaryMarkup(leagues.map { it.first }))
+            updateMessage(channelId, msgId, buildDigestSummaryText(leagues), buildDigestSummaryMarkup(leagues.map { it.first }, msgId))
             delay(3000)
         }
     }
@@ -2374,6 +2395,25 @@ Available actions:
         } else {
             sendMessage(chatId, "No upcoming matches within the next 24 hours for '$league'.")
         }
+    }
+
+    private fun sendDigestLeagueMatches(chatId: String, userId: String, league: String, digestMsgId: String) {
+        val (zone, label) = userTimezone(userId)
+        val entries = DatabaseService.digests.getEntriesByMessage(digestMsgId).filter { it.league == league }
+        val stored = entries.mapNotNull { DatabaseService.matches.getMatchInfoByFixtureId(it.fixtureId, it.league) }
+        if (stored.isEmpty()) {
+            // Digest entries expired or matches were removed; fall back to upcoming matches.
+            sendUpcomingMatchesForLeague(chatId, userId, league)
+            return
+        }
+        val enriched = enrichWithLiveData(stored)
+        val converted = adjustMatchesTimezone(enriched, zone)
+        val messages = buildMatchMessages(
+            converted.sortedBy { it.datetime },
+            formatter = { formatDetailedMatchInfo(it, label) },
+            includeTags = false
+        )
+        messages.forEach { (text, _) -> sendMessage(chatId, text) }
     }
 
     private fun handleMatchDetailsCommand(chatId: String, userId: String, messageId: String) {
