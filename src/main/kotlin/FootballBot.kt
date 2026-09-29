@@ -102,6 +102,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         "/freepremiumlinks",
         "/premiummatches",
         "/premiumrecent",
+        "/tasks",
+        "/paysupport",
         "/getdatabase",
         "/usercount",
         "/activeusercount",
@@ -126,9 +128,7 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         "/recentmatches",
         "/leaguerecent",
         "/getaccuracy",
-        "/tasks",
         "/settimezone",
-        "/paysupport",
         "/confirm",
         "/cancel",
         "/createInviteLink"
@@ -727,7 +727,7 @@ Available actions:
                     handleGetAccuracyCommand(chatId, messageText)
                 }
 
-                messageText == "/tasks" -> {
+                messageText == "/tasks" && chatId == adminChatId -> {
                     showJobsMenu(chatId)
                 }
 
@@ -848,7 +848,7 @@ Available actions:
                     generalCommands.handleSubscriptionMenu(chatId, userId)
                 }
 
-                messageText == "/paysupport" -> {
+                messageText == "/paysupport" && chatId == adminChatId -> {
                     val payment = DatabaseService.payments.getLastPayment(userId)
                     if (payment == null) {
                         sendMessage(chatId, "No recent payments found")
@@ -895,40 +895,42 @@ Available actions:
             val plan = SubscriptionPlan.values().firstOrNull { it.callbackData == data }
             when {
                 plan != null && chatId == adminChatId -> sendPremiumInvoice(chatId, plan)
-                data == "jobs_create" -> {
+                data == "jobs_create" && chatId == adminChatId -> {
                     editingJobs.remove(userId)
                     showCreateCategory(chatId)
                     Metrics.jobOperationCounter.labels("create").inc()
                 }
-                data == "jobs_edit" -> {
+                data == "jobs_edit" && chatId == adminChatId -> {
                     showEditJobs(chatId, userId)
                     Metrics.jobOperationCounter.labels("edit").inc()
                 }
-                data == "jobs_delete" -> {
+                data == "jobs_delete" && chatId == adminChatId -> {
                     showDeleteJobs(chatId, userId)
                     Metrics.jobOperationCounter.labels("delete").inc()
                 }
-                data == "jobs_create_upcoming" -> showUpcomingOptions(chatId)
-                data == "jobs_create_recent" -> showRecentOptions(chatId)
-                data == "jobs_create_accuracy" -> {
+                data == "jobs_create_upcoming" && chatId == adminChatId -> showUpcomingOptions(chatId)
+                data == "jobs_create_recent" && chatId == adminChatId -> showRecentOptions(chatId)
+                data == "jobs_create_accuracy" && chatId == adminChatId -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_ACCURACY_DAYS
                     sendMessage(chatId, "Enter how many past days to calculate accuracy stats:")
                 }
-                data == "jobs_create_upcoming_all" -> handleScheduleUpcomingCommand(chatId, userId, editingJobs[userId])
-                data == "jobs_create_upcoming_league" -> {
+                data == "jobs_create_upcoming_all" && chatId == adminChatId ->
+                    handleScheduleUpcomingCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_upcoming_league" && chatId == adminChatId -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_UPCOMING_FILTER
                     sendMessage(chatId, "Enter league name or keyword:")
                 }
                 data == "jobs_create_upcoming_premium" && chatId == adminChatId ->
                     handleSchedulePremiumUpcomingCommand(chatId, userId, editingJobs[userId])
-                data == "jobs_create_recent_all" -> handleScheduleRecentCommand(chatId, userId, editingJobs[userId])
-                data == "jobs_create_recent_league" -> {
+                data == "jobs_create_recent_all" && chatId == adminChatId ->
+                    handleScheduleRecentCommand(chatId, userId, editingJobs[userId])
+                data == "jobs_create_recent_league" && chatId == adminChatId -> {
                     jobCreationStates[userId] = JobCreationState.WAITING_LEAGUE_RECENT_FILTER
                     sendMessage(chatId, "Enter league name or keyword:")
                 }
                 data == "jobs_create_recent_premium" && chatId == adminChatId ->
                     handleSchedulePremiumRecentCommand(chatId, userId, editingJobs[userId])
-                data.startsWith("jobs_edit_") -> {
+                data.startsWith("jobs_edit_") && chatId == adminChatId -> {
                     val id = data.removePrefix("jobs_edit_").toLongOrNull()
                     if (id != null) {
                         editingJobs[userId] = id
@@ -936,7 +938,7 @@ Available actions:
                         Metrics.jobOperationCounter.labels("edit").inc()
                     }
                 }
-                data.startsWith("jobs_delete_") -> {
+                data.startsWith("jobs_delete_") && chatId == adminChatId -> {
                     val id = data.removePrefix("jobs_delete_").toLongOrNull()
                     if (id != null) {
                         DatabaseService.jobs.deleteJob(id)
@@ -1546,9 +1548,7 @@ Available actions:
         commands.add(BotCommand("/recentmatches", "Get matches from the last 24 hours with results"))
         commands.add(BotCommand("/leaguerecent", "Get recent matches for leagues matching a filter"))
         commands.add(BotCommand("/getaccuracy", "Get prediction accuracy for a period"))
-        commands.add(BotCommand("/tasks", "Manage scheduled tasks"))
         commands.add(BotCommand("/settimezone", "Set your timezone by sending your current time"))
-        commands.add(BotCommand("/paysupport", "Request a refund"))
 
         val setMyCommands = SetMyCommands()
         setMyCommands.commands = commands
@@ -1562,7 +1562,9 @@ Available actions:
                 BotCommand("/premiummatches", "Get selected upcoming matches"),
                 BotCommand("/premiumrecent", "Get selected recent matches"),
                 BotCommand("/fetchMatches", "Fetch new matches and predictions now"),
-                BotCommand("/postDigest", "Post the upcoming league digest now")
+                BotCommand("/postDigest", "Post the upcoming league digest now"),
+                BotCommand("/tasks", "Manage scheduled tasks"),
+                BotCommand("/paysupport", "Request a refund")
             )
             val setAdminCommands = SetMyCommands()
             setAdminCommands.commands = adminMenuCommands

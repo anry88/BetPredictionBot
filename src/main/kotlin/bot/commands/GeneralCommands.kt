@@ -31,13 +31,11 @@ class GeneralCommands(private val bot: FootballBot) {
     fun handleHelp(chatId: String, isAdmin: Boolean) {
         val commonCommands = """
             /start - Start the bot and get information about it
-            /paysupport - Request a refund
             /upcomingmatches - Get upcoming matches within the next 24 hours with analysis
             /leagueupcoming <filter> - Get upcoming matches for leagues matching the filter
             /recentmatches - Get matches from the last 24 hours with results
             /leaguerecent <filter> - Get matches from the last 24 hours for leagues matching the filter
             /getaccuracy <days> - Get prediction accuracy for the last <days> days
-            /tasks - Schedule automatic bot commands at a convenient time
             /settimezone <HH:mm> - Set your timezone by sending your current time
         """.trimIndent()
 
@@ -46,6 +44,8 @@ class GeneralCommands(private val bot: FootballBot) {
             /freepremiumlinks - Get available premium channel links
             /premiummatches - Get matches selected for the Premium channel
             /premiumrecent - Get premium matches from the last 24 hours
+            /tasks - Schedule automatic bot commands at a convenient time
+            /paysupport - Request a refund
             /getdatabase - Get the database file
             /usercount - Get the count of unique users
             /activeusercount - Get the count of unique users active last day
