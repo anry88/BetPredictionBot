@@ -295,6 +295,7 @@ fun addMissingColumnsForLeague(tableName: String) {
     addColumnIfNotExists(tableName, "calibrationApplied", "BOOLEAN")
     addColumnIfNotExists(tableName, "homeMatchesLastYear", "INTEGER")
     addColumnIfNotExists(tableName, "awayMatchesLastYear", "INTEGER")
+    addColumnIfNotExists(tableName, "elapsed", "INTEGER")
     addColumnIfNotExists(tableName, "neutralVenue", "BOOLEAN DEFAULT 0")
 }
 

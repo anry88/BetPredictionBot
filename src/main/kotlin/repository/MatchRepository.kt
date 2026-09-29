@@ -45,6 +45,7 @@ open class LeagueTable(tableName: String) : Table(tableName) {
     val awayWinOdds = varchar("awayWinOdds", 50).nullable()
     val telegramMessageId = varchar("telegramMessageId", 50).nullable()
     val strategyTelegramMessageId = varchar("strategyTelegramMessageId", 50).nullable()
+    val elapsed = integer("elapsed").nullable()
     val modelHomeWinProb = double("modelHomeWinProb").nullable()
     val modelDrawProb = double("modelDrawProb").nullable()
     val modelAwayWinProb = double("modelAwayWinProb").nullable()
@@ -130,6 +131,7 @@ class MatchRepository {
                     it[actualScore] = match.actualScore
                     it[odds] = match.odds ?: ""
                     it[telegramMessageId] = match.telegramMessageId
+                    it[elapsed] = match.elapsed
                     it[calibratedHomeWinProb] = match.calibratedHomeWinProb
                     it[calibratedDrawProb] = match.calibratedDrawProb
                     it[calibratedAwayWinProb] = match.calibratedAwayWinProb
@@ -151,6 +153,7 @@ class MatchRepository {
                     it[datetime] = matchInfo.datetime
                     it[actualOutcome] = matchInfo.actualOutcome
                     it[actualScore] = matchInfo.actualScore
+                    it[elapsed] = matchInfo.elapsed
                     it[neutralVenue] = matchInfo.neutralVenue
                 }
             } catch (e: ExposedSQLException) {
@@ -159,6 +162,7 @@ class MatchRepository {
                     leagueTable.update({ leagueTable.fixtureId eq matchInfo.fixtureId }) {
                         it[actualOutcome] = matchInfo.actualOutcome
                         it[actualScore] = matchInfo.actualScore
+                        it[elapsed] = matchInfo.elapsed
                         it[neutralVenue] = matchInfo.neutralVenue
                     }
                 } else throw e
@@ -938,7 +942,7 @@ class MatchRepository {
             awayWinOdds = row[leagueTable.awayWinOdds],
             telegramMessageId = row[leagueTable.telegramMessageId],
             strategyTelegramMessageId = row[leagueTable.strategyTelegramMessageId],
-            elapsed = null,
+            elapsed = row[leagueTable.elapsed],
             modelHomeWinProb = row[leagueTable.modelHomeWinProb],
             modelDrawProb = row[leagueTable.modelDrawProb],
             modelAwayWinProb = row[leagueTable.modelAwayWinProb],
