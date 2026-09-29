@@ -170,7 +170,7 @@ fun main() {
 
     val dailyTrigger = TriggerBuilder.newTrigger()
         .withIdentity("fetchMatchesDailyTrigger", "group1")
-        .withSchedule(CronScheduleBuilder.cronSchedule("0 1 0,4,8,12,16,20 * * ?"))
+        .withSchedule(CronScheduleBuilder.cronSchedule("0 1 7,19 * * ?"))  // At 07:01 and 19:01 server time, before the digests
         .build()
 
     val updateMatchesJob = JobBuilder.newJob(UpdateMatchesJob::class.java)
@@ -313,7 +313,7 @@ fun main() {
     scheduler.scheduleJob(inviteLinkCleanupJob, inviteLinkCleanupTrigger)
     scheduler.scheduleJob(commandUsageCleanupJob, commandUsageCleanupTrigger)
 
-    logger.info("Scheduled FetchMatchesJob to run every four hours starting at midnight")
+    logger.info("Scheduled FetchMatchesJob to run twice a day at 7:01 AM and 7:01 PM server time")
     logger.info("Scheduled UpdateMatchesJob to run twice a day at 8:05 AM and 8:05 PM server time")
     logger.info("Scheduled UpdateLeaguePredictabilityJob to run daily at 08:00")
     logger.info("Scheduled SendAccuracyJob to run daily at 08:30")
