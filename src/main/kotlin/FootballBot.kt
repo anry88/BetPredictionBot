@@ -113,6 +113,8 @@ class FootballBot(private val token: String) : TelegramLongPollingBot(), Telegra
         "/getjsonl",
         "/uploadmodeldata",
         "/updatePastMatches",
+        "/fetchMatches",
+        "/postDigest",
         "/addPastResults"
     )
 
@@ -753,6 +755,12 @@ Available actions:
                 }
                 chatId == adminChatId && messageText == "/updatePastMatches" -> {
                     adminCommands.handleUpdatePastMatches(chatId)
+                }
+                chatId == adminChatId && messageText == "/fetchMatches" -> {
+                    adminCommands.handleFetchMatches(chatId)
+                }
+                chatId == adminChatId && messageText == "/postDigest" -> {
+                    adminCommands.handlePostDigest(chatId)
                 }
                 chatId == adminChatId && messageText.startsWith("/addPastResults") -> {
                     handleAddPastResultsCommand(chatId, messageText.removePrefix("/addPastResults ").trim())
@@ -1535,7 +1543,9 @@ Available actions:
                 BotCommand("/subscribe", "Open subscription management"),
                 BotCommand("/freepremiumlinks", "Get available premium channel links"),
                 BotCommand("/premiummatches", "Get selected upcoming matches"),
-                BotCommand("/premiumrecent", "Get selected recent matches")
+                BotCommand("/premiumrecent", "Get selected recent matches"),
+                BotCommand("/fetchMatches", "Fetch new matches and predictions now"),
+                BotCommand("/postDigest", "Post the upcoming league digest now")
             )
             val setAdminCommands = SetMyCommands()
             setAdminCommands.commands = adminMenuCommands

@@ -61,4 +61,29 @@ class AdminCommands(private val bot: FootballBot) {
             bot.sendMessage(chatId, "Past matches update finished.")
         }
     }
+
+    fun handleFetchMatches(chatId: String) {
+        bot.sendMessage(chatId, "Starting matches fetch...")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val footballService = HttpAPIFootballService(bot)
+                footballService.fetchMatches()
+                bot.sendMessage(chatId, "Matches fetch finished.")
+            } catch (e: Exception) {
+                bot.sendMessage(chatId, "Matches fetch failed: ${e.message}")
+            }
+        }
+    }
+
+    fun handlePostDigest(chatId: String) {
+        bot.sendMessage(chatId, "Posting upcoming digest...")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                bot.sendUpcomingMatchesToTelegram()
+                bot.sendMessage(chatId, "Digest run finished.")
+            } catch (e: Exception) {
+                bot.sendMessage(chatId, "Digest run failed: ${e.message}")
+            }
+        }
+    }
 }

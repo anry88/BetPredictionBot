@@ -54,6 +54,8 @@ class GeneralCommands(private val bot: FootballBot) {
             /getjsonl - Get the matches data in .jsonl format
             /uploadmodeldata - Upload matches data to the model (production only)
             /updatePastMatches - Update results of matches from the last two days
+            /fetchMatches - Fetch new matches and predictions now
+            /postDigest - Post the upcoming league digest now
             /addPastResults league season startDate endDate - Add past results to database
             /createInviteLink subscribers days - Create an invite link for the premium channel
             /refundapprove id - Approve refund request
