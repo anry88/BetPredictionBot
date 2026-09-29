@@ -1843,13 +1843,13 @@ Available actions:
                     }
                 }
 
-                val suitableMatches = leagueBatch.filter { match ->
-                    outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
-                }
-                logger.info("Upcoming digest: league '$league' has ${leagueBatch.size} matches, ${suitableMatches.size} suitable")
-                if (suitableMatches.isNotEmpty()) {
-                    leagueSummaries += league to suitableMatches
+                logger.info("Upcoming digest: league '$league' has ${leagueBatch.size} matches")
+                if (leagueBatch.isNotEmpty()) {
+                    leagueSummaries += league to leagueBatch.toList()
 
+                    val suitableMatches = leagueBatch.filter { match ->
+                        outcomeStrategyConfigs.any { config -> isMatchFitsStrategy(match, config) }
+                    }
                     val newStrategyMatches = suitableMatches.filter { it.strategyTelegramMessageId == null }
                     val strategyMessages = buildMatchMessages(
                         newStrategyMatches,
@@ -1886,7 +1886,7 @@ Available actions:
                 }
             }
             if (leagueSummaries.isEmpty()) {
-                logger.info("Upcoming digest skipped: no strategy-suitable matches in the next 16h")
+                logger.info("Upcoming digest skipped: no matches in the next 16h")
             }
         }
     }
