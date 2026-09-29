@@ -448,14 +448,27 @@ class MatchRepository {
         val threeHoursAgo = now.minusHours(3)
         val matchesToUpdate = mutableListOf<MatchInfo>()
         transaction {
+            // Digest-announced fixtures carry no per-match telegram message id by design,
+            // so include them explicitly; otherwise live tracking (and poll finalization)
+            // would only see premium matches until the next past-match reconciliation.
+            val digestIds = mutableSetOf<String>()
+            val digestCutoff = System.currentTimeMillis() / 1000 - 2 * 24 * 60 * 60
+            exec("SELECT fixture_id FROM digest_posts WHERE posted_at >= $digestCutoff") { rs ->
+                while (rs.next()) {
+                    digestIds.add(rs.getString("fixture_id"))
+                }
+            }
             listOfLeagues.forEach { leagueName ->
                 val leagueTable = LeagueTableFactory.getTableForLeague(leagueName)
                 addMissingColumnsForLeague(leagueName)
                 leagueTable.select {
-                    (leagueTable.datetime greaterEq threeHoursAgo.format(dateTimeFormatter)) and
-                    (leagueTable.datetime lessEq now.format(dateTimeFormatter)) and
-                    leagueTable.actualOutcome.isNull() and
-                    ((leagueTable.telegramMessageId.isNotNull()) or (leagueTable.strategyTelegramMessageId.isNotNull()))
+                    val inWindow = (leagueTable.datetime greaterEq threeHoursAgo.format(dateTimeFormatter)) and
+                        (leagueTable.datetime lessEq now.format(dateTimeFormatter)) and
+                        leagueTable.actualOutcome.isNull()
+                    val hasMessageId = (leagueTable.telegramMessageId.isNotNull()) or
+                        (leagueTable.strategyTelegramMessageId.isNotNull())
+                    if (digestIds.isEmpty()) inWindow and hasMessageId
+                    else inWindow and (hasMessageId or (leagueTable.fixtureId inList digestIds))
                 }.mapNotNullTo(matchesToUpdate) {
                     mapRowToMatchInfo(it, leagueTable)
                 }
@@ -892,6 +905,7 @@ class MatchRepository {
             "payments",
             "refund_requests",
             "match_polls",
+            "digest_posts",
             "sqlite_sequence"
         )
         val names = mutableListOf<String>()
